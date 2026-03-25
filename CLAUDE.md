@@ -12,6 +12,21 @@ Vmarble Warehouse Management System — **Remnant Flow MVP** for a woodworking f
 
 ---
 
+## Claude Skills
+
+Project-specific skills live in `.claude/skills/`. They are loaded on-demand based on relevance.
+
+| Skill | Trigger |
+|-------|---------|
+| `add-shadcn-component` | Adding UI components, shadcn CLI, CVA variants, wrapper pattern |
+| `add-api-route` | New API domain, endpoint, or TanStack Query hook |
+| `add-page` | New page/route — route group, metadata, loading/error siblings |
+| `kiosk-component` | Mobile kiosk components — BigButton, ScannerView, touch rules |
+| `remnant-flow-domain` | Business logic — remnant lifecycle, allocation, costing, overflow |
+| `typescript-patterns` | DTO imports, hook generics, strict null, `cn()`, error handling |
+
+---
+
 ## Commands
 
 ### Backend (Go)
