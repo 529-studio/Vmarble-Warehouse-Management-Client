@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Vmarble Warehouse Management System — **Remnant Flow MVP** for a woodworking furniture workshop. The system manages plywood sheet cutting, intelligent remnant (leftover material) tracking and reuse, production planning, QR/barcode labeling, costing, and a warehouse dashboard. The shop-floor interface is a mobile-optimized PWA Kiosk; management uses a desktop Dashboard.
 
-**Stack**: Go 1.24 backend (gin, pgx/v5, PostgreSQL 17) + Next.js 15 frontend (TypeScript 5, Tailwind CSS 4, TanStack Query, Zustand).
+**Stack**: Go 1.24 backend (gin, pgx/v5, PostgreSQL 17) + Next.js 16.2.1 frontend (TypeScript 5, Tailwind CSS 4, shadcn/ui, TanStack Query, Zustand).
+
+> This is the **frontend-only** repo. The Go backend lives in a separate repository.
 
 ---
 
@@ -35,13 +37,14 @@ make build
 make dev
 ```
 
-### Frontend (Next.js — under `frontend/`)
+### Frontend (Next.js — at repo root)
 
 ```bash
-npm run dev    # Dev server
-npm run build  # Production build
-make lint      # Lint (from repo root)
-make test      # Run tests
+npm install         # Install dependencies
+npm run dev         # Dev server (Turbopack) — http://localhost:3000
+npm run build       # Production build
+npm run lint        # ESLint check
+npm start           # Start production server
 ```
 
 ---
@@ -110,32 +113,76 @@ Use the prompt at `tools/prompts/add-tests.md` when adding tests to an existing 
 
 ## Frontend Architecture
 
-The frontend lives in `frontend/` and uses Next.js App Router with two route groups:
+The frontend uses Next.js App Router with a `src/` folder and a single root layout that provides providers and PWA meta. Two route groups define completely separate UI experiences:
 
-- **`(kiosk)`** — Mobile-optimized shop-floor interface (375 px baseline). Bottom navigation, large touch targets (≥ 48 px), font ≥ 16 px.
-- **`(dashboard)`** — Desktop/tablet management views (1280 px baseline). Side nav, charts (Recharts).
-
-Key directories:
+- **`(kiosk)`** — Mobile-optimized shop-floor interface (375 px baseline). Fixed bottom tab nav, `BigButton` (min 56 px), font ≥ 16 px, touch targets ≥ 48 px.
+- **`(dashboard)`** — Desktop/tablet management views (1280 px baseline). Fixed 240 px side nav.
+- **`(auth)`** — Login page (no nav chrome).
 
 ```
-frontend/
+src/
 ├── app/
-│   ├── (kiosk)/      # cutting-orders, report-cut, remnant-store, remnant-list, scan
-│   └── (dashboard)/  # overview, remnants, costing
+│   ├── layout.tsx                  ← Root: html/body, Providers, Toaster, PWA meta
+│   ├── not-found.tsx
+│   ├── global-error.tsx            ← "use client" global error boundary
+│   ├── (auth)/login/page.tsx
+│   ├── (kiosk)/
+│   │   ├── layout.tsx              ← Header + BottomNav chrome
+│   │   ├── cutting-orders/         ← page.tsx + loading.tsx
+│   │   ├── report-cut/page.tsx
+│   │   ├── remnant-store/page.tsx
+│   │   ├── remnant-list/page.tsx
+│   │   └── scan/page.tsx
+│   └── (dashboard)/
+│       ├── layout.tsx              ← SideNav chrome
+│       ├── overview/               ← page.tsx + loading.tsx
+│       ├── remnants/page.tsx
+│       └── costing/page.tsx
 ├── components/
-│   ├── ui/           # Base: Button, Card, Table, Modal, Toast
-│   ├── kiosk/        # BigButton, ScannerView, LabelPreview
-│   └── dashboard/    # Charts, StatCard, AlertBanner
-└── lib/
-    ├── api/          # Typed API client
-    └── hooks/        # useRemnants, useCuttingOrders, useScan, …
+│   ├── ui/                         ← shadcn/ui components
+│   ├── kiosk/                      ← BigButton, ScannerView, LabelPreview, BottomNav
+│   └── dashboard/                  ← StatCard, AlertBanner, SideNav
+├── lib/
+│   ├── api/                        ← client.ts + domain files (remnants, cutting-orders, barcode, dashboard)
+│   ├── hooks/                      ← TanStack Query hooks per domain
+│   ├── utils.ts                    ← cn() utility
+│   └── providers.tsx               ← QueryClientProvider wrapper
+├── styles/globals.css              ← Tailwind v4 @import + shadcn CSS variables
+└── types/api.ts                    ← Shared API DTOs (mirrors Go backend iface.go types)
 ```
 
-- **TanStack Query** for all server state (API calls, caching).
-- **Zustand** for client/UI state.
-- **QR scanning** via `html5-qrcode` with manual-input fallback.
-- Responsive breakpoints: mobile 375 px → tablet 768 px → desktop 1280 px. Every screen must work at all three.
-- PWA installable; service worker must not break offline fallback.
+### shadcn/ui
+
+Components live in `src/components/ui/`. Config is in `components.json` (style: `new-york`, baseColor: `neutral`). To add a new component:
+
+```bash
+npx shadcn@latest add <component-name>
+```
+
+Do **not** edit generated shadcn files directly if re-running `add` — extend them via wrapper components instead.
+
+### Tailwind CSS v4
+
+- No `tailwind.config.js` — configuration is CSS-first via `src/styles/globals.css`.
+- CSS variables for theming use `oklch` color space via `@theme inline`.
+- PostCSS plugin: `@tailwindcss/postcss` in `postcss.config.mjs`.
+
+### State management
+
+- **TanStack Query** (`src/lib/hooks/`) — all server state. Query keys follow pattern `[domain, id?, subkey?]`.
+- **Zustand** (`src/lib/hooks/use-scan.ts`) — lightweight client state (scan flow, UI state).
+
+### API client
+
+`src/lib/api/client.ts` exports `apiClient` (typed `fetch` wrapper). Domain-specific files (`remnants.ts`, `cutting-orders.ts`, `barcode.ts`, `dashboard.ts`) expose functions consumed by TanStack Query hooks. Base URL reads from `NEXT_PUBLIC_API_URL`.
+
+### QR scanning
+
+`ScannerView` (`src/components/kiosk/scanner-view.tsx`) uses `html5-qrcode` (dynamically imported to avoid SSR). Falls back to manual text input when camera permission is denied.
+
+### Responsive breakpoints
+
+Mobile 375 px → Tablet 768 px → Desktop 1280 px. Every screen must render correctly at all three widths.
 
 ---
 

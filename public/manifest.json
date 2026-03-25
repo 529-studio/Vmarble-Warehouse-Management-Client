@@ -1,0 +1,24 @@
+{
+  "name": "Vmarble WMS",
+  "short_name": "Vmarble",
+  "description": "Hệ thống quản lý kho Vmarble – Dòng chảy Vật tư & Tấm lẻ",
+  "start_url": "/cutting-orders",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#09090b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
