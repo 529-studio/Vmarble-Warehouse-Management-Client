@@ -1,34 +1,80 @@
-import type { Metadata } from 'next'
+'use client'
+
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import { remnantsApi } from '@/lib/api/remnants'
 
-export const metadata: Metadata = { title: 'Kho tấm lẻ' }
+const ageDays = (createdAt: string) =>
+  Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 
 export default function RemnantListPage() {
+  const [search, setSearch] = useState('')
+
+  const { data: remnants, isLoading, isError } = useQuery({
+    queryKey: ['remnants'],
+    queryFn: () => remnantsApi.list({ status: 'AVAILABLE' }),
+    staleTime: 30_000,
+  })
+
+  const filtered = (remnants ?? []).filter((r) => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    return (
+      r.id.toLowerCase().includes(q) ||
+      `${r.dimensions.length_mm}`.includes(q) ||
+      `${r.dimensions.width_mm}`.includes(q)
+    )
+  })
+
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4 p-4 pb-20">
       <h1 className="text-xl font-bold">Kho tấm lẻ</h1>
 
-      <Input placeholder="Tìm theo vật liệu, kích thước..." className="h-11 text-base" />
+      <Input
+        placeholder="Tìm theo kích thước, ID..."
+        className="h-11 text-base"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-      {/* Placeholder list — replace with <RemnantList /> once API is wired */}
-      {[
-        { id: 'R-001', dims: '800 × 400 mm', material: 'Plywood', location: 'A1-R2-S3', age: 3 },
-        { id: 'R-002', dims: '600 × 300 mm', material: 'MDF', location: 'A1-R2-S4', age: 7 },
-        { id: 'R-003', dims: '1000 × 500 mm', material: 'Plywood', location: 'B2-R1-S1', age: 1 },
-      ].map((r) => (
-        <Card key={r.id} className="cursor-pointer hover:bg-muted/50">
-          <CardContent className="flex items-center justify-between p-4">
-            <div className="space-y-1">
-              <p className="font-semibold">{r.id}</p>
-              <p className="text-sm text-muted-foreground">{r.dims} · {r.material}</p>
-              <p className="text-sm text-muted-foreground">Kệ: {r.location}</p>
-            </div>
-            <Badge variant="outline">{r.age} ngày</Badge>
-          </CardContent>
-        </Card>
-      ))}
+      {isLoading ? (
+        Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full rounded-xl" />
+        ))
+      ) : isError ? (
+        <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Không thể tải dữ liệu. Kiểm tra kết nối API.
+        </p>
+      ) : filtered.length === 0 ? (
+        <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">
+          Không có tấm lẻ nào khả dụng.
+        </p>
+      ) : (
+        filtered.map((r) => (
+          <Card key={r.id} className="cursor-pointer hover:bg-muted/50">
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="space-y-1">
+                <p className="font-semibold font-mono text-sm">{r.id.slice(0, 8)}…</p>
+                <p className="text-sm text-muted-foreground">
+                  {r.dimensions.length_mm} × {r.dimensions.width_mm} mm
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Nguồn: {r.parent_board_id
+                    ? `Board ${r.parent_board_id.slice(0, 6)}…`
+                    : r.parent_remnant_id
+                      ? `Remnant ${r.parent_remnant_id.slice(0, 6)}…`
+                      : '—'}
+                </p>
+              </div>
+              <Badge variant="outline">{ageDays(r.created_at)} ngày</Badge>
+            </CardContent>
+          </Card>
+        ))
+      )}
     </div>
   )
 }

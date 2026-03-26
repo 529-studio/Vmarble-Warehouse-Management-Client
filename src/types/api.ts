@@ -1,18 +1,20 @@
 // ---------------------------------------------------------------------------
-// API DTOs — mirrors the Go backend types from internal/module/*/iface.go
+// API DTOs — mirrors the Go backend types (snake_case as returned by the API)
 // ---------------------------------------------------------------------------
 
 // ── Shared ──────────────────────────────────────────────────────────────────
 
 export type MaterialType = 'PLYWOOD' | 'MDF' | 'HDF' | string
 
-export type RemnantStatus = 'AVAILABLE' | 'ALLOCATED' | 'USED' | 'DEPLETED'
+/** Backend: AVAILABLE | ALLOCATED | CONSUMED | WASTE */
+export type RemnantStatus = 'AVAILABLE' | 'ALLOCATED' | 'CONSUMED' | 'WASTE'
 
 export type WorkOrderStatus =
   | 'PLANNED'
   | 'IN_CUTTING'
   | 'IN_PROCESSING'
   | 'COMPLETED'
+  | 'COSTED'
 
 export type QualityGrade = 'A' | 'B' | 'C'
 
@@ -23,44 +25,34 @@ export type ScanCheckpoint =
   | 'FINISHING_COMPLETE'
   | 'WAREHOUSE_SHIP'
 
-// ── Inventory ───────────────────────────────────────────────────────────────
+// ── Money (domain.Money) ─────────────────────────────────────────────────────
 
-export interface BoardSheet {
-  id: string
-  supplierCode: string
-  lotBatch: string
-  materialType: MaterialType
-  grainPattern: GrainPattern
-  qualityGrade: QualityGrade
-  lengthMm: number
-  widthMm: number
-  thicknessMm: number
-  unitCost: number
-  status: 'AVAILABLE' | 'IN_USE' | 'DEPLETED'
-  createdAt: string
+export interface Money {
+  amount: number
+  currency: string
 }
 
+// ── Inventory ───────────────────────────────────────────────────────────────
+
+/** GET /api/v1/inventory/sheets */
+export interface BoardSheet {
+  id: string
+  lot_id: string
+  dimensions: { length_mm: number; width_mm: number }
+  cost_per_sheet: Money
+  issued_to_work_order_id: string | null
+  status: string
+}
+
+/** GET /api/v1/inventory/remnants */
 export interface Remnant {
   id: string
-  parentRemnantId: string | null
-  sourceBoardSheetId: string | null
-  supplierCode: string
-  lotBatch: string
-  materialType: MaterialType
-  grainPattern: GrainPattern
-  qualityGrade: QualityGrade
-  actualLengthMm: number
-  actualWidthMm: number
-  thicknessMm: number
-  boundingBoxLengthMm: number
-  boundingBoxWidthMm: number
+  parent_board_id: string | null
+  parent_remnant_id: string | null
+  dimensions: { length_mm: number; width_mm: number }
   status: RemnantStatus
-  binLocationId: string | null
-  binLocation?: StorageLocation
-  allocatedToWoId: string | null
-  allocatedAt: string | null
-  daysInStock: number
-  createdAt: string
+  allocated_to_wo: string | null
+  created_at: string
 }
 
 export interface RemnantLineage {
@@ -118,18 +110,28 @@ export interface PlanItem {
   isMetalRequired: boolean
 }
 
+/** GET /api/v1/work-orders */
 export interface WorkOrder {
   id: string
-  planId: string
-  sku: string
+  plan_id: string
+  sku_id: string
   quantity: number
-  materialType: MaterialType
-  requiredLengthMm: number
-  requiredWidthMm: number
   status: WorkOrderStatus
-  assignedBoardSheetId: string | null
-  assignedRemnantId: string | null
-  createdAt: string
+  created_at: string
+}
+
+// ── Costing ──────────────────────────────────────────────────────────────────
+
+/** GET /api/v1/costing  or  GET /api/v1/costing/{workOrderID} */
+export interface CostingRecord {
+  id: string
+  work_order_id: string
+  sku_id: string
+  material_cost: Money
+  auxiliary_cost: Money
+  total_cost: Money
+  finalized: boolean
+  created_at: string
 }
 
 // ── Cutting ──────────────────────────────────────────────────────────────────
@@ -147,14 +149,12 @@ export interface CuttingRecord {
   cutAt: string
 }
 
+/** POST /api/v1/inventory/cuts */
 export interface RecordCutInput {
-  workOrderId: string
-  usedLengthMm: number
-  usedWidthMm: number
-  remnantLengthMm?: number
-  remnantWidthMm?: number
-  isWaste: boolean
-  operatorId: string
+  work_order_id: string
+  dimensions: { length_mm: number; width_mm: number }
+  remnant_dimensions?: { length_mm: number; width_mm: number }
+  is_waste: boolean
 }
 
 export interface RecordCutResponse {
@@ -205,27 +205,7 @@ export interface ScanEvent {
   scannedAt: string
 }
 
-// ── Costing ──────────────────────────────────────────────────────────────────
-
-export interface CostingReport {
-  poId: string
-  poCode: string
-  items: CostingItem[]
-  totalMaterialCost: number
-  totalWasteCost: number
-  totalRemnantSavings: number
-}
-
-export interface CostingItem {
-  sku: string
-  quantity: number
-  materialCost: number
-  wasteCostAllocation: number
-  remnantSavings: number
-  unitCost: number
-}
-
-// ── Dashboard ────────────────────────────────────────────────────────────────
+// ── Dashboard (computed client-side from real API data) ──────────────────────
 
 export interface RemnantSummary {
   totalCount: number

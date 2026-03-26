@@ -1,26 +1,24 @@
-import type {
-  WorkOrder,
-  RecordCutInput,
-  RecordCutResponse,
-  PaginatedResponse,
-} from '@/types/api'
+import type { WorkOrder, RecordCutInput, RecordCutResponse } from '@/types/api'
 import { apiClient } from './client'
 
 export interface WorkOrdersFilter {
   status?: string
-  planId?: string
+  plan_id?: string
   page?: number
   pageSize?: number
 }
 
 export const cuttingOrdersApi = {
+  /** GET /api/v1/work-orders — returns array */
   list: (filter: WorkOrdersFilter = {}) =>
-    apiClient.get<PaginatedResponse<WorkOrder>>('/work-orders', {
+    apiClient.get<WorkOrder[]>('/work-orders', {
       params: filter as Record<string, string | number | boolean | undefined>,
     }),
 
+  /** GET /api/v1/work-orders/{id} */
   getById: (id: string) => apiClient.get<WorkOrder>(`/work-orders/${id}`),
 
+  /** POST /api/v1/inventory/cuts */
   recordCut: (input: RecordCutInput) =>
-    apiClient.post<RecordCutResponse>('/inventory/record-cut', input),
+    apiClient.post<RecordCutResponse>('/inventory/cuts', input),
 }
