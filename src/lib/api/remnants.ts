@@ -1,23 +1,10 @@
-import type {
-  Remnant,
-  RemnantLineage,
-  PaginatedResponse,
-  RemnantSuggestion,
-  SuggestAllocationInput,
-  SuggestAllocationResponse,
-  OverflowStatus,
-  StorageLocation,
-} from '@/types/api'
+import type { Remnant, CostingRecord } from '@/types/api'
 import { apiClient } from './client'
 
 // ── Remnant list filters ─────────────────────────────────────────────────────
 
 export interface RemnantsFilter {
-  minLengthMm?: number
-  minWidthMm?: number
-  materialType?: string
   status?: string
-  locationId?: string
   page?: number
   pageSize?: number
 }
@@ -25,47 +12,38 @@ export interface RemnantsFilter {
 // ── API calls ─────────────────────────────────────────────────────────────────
 
 export const remnantsApi = {
+  /** GET /api/v1/inventory/remnants — returns array (not paginated) */
   list: (filter: RemnantsFilter = {}) =>
-    apiClient.get<PaginatedResponse<Remnant>>('/remnants', {
+    apiClient.get<Remnant[]>('/inventory/remnants', {
       params: filter as Record<string, string | number | boolean | undefined>,
     }),
 
-  getById: (id: string) => apiClient.get<Remnant>(`/remnants/${id}`),
-
-  getLineage: (id: string) =>
-    apiClient.get<RemnantLineage>(`/remnants/${id}/lineage`),
-
-  assignLocation: (id: string, locationId: string) =>
-    apiClient.put<Remnant>(`/remnants/${id}/location`, { locationId }),
-
-  suggestAllocation: (input: SuggestAllocationInput) =>
-    apiClient.post<SuggestAllocationResponse>(
-      '/inventory/suggest-allocation',
-      input,
-    ),
-
+  /** POST /api/v1/inventory/remnants/{id}/allocate */
   allocate: (remnantId: string, workOrderId: string) =>
-    apiClient.post<Remnant>('/inventory/allocate', { remnantId, workOrderId }),
+    apiClient.post<void>(`/inventory/remnants/${remnantId}/allocate`, {
+      work_order_id: workOrderId,
+    }),
 
-  releaseAllocation: (remnantId: string) =>
-    apiClient.post<Remnant>('/inventory/release-allocation', { remnantId }),
-
-  getOverflowStatus: () =>
-    apiClient.get<OverflowStatus>('/inventory/overflow-status'),
+  /** POST /api/v1/inventory/remnants/{id}/waste */
+  markWaste: (remnantId: string) =>
+    apiClient.post<void>(`/inventory/remnants/${remnantId}/waste`),
 }
 
-export const storageLocationsApi = {
-  list: () => apiClient.get<StorageLocation[]>('/storage-locations'),
+// ── Costing ─────────────────────────────────────────────────────────────────
 
-  getById: (id: string) =>
-    apiClient.get<StorageLocation>(`/storage-locations/${id}`),
+export const costingApi = {
+  /** GET /api/v1/costing — all costing records */
+  list: () => apiClient.get<CostingRecord[]>('/costing'),
 
-  create: (data: Omit<StorageLocation, 'id' | 'barcode'>) =>
-    apiClient.post<StorageLocation>('/storage-locations', data),
+  /** GET /api/v1/costing/{workOrderID} */
+  getByWorkOrder: (workOrderId: string) =>
+    apiClient.get<CostingRecord>(`/costing/${workOrderId}`),
 
-  update: (id: string, data: Partial<StorageLocation>) =>
-    apiClient.put<StorageLocation>(`/storage-locations/${id}`, data),
+  /** POST /api/v1/costing/{workOrderID}/compute */
+  compute: (workOrderId: string) =>
+    apiClient.post<CostingRecord>(`/costing/${workOrderId}/compute`),
 
-  delete: (id: string) =>
-    apiClient.delete<void>(`/storage-locations/${id}`),
+  /** POST /api/v1/costing/{workOrderID}/finalize */
+  finalize: (workOrderId: string) =>
+    apiClient.post<void>(`/costing/${workOrderId}/finalize`),
 }

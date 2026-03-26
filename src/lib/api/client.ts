@@ -24,7 +24,11 @@ async function request<T>(
   path: string,
   { params, body, ...init }: RequestOptions = {},
 ): Promise<T> {
-  const url = new URL(`${BASE_URL}${path}`)
+  // BASE_URL may be a relative path (e.g. "/api/proxy") when using the
+  // Next.js rewrite proxy. new URL() requires an absolute base in that case.
+  const base =
+    typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+  const url = new URL(`${BASE_URL}${path}`, base)
 
   if (params) {
     for (const [key, value] of Object.entries(params)) {
