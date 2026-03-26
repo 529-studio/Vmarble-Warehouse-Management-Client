@@ -1,0 +1,22 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./esm-CFPfttQj.js","./chunk-vNrZSFDR.js"])))=>i.map(i=>d[i]);
+import{n as e,o as t}from"./chunk-vNrZSFDR.js";import{n,t as r}from"./preload-helper-BROLHtqz.js";import{t as i}from"./react-KkzZQhs-.js";import{_ as a}from"./iframe-BgtsNA66.js";import{b as o,h as s,t as c}from"./lucide-react-DnM_rwBX.js";import{n as l,t as u}from"./utils-CfjevCzH.js";import{n as d,t as f}from"./button-b57SCueb.js";import{n as p,t as m}from"./input-Bz-xJmzj.js";function h({onScan:e,className:t}){let[n,i]=(0,_.useState)(`camera`),[a,c]=(0,_.useState)(``),[l,d]=(0,_.useState)(!1),p=(0,_.useRef)(null),h=(0,_.useRef)(null);return(0,_.useEffect)(()=>{if(n!==`camera`)return;let t=!1;async function a(){try{let{Html5Qrcode:n}=await r(async()=>{let{Html5Qrcode:e}=await import(`./esm-CFPfttQj.js`);return{Html5Qrcode:e}},__vite__mapDeps([0,1]),import.meta.url);if(t||!p.current)return;let i=new n(`qr-scanner-container`);h.current=i,await i.start({facingMode:`environment`},{fps:10,qrbox:{width:250,height:250}},t=>{e(t)},void 0)}catch{d(!0),i(`manual`)}}return a(),()=>{t=!0,h.current?.stop().catch(()=>{})}},[n,e]),n===`manual`||l?(0,g.jsxs)(`div`,{className:u(`space-y-3`,t),children:[(0,g.jsx)(`p`,{className:`text-sm text-muted-foreground`,children:`Nhập mã thủ công (camera không khả dụng)`}),(0,g.jsx)(`div`,{className:`flex gap-2`,children:(0,g.jsx)(m,{value:a,onChange:e=>c(e.target.value),onKeyDown:t=>{t.key===`Enter`&&a.trim()&&(e(a.trim()),c(``))},placeholder:`Nhập mã rồi nhấn Enter...`,className:`h-12 text-base`,autoFocus:!0})}),(0,g.jsxs)(f,{size:`sm`,variant:`ghost`,onClick:()=>{d(!1),i(`camera`)},children:[(0,g.jsx)(o,{className:`size-4`}),`Thử lại camera`]})]}):(0,g.jsxs)(`div`,{className:u(`space-y-3`,t),children:[(0,g.jsx)(`div`,{id:`qr-scanner-container`,ref:p,className:`overflow-hidden rounded-lg bg-black`,style:{minHeight:260}}),(0,g.jsxs)(f,{size:`sm`,variant:`ghost`,onClick:()=>i(`manual`),children:[(0,g.jsx)(s,{className:`size-4`}),`Nhập thủ công`]})]})}var g,_,v=e((()=>{g=a(),_=t(i()),l(),d(),c(),p(),n(),h.__docgenInfo={description:`QR / barcode scanner view using html5-qrcode.
+Falls back to manual text input when the camera is unavailable.
+
+Usage:
+  <ScannerView onScan={(code) => handleCode(code)} />`,methods:[],displayName:`ScannerView`,props:{onScan:{required:!0,tsType:{name:`signature`,type:`function`,raw:`(code: string) => void`,signature:{arguments:[{type:{name:`string`},name:`code`}],return:{name:`void`}}},description:``},className:{required:!1,tsType:{name:`string`},description:``}}}})),y,b,x,S,C,w;e((()=>{y=a(),v(),{fn:b}=__STORYBOOK_MODULE_TEST__,x={title:`Kiosk/ScannerView`,component:h,tags:[`autodocs`],parameters:{viewport:{defaultViewport:`mobile375`}},args:{onScan:b()}},S={name:`Camera mode (falls back to manual in Storybook)`},C={name:`Manual input (simulated camera error)`,render:e=>(0,y.jsxs)(`div`,{className:`max-w-[375px] space-y-2 p-4`,children:[(0,y.jsx)(`p`,{className:`text-sm font-medium`,children:`Nhập mã thủ công (camera không khả dụng)`}),(0,y.jsx)(h,{...e})]})},S.parameters={...S.parameters,docs:{...S.parameters?.docs,source:{originalSource:`{
+  name: 'Camera mode (falls back to manual in Storybook)'
+}`,...S.parameters?.docs?.source},description:{story:`NOTE: Storybook runs in a browser without a real camera feed.
+The component will auto-fall back to the manual input mode when
+\`html5-qrcode\` can't access the camera — which is the expected
+Storybook behaviour.`,...S.parameters?.docs?.description}}},C.parameters={...C.parameters,docs:{...C.parameters?.docs,source:{originalSource:`{
+  name: 'Manual input (simulated camera error)',
+  /**
+   * We can't force camera failure programmatically, but the Default story
+   * already shows the manual fallback in most CI / sandbox environments.
+   * This story documents what the manual mode looks like intentionally.
+   */
+  render: args => <div className="max-w-[375px] space-y-2 p-4">
+      <p className="text-sm font-medium">Nhập mã thủ công (camera không khả dụng)</p>
+      <ScannerView {...args} />
+    </div>
+}`,...C.parameters?.docs?.source}}},w=[`Default`,`ManualInputMode`]}))();export{S as Default,C as ManualInputMode,w as __namedExportsOrder,x as default};
