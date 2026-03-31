@@ -7,6 +7,8 @@ export function useRemnants(filter: RemnantsFilter = {}) {
   return useQuery({
     queryKey: [REMNANTS_KEY, filter],
     queryFn: () => remnantsApi.list(filter),
+    // Keep previous page data visible while the next page loads
+    placeholderData: (prev) => prev,
   })
 }
 
