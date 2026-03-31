@@ -22,6 +22,12 @@ const nextConfig: NextConfig = {
    */
   async rewrites() {
     return [
+      // Auth endpoints live at /api/auth/* on the backend.
+      {
+        source: '/api/auth/:path*',
+        destination: `${BACKEND_URL}/api/auth/:path*`,
+      },
+      // All other API calls go through /api/v1.
       {
         source: '/api/proxy/:path*',
         destination: `${BACKEND_URL}/api/v1/:path*`,

@@ -223,11 +223,30 @@ export interface CuttingEfficiency {
 
 // ── Pagination / shared response wrappers ────────────────────────────────────
 
+/** Matches the Go backend PagedResult[T] envelope */
+export interface PagedResult<T> {
+  items: T[]
+  total_items: number
+  total_pages: number
+  current_page: number
+  limit: number
+}
+
+/** @deprecated use PagedResult instead */
 export interface PaginatedResponse<T> {
   data: T[]
   total: number
   page: number
   pageSize: number
+}
+
+/** Query params sent to paginated endpoints */
+export interface PageParams {
+  page?: number
+  limit?: number
+  search?: string
+  sort_by?: string
+  order?: 'asc' | 'desc'
 }
 
 export interface ApiError {

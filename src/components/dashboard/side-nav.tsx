@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Package, DollarSign } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { LayoutDashboard, Package, DollarSign, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
+import { logout } from '@/lib/hooks/use-auth'
 
 const NAV_ITEMS = [
   { href: '/overview', label: 'Tổng quan', icon: LayoutDashboard },
@@ -14,6 +16,13 @@ const NAV_ITEMS = [
 
 export function SideNav() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = () => {
+    logout()
+    router.push('/login')
+    router.refresh()
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-20 flex w-60 flex-col border-r bg-sidebar">
@@ -47,6 +56,18 @@ export function SideNav() {
           )
         })}
       </nav>
+
+      <div className="mt-auto p-3">
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-start gap-3"
+          onClick={handleLogout}
+        >
+          <LogOut className="size-5 shrink-0" aria-hidden="true" />
+          Đăng xuất
+        </Button>
+      </div>
     </aside>
   )
 }

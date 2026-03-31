@@ -1,9 +1,8 @@
-import type { Metadata } from 'next'
+'use client'
+
 import { ScannerView } from '@/components/kiosk/scanner-view'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-
-export const metadata: Metadata = { title: 'Quét điểm kiểm tra' }
 
 const CHECKPOINTS = [
   { key: 'CNC_COMPLETE', label: 'Hoàn thành CNC' },

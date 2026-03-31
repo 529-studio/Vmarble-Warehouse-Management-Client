@@ -20,7 +20,8 @@ export default function RemnantListPage() {
     staleTime: 30_000,
   })
 
-  const filtered = (remnants ?? []).filter((r) => {
+  const items = remnants?.items ?? []
+  const filtered = items.filter((r) => {
     if (!search) return true
     const q = search.toLowerCase()
     return (
