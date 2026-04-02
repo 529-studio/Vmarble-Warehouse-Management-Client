@@ -1,4 +1,4 @@
-import type { Remnant, WorkOrder, CostingRecord } from '@/types/api'
+import type { Remnant, WorkOrder, CostingRecord, PagedResult } from '@/types/api'
 import { apiClient } from './client'
 
 /**
@@ -6,8 +6,16 @@ import { apiClient } from './client'
  * /dashboard/* routes don't exist yet in the backend.
  */
 export const dashboardApi = {
-  /** GET /api/v1/inventory/remnants */
-  getRemnants: () => apiClient.get<Remnant[]>('/inventory/remnants'),
+  /**
+   * GET /api/v1/inventory/remnants
+   * Backend returns PagedResult[Remnant]; unwrap .items for the dashboard.
+   */
+  getRemnants: () =>
+    apiClient
+      .get<PagedResult<Remnant>>('/inventory/remnants', {
+        params: { limit: 1000, page: 1 },
+      })
+      .then((res) => res.items),
 
   /** GET /api/v1/work-orders */
   getWorkOrders: () => apiClient.get<WorkOrder[]>('/work-orders'),
