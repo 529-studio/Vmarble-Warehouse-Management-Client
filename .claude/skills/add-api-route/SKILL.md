@@ -29,21 +29,24 @@ export interface MyEntity {
   id: string
   name: string
   status: 'ACTIVE' | 'INACTIVE'
-  createdAt: string        // ISO string from Go time.Time
+  created_at: string   // ISO string from Go time.Time — use snake_case to match JSON tags
 }
 
 export interface CreateMyEntityInput {
   name: string
 }
 
-// Reuse shared generics already in the file:
-// PaginatedResponse<T>, ApiError
+// Paginated list endpoints return PagedResult<T> (NOT PaginatedResponse — that is @deprecated).
+// Shape: { items: T[], total_items: number, total_pages: number, current_page: number, limit: number }
+// Always unwrap .items when rendering — never treat PagedResult<T> as T[].
 ```
 
 **Rules:**
 - Dates from the Go API are always `string` (ISO 8601) — parse client-side when needed
 - Enums mirror the Go `const` block — use TypeScript string union, not `enum`
+- Field names are `snake_case` to match Go JSON tags — do NOT use `camelCase`
 - Never declare the same type in two places — always import from `@/types/api`
+- Use `PagedResult<T>` (not the `@deprecated PaginatedResponse<T>`) for paginated endpoints
 
 ---
 
@@ -51,20 +54,20 @@ export interface CreateMyEntityInput {
 
 ```typescript
 // src/lib/api/my-domain.ts
-import type { MyEntity, CreateMyEntityInput, PaginatedResponse } from '@/types/api'
+import type { MyEntity, CreateMyEntityInput, PagedResult } from '@/types/api'
 import { apiClient } from './client'
 
 // ── Filter type for list endpoints ────────────────────────────────────────────
 export interface MyEntityFilter {
   status?: string
   page?: number
-  pageSize?: number
+  limit?: number
 }
 
 // ── API functions ─────────────────────────────────────────────────────────────
 export const myDomainApi = {
   list: (filter: MyEntityFilter = {}) =>
-    apiClient.get<PaginatedResponse<MyEntity>>('/my-entities', {
+    apiClient.get<PagedResult<MyEntity>>('/my-entities', {
       params: filter as Record<string, string | number | boolean | undefined>,
     }),
 
@@ -83,10 +86,11 @@ export const myDomainApi = {
 ```
 
 **Rules:**
+- Return type for paginated endpoints is always `PagedResult<T>` — never `T[]` or `PaginatedResponse<T>`
 - Export a single object `myDomainApi` — all functions are methods on it
 - Always import from `./client`, never create a new `fetch` call
 - Filter types are declared in the same file (not in `types/api.ts`)
-- Use explicit generics: `apiClient.get<MyEntity>(...)`
+- Use explicit generics: `apiClient.get<PagedResult<MyEntity>>(...)`
 
 ---
 
@@ -94,11 +98,11 @@ export const myDomainApi = {
 
 ```typescript
 // src/lib/hooks/use-my-domain.ts
-'use client'   // only if this file uses browser-only APIs; omit for pure hooks
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { myDomainApi, type MyEntityFilter } from '@/lib/api/my-domain'
 import type { ApiClientError } from '@/lib/api/client'
+import type { MyEntity } from '@/types/api'
 
 // ── Query key constants ───────────────────────────────────────────────────────
 // Keep keys as constants — prevents typos and helps with invalidation
@@ -109,6 +113,7 @@ export function useMyEntities(filter: MyEntityFilter = {}) {
   return useQuery({
     queryKey: [MY_ENTITY_KEY, filter],
     queryFn: () => myDomainApi.list(filter),
+    // data is PagedResult<MyEntity> — always access .items, never treat as array
   })
 }
 
@@ -174,6 +179,11 @@ export function MyEntityList() {
   if (isLoading) return <Skeleton className="h-10 w-full" />
   if (error) return <p className="text-destructive">{error.message}</p>
 
+  // IMPORTANT: data is PagedResult<MyEntity> — always unwrap .items
+  // data?.data.map(...)  ← WRONG — 'data' field doesn't exist on PagedResult
+  // data?.items.map(...) ← CORRECT
+  const items = data?.items ?? []
+
   const handleCreate = async () => {
     try {
       await createMutation.mutateAsync({ name: 'New entity' })
@@ -185,7 +195,7 @@ export function MyEntityList() {
 
   return (
     <ul>
-      {data?.data.map((item) => <li key={item.id}>{item.name}</li>)}
+      {items.map((item) => <li key={item.id}>{item.name}</li>)}
     </ul>
   )
 }
