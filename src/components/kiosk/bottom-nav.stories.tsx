@@ -39,6 +39,13 @@ export const ReportActive: Story = {
   },
 }
 
+export const ScanActive: Story = {
+  name: 'Active: Quét mã',
+  parameters: {
+    nextjs: { appDirectory: true, navigation: { pathname: '/scan' } },
+  },
+}
+
 export const RemnantsActive: Story = {
   name: 'Active: Kho tấm lẻ',
   parameters: {
@@ -46,10 +53,10 @@ export const RemnantsActive: Story = {
   },
 }
 
-export const ScanActive: Story = {
-  name: 'Active: Quét mã',
+export const AccountActive: Story = {
+  name: 'Active: Tài khoản',
   parameters: {
-    nextjs: { appDirectory: true, navigation: { pathname: '/scan' } },
+    nextjs: { appDirectory: true, navigation: { pathname: '/account' } },
   },
 }
 
@@ -59,7 +66,7 @@ export const WithPageContent: Story = {
     nextjs: { appDirectory: true, navigation: { pathname: '/cutting-orders' } },
   },
   render: () => (
-    <div className="min-h-[812px] bg-background pb-16">
+    <div className="min-h-[812px] bg-background pb-20">
       <main className="p-4">
         <p className="text-sm text-muted-foreground">
           Nội dung trang — BottomNav cố định ở dưới cùng.
