@@ -157,18 +157,26 @@ export interface CuttingRecord {
   cutAt: string
 }
 
-/** POST /api/v1/inventory/cuts */
+/** POST /api/v1/inventory/cuts — mirrors Go RecordCutInput exactly */
 export interface RecordCutInput {
+  /** Exactly one of sheet_id or remnant_id must be set. */
+  sheet_id?: string
+  remnant_id?: string
   work_order_id: string
-  dimensions: { length_mm: number; width_mm: number }
-  remnant_dimensions?: { length_mm: number; width_mm: number }
-  is_waste: boolean
+  sku_id: string
+  used_dimension: { length_mm: number; width_mm: number }
+  /** Omit entirely when the cut produces no remnant (waste). */
+  remnant_dimension?: { length_mm: number; width_mm: number }
+  /** Optional usable-area override (e.g. chipped corner). Both or neither. */
+  bounding_box_length_mm?: number
+  bounding_box_width_mm?: number
 }
 
+/** Response from POST /api/v1/inventory/cuts */
 export interface RecordCutResponse {
-  cuttingRecord: CuttingRecord
-  remnant: Remnant | null
-  barcodeIds: string[]
+  cutting_record_id: string
+  /** Present only when the cut produced a remnant. */
+  remnant_id?: string | null
 }
 
 // ── Allocation ───────────────────────────────────────────────────────────────
