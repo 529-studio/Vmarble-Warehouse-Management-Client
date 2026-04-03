@@ -115,6 +115,14 @@ export interface WorkOrder {
   id: string
   plan_id: string
   sku_id: string
+  /** SKU code (e.g. "PLY-1200×600") — included when work-order list is enriched */
+  sku_code?: string
+  /** Human-readable SKU name */
+  sku_name?: string
+  /** Required cut dimensions from the SKU */
+  dimensions?: { length_mm: number; width_mm: number }
+  /** Material type (PLYWOOD / MDF / HDF) */
+  material_type?: MaterialType
   quantity: number
   status: WorkOrderStatus
   created_at: string

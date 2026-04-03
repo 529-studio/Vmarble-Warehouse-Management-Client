@@ -25,20 +25,18 @@ All types are defined in `src/types/api.ts`.
 ## Remnant lifecycle
 
 ```
-AVAILABLE ──allocate()──→ ALLOCATED ──recordCut()──→ USED
-                │
-                └──auto-release after 24h──→ AVAILABLE
-
-AVAILABLE ──recordCut() with no material left──→ DEPLETED
+AVAILABLE ──allocate()──→ ALLOCATED ──consumed by cut──→ CONSUMED
+    │
+    └──markWaste()──→ WASTE
 ```
 
-**State meanings:**
+**State meanings (match backend `domain.RemnantStatus` exactly):**
 - `AVAILABLE` — ready to be allocated or cut
-- `ALLOCATED` — reserved for a work order (locked, 24h auto-release)
-- `USED` — fully consumed, no longer in inventory
-- `DEPLETED` — cut down to zero usable area
+- `ALLOCATED` — reserved for a work order (locked)
+- `CONSUMED` — fully cut, no longer in inventory
+- `WASTE` — marked as unusable waste
 
-**Never display `USED` or `DEPLETED` remnants in the available inventory UI.**
+**Never display `CONSUMED` or `WASTE` remnants in the available inventory UI.**
 
 ---
 
@@ -93,23 +91,6 @@ A good suggestion has `wastePct ≤ 10%`.
 
 ---
 
-## Overflow alert
-
-```
-utilization = total_remnant_area_m2 / total_raw_stock_area_m2
-
-GREEN:  utilization ≤ 10%   → normal
-YELLOW: 10% < utilization ≤ 15% → warning
-RED:    utilization > 15%   → block new sheet issuance
-```
-
-When `status === 'RED'`:
-- `blockNewSheetIssue: true`
-- Show sticky `AlertBanner` at top of dashboard overview
-- `POST /inventory/issue-sheet` returns `422` with Vietnamese message
-
----
-
 ## Costing rules
 
 1. **Flat cut from board sheet**:
@@ -126,27 +107,50 @@ When `status === 'RED'`:
 
 ## Key API endpoints
 
-| Endpoint | Method | When to call |
-|----------|--------|-------------|
-| `/remnants` | GET | List available remnants (filter by size, material, status) |
-| `/remnants/:id/lineage` | GET | Show parent/child tree for a remnant |
-| `/inventory/suggest-allocation` | POST | Get Best Fit + FIFO suggestions for a work order |
-| `/inventory/allocate` | POST | Lock a remnant for 24h |
-| `/inventory/release-allocation` | POST | Manually release a locked remnant |
-| `/inventory/record-cut` | POST | Record a completed cut (creates remnant + barcode) |
-| `/inventory/overflow-status` | GET | Get GREEN/YELLOW/RED status |
-| `/storage-locations` | CRUD | Manage bin locations |
-| `/remnants/:id/location` | PUT | Assign remnant to a bin location |
-| `/barcode/:id/qr` | GET | Get QR image (PNG) |
-| `/barcode/:id/label` | GET | Get printable PDF label |
-| `/barcode/batch-print` | POST | Batch print multiple labels |
-| `/barcode/scan` | POST | Record a checkpoint scan event |
-| `/dashboard/remnant-summary` | GET | KPIs: count, area, avg age |
-| `/dashboard/cutting-efficiency` | GET | Waste % by week/month |
-| `/costing/reports` | GET | Cost report by PO |
+These endpoints actually exist in the backend (verified against handler registrations):
 
-All are under the base URL `NEXT_PUBLIC_API_URL` (default: `http://localhost:8080/api/v1`).
-All typed in `src/lib/api/remnants.ts`, `cutting-orders.ts`, `barcode.ts`, `dashboard.ts`.
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/inventory/lots` | POST | Receive stock — create lot + sheets |
+| `/inventory/lots` | GET | List inventory lots (paginated) |
+| `/inventory/sheets` | GET | List available board sheets (paginated) |
+| `/inventory/sheets/:id` | GET | Get single sheet |
+| `/inventory/sheets/:id/lineage` | GET | All remnants descended from this sheet |
+| `/inventory/cuts` | POST | Record a cut — creates CuttingRecord + optional Remnant |
+| `/inventory/remnants` | GET | List remnants (filter: min_length_mm, min_width_mm, status) |
+| `/inventory/remnants/:id/lineage` | GET | Lineage tree rooted at a remnant's parent board |
+| `/inventory/remnants/:id/allocate` | POST | Allocate remnant to a work order |
+| `/inventory/remnants/:id/waste` | POST | Mark remnant as WASTE |
+| `/storage-locations` | GET | List all active storage locations |
+| `/work-orders` | POST/GET | Create/list work orders |
+| `/work-orders/:id` | GET | Get single work order |
+| `/work-orders/:id/advance` | POST | Advance work order status |
+| `/work-orders/:id/consumptions` | POST/GET | Record/list material consumptions |
+| `/barcodes` | POST | Generate a barcode record |
+| `/barcodes/:id` | GET | Lookup barcode |
+| `/barcodes/:id/scans` | POST/GET | Record/list scan events |
+| `/costing/:workOrderID/compute` | POST | Compute costing for a work order |
+| `/costing/:workOrderID/finalize` | POST | Finalize (immutable) costing record |
+| `/costing/:workOrderID` | GET | Get costing record |
+| `/costing` | GET | List costing records |
+| `/materials` | POST/GET | Create/list materials |
+| `/skus` | POST/GET | Create/list SKUs |
+| `/plans` | POST/GET | Create/list production plans |
+| `/plans/:id/approve` | POST | Approve plan |
+| `/plans/:id/cancel` | POST | Cancel plan |
+| `/pos` | POST/GET | Create/list purchase orders |
+
+All under base URL `NEXT_PUBLIC_API_URL` (default: `http://localhost:8080/api/v1`).
+
+**Endpoints that do NOT exist** (were listed incorrectly in older docs):
+- ~~`/inventory/suggest-allocation`~~ — not implemented
+- ~~`/inventory/overflow-status`~~ — not implemented
+- ~~`/inventory/release-allocation`~~ — not implemented
+- ~~`/inventory/issue-sheet`~~ — not implemented
+- ~~`/remnants/:id/location`~~ — not implemented
+- ~~`/dashboard/remnant-summary`~~ — not implemented
+- ~~`/barcode/:id/qr`~~ — not implemented (barcodes, not barcode)
+- ~~`/barcode/batch-print`~~ — not implemented
 
 ---
 
