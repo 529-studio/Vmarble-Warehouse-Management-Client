@@ -28,16 +28,24 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     any
   > | null>(null)
+  // Tracks whether scanner.start() has resolved so cleanup knows it's safe to stop
+  const isRunningRef = useRef(false)
+  // Stable ref for the onScan callback — prevents effect re-runs when parent re-renders
+  const onScanRef = useRef(onScan)
+  useEffect(() => {
+    onScanRef.current = onScan
+  }, [onScan])
 
   useEffect(() => {
     if (mode !== 'camera') return
 
-    let stopped = false
+    let cancelled = false
 
     async function startScanner() {
       try {
         const { Html5Qrcode } = await import('html5-qrcode')
-        if (stopped || !scannerRef.current) return
+        // If the effect was cleaned up while we were awaiting the import, bail out
+        if (cancelled || !scannerRef.current) return
 
         const scanner = new Html5Qrcode('qr-scanner-container')
         html5QrCodeRef.current = scanner
@@ -45,28 +53,40 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
         await scanner.start(
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 250, height: 250 } },
-          (decodedText) => {
-            onScan(decodedText)
+          (decodedText: string) => {
+            onScanRef.current(decodedText)
           },
           undefined,
         )
+
+        // scanner.start() resolved — it is now safe to call stop() in cleanup
+        if (cancelled) {
+          // Effect was cleaned up while start() was in flight; stop immediately
+          scanner.stop().catch(() => {})
+          isRunningRef.current = false
+        } else {
+          isRunningRef.current = true
+        }
       } catch {
-        setCameraError(true)
-        setMode('manual')
+        if (!cancelled) {
+          setCameraError(true)
+          setMode('manual')
+        }
       }
     }
 
     startScanner()
 
     return () => {
-      stopped = true
-      html5QrCodeRef.current
-        ?.stop()
-        .catch(() => {
+      cancelled = true
+      if (isRunningRef.current && html5QrCodeRef.current) {
+        isRunningRef.current = false
+        html5QrCodeRef.current.stop().catch(() => {
           // ignore cleanup errors
         })
+      }
     }
-  }, [mode, onScan])
+  }, [mode])
 
   if (mode === 'manual' || cameraError) {
     return (
