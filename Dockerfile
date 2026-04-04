@@ -11,27 +11,34 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# WHY build ARG instead of runtime ENV:
-# next.config.ts calls rewrites() at build time — Next.js evaluates the config
-# once during `next build` and freezes the result into .next/routes-manifest.json.
-# At `next start`, the server reads that static manifest and never re-evaluates
-# next.config.ts, so any runtime env var (docker-compose, container env) arrives
-# too late and is silently ignored.
+# WHY build ARGs instead of runtime ENV:
 #
-# The .env file is gitignored and therefore absent on the CI runner, causing
-# process.env.BACKEND_URL to be undefined and falling back to 'http://localhost:8080',
-# which is the container's own loopback — not the BE service.
+# 1. BACKEND_URL — used by next.config.ts rewrites()
+#    next.config.ts is evaluated once during `next build` and the result is
+#    frozen into .next/routes-manifest.json. `next start` reads that static
+#    manifest and never re-evaluates next.config.ts, so any runtime env var
+#    arrives too late and is silently ignored.
 #
-# Passing BACKEND_URL as a build ARG ensures the correct value is present
-# when `npm run build` runs, so the right URL gets baked into routes-manifest.json.
+# 2. NEXT_PUBLIC_API_URL — used by src/lib/api/client.ts (browser-side)
+#    Any variable with the NEXT_PUBLIC_ prefix is inlined into the JS bundle
+#    at build time so the browser can access it. Runtime env vars have no
+#    effect because the bundle is already compiled.
 #
-# TODO: Replace next.config.ts rewrites() with a catch-all Route Handler
+# Both variables default to localhost:8080 when absent. On the CI runner the
+# .env file does not exist (gitignored), so without build ARGs:
+#   - BACKEND_URL   → rewrites proxy to localhost:8080 → ECONNREFUSED → 500
+#   - NEXT_PUBLIC_API_URL → browser calls localhost:8080 directly → CORS block
+#
+# TODO: Replace next.config.ts rewrites() with catch-all Route Handlers
 #       (src/app/api/proxy/[...path]/route.ts + src/app/api/auth/[...path]/route.ts).
-#       Route Handlers run per-request on the Node.js server, so they read
-#       process.env.BACKEND_URL at runtime — no build ARG needed, one image
-#       works across all environments.
+#       Route Handlers run per-request on the Node.js server so they read
+#       process.env.BACKEND_URL at runtime. NEXT_PUBLIC_API_URL can then be
+#       set to the relative path '/api/proxy' — environment-agnostic, no
+#       build ARG needed, one image works across all environments.
 ARG BACKEND_URL=http://10.8.0.1:8080
 ENV BACKEND_URL=$BACKEND_URL
+ARG NEXT_PUBLIC_API_URL=/api/proxy
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 # ── Stage 3: runner ──────────────────────────────────────────────────────────
