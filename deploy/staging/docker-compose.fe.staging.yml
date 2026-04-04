@@ -1,0 +1,21 @@
+# docker-compose.fe.staging.yml
+# Double Binding: localhost & VPN (same pattern as BE)
+
+services:
+  frontend:
+    image: ${FE_IMAGE:-ghcr.io/giangdq202/vmarble-warehouse-client:staging-latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+      - "10.8.0.1:3000:3000"
+    environment:
+      # Next.js server-side proxy: forwards /api/proxy/* → BE
+      # Next.js container reaches BE via VPN IP (same server)
+      BACKEND_URL: ${BACKEND_URL:-http://10.8.0.1:8080}
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
