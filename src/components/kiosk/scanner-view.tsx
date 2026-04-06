@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Camera, Keyboard } from 'lucide-react'
+import { Camera, Keyboard, ShieldAlert, CameraOff, Lock } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 
 interface ScannerViewProps {
@@ -11,9 +11,75 @@ interface ScannerViewProps {
   className?: string
 }
 
+type CameraErrorKind = 'not-allowed' | 'not-found' | 'insecure-context' | 'unknown'
+
+interface CameraErrorInfo {
+  kind: CameraErrorKind
+  title: string
+  description: string
+}
+
+function classifyCameraError(err: unknown): CameraErrorInfo {
+  // Insecure context check (highest priority — happens before getUserMedia is called)
+  if (typeof window !== 'undefined' && !window.isSecureContext) {
+    return {
+      kind: 'insecure-context',
+      title: 'Yêu cầu kết nối HTTPS',
+      description:
+        'Camera chỉ hoạt động trên kết nối bảo mật (HTTPS). Liên hệ quản trị viên để bật HTTPS cho staging.',
+    }
+  }
+
+  const name = err instanceof Error ? err.name : String(err)
+  const message = err instanceof Error ? err.message.toLowerCase() : ''
+
+  if (
+    name === 'NotAllowedError' ||
+    name === 'PermissionDeniedError' ||
+    message.includes('permission denied') ||
+    message.includes('not allowed')
+  ) {
+    return {
+      kind: 'not-allowed',
+      title: 'Chưa cấp quyền camera',
+      description:
+        'Trình duyệt đã từ chối quyền truy cập camera. Nhấn vào biểu tượng khóa trên thanh địa chỉ và chọn "Cho phép" rồi tải lại trang.',
+    }
+  }
+
+  if (
+    name === 'NotFoundError' ||
+    name === 'DevicesNotFoundError' ||
+    message.includes('not found') ||
+    message.includes('no camera')
+  ) {
+    return {
+      kind: 'not-found',
+      title: 'Không tìm thấy camera',
+      description:
+        'Thiết bị không có camera hoặc camera đang được sử dụng bởi ứng dụng khác. Kiểm tra lại phần cứng.',
+    }
+  }
+
+  return {
+    kind: 'unknown',
+    title: 'Camera không khả dụng',
+    description: `Lỗi không xác định: ${err instanceof Error ? err.name : String(err)}`,
+  }
+}
+
+const errorIcon: Record<CameraErrorKind, React.ReactNode> = {
+  'not-allowed': <ShieldAlert className="size-5 text-destructive" />,
+  'not-found': <CameraOff className="size-5 text-destructive" />,
+  'insecure-context': <Lock className="size-5 text-destructive" />,
+  unknown: <CameraOff className="size-5 text-destructive" />,
+}
+
 /**
  * QR / barcode scanner view using html5-qrcode.
- * Falls back to manual text input when the camera is unavailable.
+ * Falls back to manual text input when the camera is unavailable, and
+ * shows a specific error message (NotAllowedError, NotFoundError, insecure
+ * context) so workers know exactly how to resolve the issue.
  *
  * Usage:
  *   <ScannerView onScan={(code) => handleCode(code)} />
@@ -21,7 +87,7 @@ interface ScannerViewProps {
 export function ScannerView({ onScan, className }: ScannerViewProps) {
   const [mode, setMode] = useState<'camera' | 'manual'>('camera')
   const [manualInput, setManualInput] = useState('')
-  const [cameraError, setCameraError] = useState(false)
+  const [cameraErrorInfo, setCameraErrorInfo] = useState<CameraErrorInfo | null>(null)
   const scannerRef = useRef<HTMLDivElement>(null)
   const html5QrCodeRef = useRef<InstanceType<
     // Dynamically-typed import to avoid SSR issues
@@ -42,6 +108,22 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
     let cancelled = false
 
     async function startScanner() {
+      // Check secure context before attempting getUserMedia.
+      // Return the info object directly — classifyCameraError re-checks
+      // isSecureContext internally but we skip it here to avoid ambiguity.
+      if (typeof window !== 'undefined' && !window.isSecureContext) {
+        if (!cancelled) {
+          setCameraErrorInfo({
+            kind: 'insecure-context',
+            title: 'Yêu cầu kết nối HTTPS',
+            description:
+              'Camera chỉ hoạt động trên kết nối bảo mật (HTTPS). Liên hệ quản trị viên để bật HTTPS cho staging.',
+          })
+          setMode('manual')
+        }
+        return
+      }
+
       try {
         const { Html5Qrcode } = await import('html5-qrcode')
         // If the effect was cleaned up while we were awaiting the import, bail out
@@ -67,9 +149,9 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
         } else {
           isRunningRef.current = true
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setCameraError(true)
+          setCameraErrorInfo(classifyCameraError(err))
           setMode('manual')
         }
       }
@@ -88,12 +170,23 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
     }
   }, [mode])
 
-  if (mode === 'manual' || cameraError) {
+  if (mode === 'manual' || cameraErrorInfo) {
     return (
       <div className={cn('space-y-3', className)}>
-        <p className="text-sm text-muted-foreground">
-          Nhập mã thủ công (camera không khả dụng)
-        </p>
+        {cameraErrorInfo && (
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            {errorIcon[cameraErrorInfo.kind]}
+            <div className="space-y-1">
+              <p className="text-sm font-medium leading-none">{cameraErrorInfo.title}</p>
+              <p className="text-xs text-muted-foreground">{cameraErrorInfo.description}</p>
+            </div>
+          </div>
+        )}
+        {!cameraErrorInfo && (
+          <p className="text-sm text-muted-foreground">
+            Nhập mã thủ công (camera không khả dụng)
+          </p>
+        )}
         <div className="flex gap-2">
           <Input
             value={manualInput}
@@ -113,7 +206,7 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
           size="sm"
           variant="ghost"
           onClick={() => {
-            setCameraError(false)
+            setCameraErrorInfo(null)
             setMode('camera')
           }}
         >
