@@ -1,0 +1,44 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { skusApi, type SKUFilter } from '@/lib/api/skus'
+import type { CreateSKUInput, SetBOMInput } from '@/types/api'
+
+export const SKUS_KEY = 'skus'
+export const BOM_KEY = 'bom'
+
+export function useSKUs(filter: SKUFilter = {}) {
+  return useQuery({
+    queryKey: [SKUS_KEY, filter],
+    queryFn: () => skusApi.list(filter),
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
+  })
+}
+
+export function useCreateSKU() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateSKUInput) => skusApi.create(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [SKUS_KEY] })
+    },
+  })
+}
+
+export function useSKUBOM(skuId: string | null) {
+  return useQuery({
+    queryKey: [SKUS_KEY, skuId, BOM_KEY],
+    queryFn: () => skusApi.getBOM(skuId!),
+    enabled: skuId !== null,
+    staleTime: 30_000,
+  })
+}
+
+export function useSetSKUBOM(skuId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: SetBOMInput) => skusApi.setBOM(skuId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [SKUS_KEY, skuId, BOM_KEY] })
+    },
+  })
+}

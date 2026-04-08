@@ -254,6 +254,45 @@ export interface CuttingEfficiency {
   wastePct: number
 }
 
+// ── Catalog — SKU ────────────────────────────────────────────────────────────
+
+/** GET /api/v1/skus, POST /api/v1/skus */
+export interface SKU {
+  id: string
+  code: string
+  name: string
+  dimensions: { length_mm: number; width_mm: number }
+  requires_metal: boolean
+  created_at: string
+}
+
+export interface CreateSKUInput {
+  code: string
+  name: string
+  dimensions: { length_mm: number; width_mm: number }
+  requires_metal: boolean
+}
+
+/** GET /api/v1/skus/:id/bom, PUT /api/v1/skus/:id/bom */
+export interface BOMItem {
+  material_id: string
+  /** Required by backend — must match the material's type (PLYWOOD, GLUE, METAL, OTHER) */
+  material_type: MaterialType
+  /** Human-readable material name — included in GET /bom response */
+  material_name?: string
+  quantity_per_unit: number
+  unit: string
+}
+
+export interface SetBOMInput {
+  components: BOMItem[]
+}
+
+export interface BOMResponse {
+  sku_id: string
+  components: BOMItem[]
+}
+
 // ── Pagination / shared response wrappers ────────────────────────────────────
 
 /** Matches the Go backend PagedResult[T] envelope */

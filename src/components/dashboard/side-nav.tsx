@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, DollarSign, Layers, LogOut, UserCircle } from 'lucide-react'
+import { LayoutDashboard, Package, DollarSign, Layers, Boxes, LogOut, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: '/remnants', label: 'Kho tấm lẻ', icon: Package },
   { href: '/costing', label: 'Giá thành', icon: DollarSign },
   { href: '/materials', label: 'Nguyên liệu', icon: Layers },
+  { href: '/skus', label: 'SKU', icon: Boxes },
 ] as const
 
 const ROLE_LABELS: Record<string, string> = {
