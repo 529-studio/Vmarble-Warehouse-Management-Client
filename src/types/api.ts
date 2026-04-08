@@ -4,7 +4,24 @@
 
 // ── Shared ──────────────────────────────────────────────────────────────────
 
-export type MaterialType = 'PLYWOOD' | 'MDF' | 'HDF' | string
+export type MaterialType = 'PLYWOOD' | 'GLUE' | 'METAL' | 'OTHER' | string
+
+// ── Material (catalog) ───────────────────────────────────────────────────────
+
+/** GET /api/v1/materials */
+export interface Material {
+  id: string
+  type: MaterialType
+  name: string
+  unit: string
+  created_at: string
+}
+
+export interface CreateMaterialInput {
+  type: 'PLYWOOD' | 'GLUE' | 'METAL' | 'OTHER'
+  name: string
+  unit: string
+}
 
 /** Backend: AVAILABLE | ALLOCATED | CONSUMED | WASTE */
 export type RemnantStatus = 'AVAILABLE' | 'ALLOCATED' | 'CONSUMED' | 'WASTE'
