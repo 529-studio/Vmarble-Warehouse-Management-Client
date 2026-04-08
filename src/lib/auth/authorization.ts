@@ -1,10 +1,11 @@
-export const DASHBOARD_ROLES = ['admin', 'accountant', 'planner'] as const
-export const KIOSK_ROLES = ['warehouse', 'cnc', 'foreman'] as const
+export const DASHBOARD_ROLES = ['admin', 'accountant', 'planner', 'warehouse'] as const
+export const KIOSK_ROLES = ['cnc', 'foreman'] as const
 
-const DASHBOARD_PATHS = ['/overview', '/remnants', '/costing']
+const DASHBOARD_PATHS = ['/overview', '/remnants', '/costing', '/materials']
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store']
 
 export function getDefaultRouteForRole(role: string): string {
+  if (role === 'warehouse') return '/materials'
   return KIOSK_ROLES.includes(role as (typeof KIOSK_ROLES)[number]) ? '/scan' : '/overview'
 }
 

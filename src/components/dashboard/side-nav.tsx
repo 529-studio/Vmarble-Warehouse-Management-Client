@@ -1,22 +1,45 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, DollarSign, LogOut } from 'lucide-react'
+import { LayoutDashboard, Package, DollarSign, Layers, LogOut, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { logout } from '@/lib/hooks/use-auth'
 
 const NAV_ITEMS = [
   { href: '/overview', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/remnants', label: 'Kho tấm lẻ', icon: Package },
   { href: '/costing', label: 'Giá thành', icon: DollarSign },
+  { href: '/materials', label: 'Nguyên liệu', icon: Layers },
 ] as const
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  accountant: 'Kế toán',
+  planner: 'Kế hoạch',
+  warehouse: 'Kho',
+  cnc: 'CNC',
+  foreman: 'Quản đốc',
+  cnc_manager: 'QL CNC',
+}
+
+function useCurrentRole(): string | null {
+  const [role, setRole] = useState<string | null>(null)
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)auth_role=([^;]+)/)
+    setRole(match ? decodeURIComponent(match[1]) : null)
+  }, [])
+  return role
+}
 
 export function SideNav() {
   const pathname = usePathname()
   const router = useRouter()
+  const role = useCurrentRole()
 
   const handleLogout = () => {
     logout()
@@ -57,7 +80,19 @@ export function SideNav() {
         })}
       </nav>
 
-      <div className="mt-auto p-3">
+      <div className="mt-auto space-y-1 p-3">
+        {/* Identity chip */}
+        {role && (
+          <div className="flex items-center gap-2 rounded-lg px-3 py-2">
+            <UserCircle className="size-5 shrink-0 text-sidebar-foreground/60" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <Badge variant="secondary" className="text-xs">
+                {ROLE_LABELS[role] ?? role}
+              </Badge>
+            </div>
+          </div>
+        )}
+
         <Button
           type="button"
           variant="ghost"

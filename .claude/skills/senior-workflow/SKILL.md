@@ -5,7 +5,7 @@ description: >
   covers the full Senior Engineer workflow: requirements clarification →
   technical design → task breakdown → implement + test → self-QA → PR.
   ALWAYS trigger this skill when the user says "implement", "add feature",
-  "build page", "add component", "create hook", or pastes a GitHub issue/ticket.
+  "build page", "add component", "create hook", "fix", "fix bug", "find root cause" or pastes a GitHub issue/ticket.
   Do NOT skip phases — especially Phase 5 (Self-QA) which is the most commonly
   forgotten step before submitting code.
 ---
@@ -185,8 +185,12 @@ This phase is the gate before PR. Run through **all** of these.
 ```bash
 npx tsc --noEmit       # 0 TypeScript errors
 npm run lint           # 0 ESLint warnings/errors
-npm run build          # next build succeeds
+npm run build          # next build succeeds — ALWAYS run this last
 ```
+
+**Rule: `npm run build` is MANDATORY after every implement/fix task.** TypeScript errors
+caught by `tsc --noEmit` may differ from the build-time checker Turbopack uses.
+Only a passing `npm run build` is the true gate.
 
 If `tsc --noEmit` finds errors → fix all of them, no exceptions.
 
