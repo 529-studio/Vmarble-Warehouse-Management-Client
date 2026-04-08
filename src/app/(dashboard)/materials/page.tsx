@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -219,11 +219,17 @@ function MaterialsContent() {
   const [inputValue, setInputValue] = useState(search)
   const debouncedSearch = useDebounce(inputValue, 400)
 
-  const [prevDebounced, setPrevDebounced] = useState(debouncedSearch)
-  if (prevDebounced !== debouncedSearch) {
-    setPrevDebounced(debouncedSearch)
-    setSearch(debouncedSearch)
-  }
+  // Sync debounced input → URL only when the value actually changes from what
+  // is already in the URL. Excluding setSearch from deps is intentional:
+  // setSearch recreates on every router.push (searchParams changes), so
+  // including it would create an infinite loop:
+  //   effect → setSearch → router.push → searchParams → new setSearch → effect…
+  useEffect(() => {
+    if (debouncedSearch !== search) {
+      setSearch(debouncedSearch)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
 
   const [createOpen, setCreateOpen] = useState(false)
 
