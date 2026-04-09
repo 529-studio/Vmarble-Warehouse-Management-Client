@@ -127,8 +127,8 @@ function CostingContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Work Order ID</TableHead>
-                  <TableHead>SKU</TableHead>
+                  <TableHead>ID Lệnh sản xuất</TableHead>
+                  <TableHead>Sản phẩm</TableHead>
                   <TableHead className="text-right">CP vật liệu</TableHead>
                   <TableHead className="text-right">CP phụ trợ</TableHead>
                   <TableHead className="text-right">Tổng chi phí</TableHead>

@@ -74,7 +74,7 @@ function CreateSKUDialog({ open, onOpenChange }: CreateSKUDialogProps) {
 
   function validate(): boolean {
     const next: CreateFormErrors = {}
-    if (!form.code.trim()) next.code = 'Mã SKU không được để trống'
+    if (!form.code.trim()) next.code = 'Mã sản phẩm không được để trống'
     if (!form.name.trim()) next.name = 'Tên không được để trống'
     if (!form.dimensions.length_mm || form.dimensions.length_mm <= 0)
       next.length_mm = 'Chiều dài phải lớn hơn 0'
@@ -95,7 +95,7 @@ function CreateSKUDialog({ open, onOpenChange }: CreateSKUDialogProps) {
       },
       {
         onSuccess: () => {
-          toast.success('Tạo SKU thành công')
+          toast.success('Tạo sản phẩm thành công')
           onOpenChange(false)
         },
         onError: (err) => {
@@ -117,13 +117,13 @@ function CreateSKUDialog({ open, onOpenChange }: CreateSKUDialogProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Tạo SKU mới</DialogTitle>
+          <DialogTitle>Tạo sản phẩm mới</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Code */}
           <div className="space-y-1.5">
-            <Label htmlFor="sku-code">Mã SKU *</Label>
+            <Label htmlFor="sku-code">Mã sản phẩm *</Label>
             <Input
               id="sku-code"
               value={form.code}
@@ -209,9 +209,6 @@ function CreateSKUDialog({ open, onOpenChange }: CreateSKUDialogProps) {
             </button>
             <div>
               <p className="text-sm font-medium">Yêu cầu kim loại</p>
-              <p className="text-xs text-muted-foreground">
-                Ảnh hưởng BR-P04: WorkOrder chỉ hoàn thành khi có bản ghi tiêu hao METAL.
-              </p>
             </div>
           </div>
         </div>
@@ -221,7 +218,7 @@ function CreateSKUDialog({ open, onOpenChange }: CreateSKUDialogProps) {
             Hủy
           </Button>
           <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? 'Đang tạo…' : 'Tạo SKU'}
+            {isPending ? 'Đang tạo…' : 'Tạo sản phẩm'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -290,7 +287,7 @@ function BOMEditorDialog({ sku, onClose }: BOMEditorDialogProps) {
     }
     const ids = rows.map((r) => r.material_id)
     if (new Set(ids).size !== ids.length) {
-      setValidationError('Mỗi nguyên liệu chỉ được xuất hiện 1 lần trong BOM. Gộp số lượng vào cùng 1 dòng.')
+      setValidationError('Mỗi nguyên liệu chỉ được xuất hiện 1 lần trong định mức. Gộp số lượng vào cùng 1 dòng.')
       return
     }
     setValidationError(null)
@@ -298,7 +295,7 @@ function BOMEditorDialog({ sku, onClose }: BOMEditorDialogProps) {
       { components: rows.map(({ material_id, material_type, quantity_per_unit, unit }) => ({ material_id, material_type, quantity_per_unit, unit })) },
       {
         onSuccess: () => {
-          toast.success('Lưu BOM thành công')
+          toast.success('Lưu định mức thành công')
           onClose()
         },
         onError: (err) => {
@@ -314,7 +311,7 @@ function BOMEditorDialog({ sku, onClose }: BOMEditorDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FlaskConical className="size-4 text-muted-foreground" />
-            BOM — {sku?.code} · {sku?.name}
+            Định mức NVL — {sku?.code} · {sku?.name}
           </DialogTitle>
         </DialogHeader>
 
@@ -420,7 +417,7 @@ function BOMEditorDialog({ sku, onClose }: BOMEditorDialogProps) {
             Hủy
           </Button>
           <Button onClick={handleSave} disabled={saving || bomLoading}>
-            {saving ? 'Đang lưu…' : 'Lưu BOM'}
+            {saving ? 'Đang lưu…' : 'Lưu định mức'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -464,34 +461,34 @@ function SKUsContent() {
           value={inputValue}
           onChange={setInputValue}
           isPending={isPending}
-          placeholder="Tìm theo mã hoặc tên SKU…"
+          placeholder="Tìm theo mã hoặc tên sản phẩm…"
           containerClassName="w-full sm:max-w-sm"
         />
         <Button className="sm:ml-auto" onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />
-          Tạo SKU
+          Tạo sản phẩm
         </Button>
       </div>
 
       {isError ? (
-        <p className="text-sm text-destructive">Không thể tải danh sách SKU.</p>
+        <p className="text-sm text-destructive">Không thể tải danh sách sản phẩm.</p>
       ) : (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              {isLoading ? 'Đang tải…' : `Tất cả SKU (${totalItems})`}
+              {isLoading ? 'Đang tải…' : `Tất cả sản phẩm (${totalItems})`}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mã SKU</TableHead>
+                  <TableHead>Mã sản phẩm</TableHead>
                   <TableHead>Tên sản phẩm</TableHead>
                   <TableHead>Kích thước (mm)</TableHead>
                   <TableHead>Kim loại</TableHead>
                   <TableHead>Ngày tạo</TableHead>
-                  <TableHead className="w-20 text-right">BOM</TableHead>
+                  <TableHead className="w-20 text-right">Định mức NVL</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -501,8 +498,8 @@ function SKUsContent() {
                   <TableRow>
                     <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                       {debouncedSearch
-                        ? `Không tìm thấy SKU cho "${debouncedSearch}"`
-                        : 'Chưa có SKU nào. Nhấn "Tạo SKU" để bắt đầu.'}
+                        ? `Không tìm thấy sản phẩm cho "${debouncedSearch}"`
+                        : 'Chưa có sản phẩm nào. Nhấn "Tạo sản phẩm" để bắt đầu.'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -534,8 +531,8 @@ function SKUsContent() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setBomSKU(sku)}
-                          aria-label={`Chỉnh BOM cho ${sku.code}`}
-                          title="Chỉnh sửa BOM"
+                          aria-label={`Chỉnh định mức NVL cho ${sku.code}`}
+                          title="Chỉnh sửa định mức NVL"
                         >
                           <Pencil className="size-4" />
                         </Button>
@@ -570,7 +567,7 @@ function SKUsContent() {
 export default function SKUsPage() {
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">SKU</h1>
+      <h1 className="text-2xl font-bold">Sản phẩm</h1>
       <Suspense
         fallback={
           <div className="space-y-3">

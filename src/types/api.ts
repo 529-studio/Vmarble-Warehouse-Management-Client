@@ -96,21 +96,42 @@ export interface OverflowStatus {
   message: string
 }
 
-// ── Production ──────────────────────────────────────────────────────────────
+// ── Purchase Orders ──────────────────────────────────────────────────────────
 
-export interface PurchaseOrder {
+/** Mirrors backend order.LineItem */
+export interface LineItem {
   id: string
-  poCode: string
-  items: POItem[]
-  deliveryDate: string
-  createdAt: string
+  po_id: string
+  sku_id: string
+  /** SKU code enriched by list endpoint */
+  sku_code?: string
+  quantity: number
+  selling_price: Money
 }
 
-export interface POItem {
-  sku: string
-  quantity: number
-  sellingPrice: number
+/** Mirrors backend order.PO */
+export interface PO {
+  id: string
+  code: string
+  expected_delivery: string
+  created_at: string
+  /** Included when fetched via GET /pos/:id */
+  line_items?: LineItem[]
 }
+
+export interface CreateLineItemInput {
+  sku_id: string
+  quantity: number
+  selling_price: Money
+}
+
+export interface CreatePOInput {
+  code: string
+  expected_delivery: string
+  line_items: CreateLineItemInput[]
+}
+
+// ── Production ──────────────────────────────────────────────────────────────
 
 export interface ProductionPlan {
   id: string
