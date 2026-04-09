@@ -131,21 +131,33 @@ export interface CreatePOInput {
   line_items: CreateLineItemInput[]
 }
 
-// ── Production ──────────────────────────────────────────────────────────────
+// ── Production Plans ─────────────────────────────────────────────────────────
+
+export type PlanStatus = 'DRAFT' | 'APPROVED' | 'CANCELED'
+
+export interface PlanItem {
+  id: string
+  plan_id: string
+  sku_id: string
+  sku_code?: string
+  sku_name?: string
+  quantity: number
+}
 
 export interface ProductionPlan {
   id: string
-  poId: string
+  po_id: string
+  po_code?: string
+  status: PlanStatus
+  deadline?: string
+  created_at: string
   items: PlanItem[]
-  status: 'DRAFT' | 'APPROVED' | 'IN_PROGRESS' | 'DONE'
-  createdAt: string
 }
 
-export interface PlanItem {
-  sku: string
-  quantity: number
-  shapeType: 'ROUND' | 'RECT_DINING' | string
-  isMetalRequired: boolean
+export interface CreatePlanInput {
+  po_id: string
+  deadline?: string
+  items: { sku_id: string; quantity: number }[]
 }
 
 /** GET /api/v1/work-orders */
