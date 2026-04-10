@@ -7,6 +7,14 @@ export const barcodeApi = {
 
   getById: (id: string) => apiClient.get<BarcodeRecord>(`/barcodes/${id}`),
 
+  /** GET /api/proxy/barcodes?work_order_id=:id */
+  listByWorkOrder: (workOrderId: string) =>
+    apiClient.get<BarcodeRecord[]>('/barcodes', { params: { work_order_id: workOrderId } }),
+
+  /** GET /api/proxy/barcodes/:id/scans */
+  listScans: (barcodeId: string) =>
+    apiClient.get<ScanEvent[]>(`/barcodes/${barcodeId}/scans`),
+
   /** POST /api/proxy/barcodes/:id/scans */
   recordScan: (input: {
     barcodeId: string

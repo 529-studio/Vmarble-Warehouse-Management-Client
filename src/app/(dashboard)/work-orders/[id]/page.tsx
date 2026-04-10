@@ -26,8 +26,8 @@ import {
 } from '@/components/ui/table'
 import { useWorkOrder, useWorkOrderConsumptions } from '@/lib/hooks/use-work-orders'
 import { usePlan } from '@/lib/hooks/use-plans'
-import { useGenerateBarcode } from '@/lib/hooks/use-barcode'
-import type { WorkOrderStatus, BarcodeRecord, WorkOrder } from '@/types/api'
+import { useGenerateBarcode, useBarcodesForWorkOrder, useBarcodeScanEvents } from '@/lib/hooks/use-barcode'
+import type { WorkOrderStatus, BarcodeRecord, ScanEvent, WorkOrder, ScanCheckpoint } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -59,6 +59,96 @@ function formatDate(iso: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+// ── Scan history ─────────────────────────────────────────────────────────────
+
+const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
+  CNC_COMPLETE: 'Hoàn thành CNC',
+  FINISHED_GOODS: 'Hoàn thành gia công',
+  SHIPPED: 'Xuất kho',
+}
+
+const CHECKPOINT_CLASS: Record<ScanCheckpoint, string> = {
+  CNC_COMPLETE: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  FINISHED_GOODS: 'bg-green-100 text-green-800 border-green-200',
+  SHIPPED: 'bg-blue-100 text-blue-800 border-blue-200',
+}
+
+function BarcodeRow({ barcode }: { barcode: BarcodeRecord }) {
+  const { data: events, isLoading } = useBarcodeScanEvents(barcode.id)
+
+  return (
+    <div className="rounded-lg border">
+      <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2">
+        <span className="font-mono text-xs text-muted-foreground">
+          Barcode: {barcode.id.slice(0, 8).toUpperCase()}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {barcode.sku_code} · {barcode.dimensions}
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div className="p-4">
+          <Skeleton className="h-8 w-full" />
+        </div>
+      ) : !events || events.length === 0 ? (
+        <p className="px-4 py-3 text-sm text-muted-foreground">Chưa có lần quét nào.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Điểm kiểm tra</TableHead>
+              <TableHead>Quét bởi</TableHead>
+              <TableHead>Thời gian</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(events as ScanEvent[]).map((e) => (
+              <TableRow key={e.id}>
+                <TableCell>
+                  <Badge
+                    variant="outline"
+                    className={CHECKPOINT_CLASS[e.checkpoint] ?? ''}
+                  >
+                    {CHECKPOINT_LABEL[e.checkpoint] ?? e.checkpoint}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm">{e.scanned_by}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {formatDate(e.scanned_at)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  )
+}
+
+function ScanHistorySection({ workOrderId }: { workOrderId: string }) {
+  const { data: barcodes, isLoading } = useBarcodesForWorkOrder(workOrderId)
+
+  return (
+    <div>
+      <h2 className="mb-3 text-base font-semibold">Lịch sử quét barcode</h2>
+      {isLoading ? (
+        <Skeleton className="h-24 w-full" />
+      ) : !barcodes || barcodes.length === 0 ? (
+        <p className="rounded-lg border px-4 py-6 text-center text-sm text-muted-foreground">
+          Chưa có barcode nào được tạo cho lệnh sản xuất này.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {barcodes.map((bc) => (
+            <BarcodeRow key={bc.id} barcode={bc} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Generate Barcode Dialog ───────────────────────────────────────────────────
@@ -299,6 +389,9 @@ function WorkOrderDetail({ id }: { id: string }) {
           <Field label="Ngày tạo" value={formatDate(wo.created_at)} />
         </div>
       </div>
+
+      {/* Scan history */}
+      <ScanHistorySection workOrderId={wo.id} />
 
       {/* Consumptions */}
       <div>
