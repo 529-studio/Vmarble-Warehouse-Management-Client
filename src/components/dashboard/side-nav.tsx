@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, LogOut, UserCircle } from 'lucide-react'
+import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, LogOut, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: '/overview', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/pos', label: 'Đơn hàng', icon: ShoppingCart },
   { href: '/plans', label: 'Kế hoạch SX', icon: ClipboardList },
+  { href: '/work-orders', label: 'Lệnh sản xuất', icon: ClipboardCheck },
   { href: '/remnants', label: 'Kho tấm lẻ', icon: Package },
   { href: '/costing', label: 'Giá thành', icon: DollarSign },
   { href: '/materials', label: 'Nguyên liệu', icon: Layers },
