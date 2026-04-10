@@ -175,6 +175,37 @@ export interface WorkOrder {
   material_type?: MaterialType
   quantity: number
   status: WorkOrderStatus
+  /** Optional assignee — null when no worker is assigned */
+  assigned_to_id?: string | null
+  assigned_to_name?: string | null
+  created_at: string
+}
+
+/** POST /api/v1/work-orders */
+export interface CreateWOInput {
+  plan_id: string
+  sku_id: string
+  quantity: number
+}
+
+/** POST /api/v1/work-orders/:id/advance */
+export interface AdvanceStatusInput {
+  status: WorkOrderStatus
+}
+
+/** POST /api/v1/work-orders/:id/assign */
+export interface AssignWorkOrderInput {
+  user_id: string
+}
+
+/** GET /api/v1/work-orders/:id/consumptions */
+export interface ConsumptionRecord {
+  id: string
+  work_order_id: string
+  material_id: string
+  material_type: MaterialType
+  quantity: number
+  unit: string
   created_at: string
 }
 

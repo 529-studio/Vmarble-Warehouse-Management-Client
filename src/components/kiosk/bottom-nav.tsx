@@ -5,32 +5,13 @@ import { usePathname } from 'next/navigation'
 import { Scissors, ClipboardList, Package, User, QrCode } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+// cnc is the only kiosk role — all items are visible to every kiosk user.
 const NAV_ITEMS = [
-  {
-    href: '/cutting-orders',
-    label: 'Lệnh cắt',
-    icon: Scissors,
-  },
-  {
-    href: '/report-cut',
-    label: 'Báo cáo',
-    icon: ClipboardList,
-  },
-  {
-    href: '/scan',
-    label: 'Quét mã',
-    icon: QrCode,
-  },
-  {
-    href: '/remnant-list',
-    label: 'Kho tấm lẻ',
-    icon: Package,
-  },
-  {
-    href: '/account',
-    label: 'Tài khoản',
-    icon: User,
-  },
+  { href: '/cutting-orders', label: 'Lệnh cắt',    icon: Scissors },
+  { href: '/report-cut',     label: 'Báo cáo',      icon: ClipboardList },
+  { href: '/scan',           label: 'Quét mã',      icon: QrCode },
+  { href: '/remnant-list',   label: 'Kho tấm lẻ',  icon: Package },
+  { href: '/account',        label: 'Tài khoản',    icon: User },
 ] as const
 
 export function BottomNav() {

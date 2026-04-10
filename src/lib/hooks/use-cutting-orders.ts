@@ -13,16 +13,20 @@ export function useCuttingOrders(filter: WorkOrdersFilter = {}) {
 /**
  * Kiosk-specific hook: fetches only IN_CUTTING work orders and
  * auto-refreshes every 30 seconds without causing UI flicker
- * (keepPreviousData keeps the old list visible during background refetch).
+ * (placeholderData keeps the old list visible during background refetch).
+ * Returns the items array directly so the page can call .map() safely.
  */
 export function useCuttingOrdersForKiosk() {
-  return useQuery({
+  const query = useQuery({
     queryKey: [WORK_ORDERS_KEY, { status: 'IN_CUTTING' }],
     queryFn: () => cuttingOrdersApi.list({ status: 'IN_CUTTING' }),
     refetchInterval: 30_000,
-    // Keep stale data visible during background refetch → no flicker
     placeholderData: (prev) => prev,
   })
+  return {
+    ...query,
+    data: query.data?.items ?? [],
+  }
 }
 
 export function useCuttingOrder(id: string) {
