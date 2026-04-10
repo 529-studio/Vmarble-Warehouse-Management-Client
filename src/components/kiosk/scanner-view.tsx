@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 interface ScannerViewProps {
   onScan: (code: string) => void
   className?: string
+  /** When true, input is disabled and camera scans are ignored (e.g. while API call is in-flight) */
+  disabled?: boolean
 }
 
 type CameraErrorKind = 'not-allowed' | 'not-found' | 'insecure-context' | 'unknown'
@@ -84,7 +86,7 @@ const errorIcon: Record<CameraErrorKind, React.ReactNode> = {
  * Usage:
  *   <ScannerView onScan={(code) => handleCode(code)} />
  */
-export function ScannerView({ onScan, className }: ScannerViewProps) {
+export function ScannerView({ onScan, className, disabled = false }: ScannerViewProps) {
   const [mode, setMode] = useState<'camera' | 'manual'>('camera')
   const [manualInput, setManualInput] = useState('')
   const [cameraErrorInfo, setCameraErrorInfo] = useState<CameraErrorInfo | null>(null)
@@ -96,11 +98,17 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
   > | null>(null)
   // Tracks whether scanner.start() has resolved so cleanup knows it's safe to stop
   const isRunningRef = useRef(false)
-  // Stable ref for the onScan callback — prevents effect re-runs when parent re-renders
+  // Stable refs — prevent effect re-runs when parent re-renders
   const onScanRef = useRef(onScan)
   useEffect(() => {
     onScanRef.current = onScan
   }, [onScan])
+  const disabledRef = useRef(disabled)
+  useEffect(() => {
+    disabledRef.current = disabled
+  }, [disabled])
+  // Cooldown: ignore duplicate scans of the same code within 2 seconds
+  const lastScanRef = useRef<{ code: string; time: number } | null>(null)
 
   useEffect(() => {
     if (mode !== 'camera') return
@@ -136,6 +144,11 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           (decodedText: string) => {
+            if (disabledRef.current) return
+            const now = Date.now()
+            const last = lastScanRef.current
+            if (last && last.code === decodedText && now - last.time < 2000) return
+            lastScanRef.current = { code: decodedText, time: now }
             onScanRef.current(decodedText)
           },
           undefined,
@@ -192,13 +205,14 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
             value={manualInput}
             onChange={(e) => setManualInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && manualInput.trim()) {
+              if (e.key === 'Enter' && manualInput.trim() && !disabled) {
                 onScan(manualInput.trim())
                 setManualInput('')
               }
             }}
             placeholder="Nhập mã rồi nhấn Enter..."
             className="h-12 text-base"
+            disabled={disabled}
             autoFocus
           />
         </div>

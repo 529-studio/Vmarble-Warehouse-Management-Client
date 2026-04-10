@@ -1,11 +1,21 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardCheck } from 'lucide-react'
+import { ArrowLeft, ClipboardCheck, QrCode, Copy, Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import {
   Table,
   TableBody,
@@ -15,7 +25,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useWorkOrder, useWorkOrderConsumptions } from '@/lib/hooks/use-work-orders'
-import type { WorkOrderStatus } from '@/types/api'
+import { usePlan } from '@/lib/hooks/use-plans'
+import { useGenerateBarcode } from '@/lib/hooks/use-barcode'
+import type { WorkOrderStatus, BarcodeRecord, WorkOrder } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -49,9 +61,154 @@ function formatDate(iso: string) {
   })
 }
 
+// ── Generate Barcode Dialog ───────────────────────────────────────────────────
+
+function GenerateBarcodeDialog({ wo, open, onClose }: {
+  wo: WorkOrder
+  open: boolean
+  onClose: () => void
+}) {
+  const today = new Date().toISOString().slice(0, 10)
+  const defaultDimensions = wo.dimensions
+    ? `${wo.dimensions.length_mm}x${wo.dimensions.width_mm}mm`
+    : ''
+
+  const [dimensions, setDimensions] = useState(defaultDimensions)
+  const [producedDate, setProducedDate] = useState(today)
+  const [result, setResult] = useState<BarcodeRecord | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const { data: plan, isLoading: planLoading } = usePlan(wo.plan_id)
+  const { mutate: generate, isPending } = useGenerateBarcode({
+    onSuccess: (bc) => setResult(bc),
+  })
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!plan) return
+    generate({
+      work_order_id: wo.id,
+      sku_id: wo.sku_id,
+      po_id: plan.po_id,
+      production_plan_id: wo.plan_id,
+      sku_code: wo.sku_code ?? '',
+      sku_name: wo.sku_name ?? '',
+      dimensions,
+      produced_date: new Date(producedDate).toISOString(),
+    })
+  }
+
+  function handleCopy() {
+    if (!result) return
+    navigator.clipboard.writeText(result.id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handleClose() {
+    setResult(null)
+    setCopied(false)
+    setDimensions(defaultDimensions)
+    setProducedDate(today)
+    onClose()
+  }
+
+  const qrUrl = result
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(result.id)}`
+    : null
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Tạo barcode cho lệnh sản xuất</DialogTitle>
+        </DialogHeader>
+
+        {result ? (
+          /* ── Success state ── */
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-3 rounded-lg border bg-muted/30 p-4">
+              {qrUrl && (
+                <Image
+                  src={qrUrl}
+                  alt="QR code barcode"
+                  width={200}
+                  height={200}
+                  className="rounded"
+                  unoptimized
+                />
+              )}
+              <p className="text-xs text-muted-foreground">Mã barcode</p>
+              <p className="break-all font-mono text-sm font-semibold">{result.id}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleCopy}
+              >
+                {copied ? (
+                  <><Check className="size-4" /> Đã sao chép</>
+                ) : (
+                  <><Copy className="size-4" /> Sao chép mã</>
+                )}
+              </Button>
+            </div>
+            <p className="text-center text-xs text-muted-foreground">
+              In ảnh QR ở trên và dán vào sản phẩm để công nhân quét.
+            </p>
+            <Button className="w-full" onClick={handleClose}>
+              Đóng
+            </Button>
+          </div>
+        ) : (
+          /* ── Form state ── */
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1 rounded-lg border bg-muted/30 p-3 text-sm">
+              <p><span className="text-muted-foreground">SKU:</span> <span className="font-medium">{wo.sku_code}</span></p>
+              <p><span className="text-muted-foreground">Tên:</span> <span className="font-medium">{wo.sku_name ?? '—'}</span></p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="dimensions">Kích thước</Label>
+              <Input
+                id="dimensions"
+                value={dimensions}
+                onChange={(e) => setDimensions(e.target.value)}
+                placeholder="vd: 600x300x18mm"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="produced-date">Ngày sản xuất</Label>
+              <Input
+                id="produced-date"
+                type="date"
+                value={producedDate}
+                onChange={(e) => setProducedDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Huỷ
+              </Button>
+              <Button type="submit" disabled={isPending || planLoading}>
+                {isPending ? 'Đang tạo...' : 'Tạo barcode'}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Detail content ────────────────────────────────────────────────────────────
 
 function WorkOrderDetail({ id }: { id: string }) {
+  const [showBarcodeDialog, setShowBarcodeDialog] = useState(false)
   const { data: wo, isLoading: woLoading, isError: woError } = useWorkOrder(id)
   const {
     data: consumptions,
@@ -85,6 +242,12 @@ function WorkOrderDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-8">
+      <GenerateBarcodeDialog
+        wo={wo}
+        open={showBarcodeDialog}
+        onClose={() => setShowBarcodeDialog(false)}
+      />
+
       {/* Header card */}
       <div className="rounded-lg border p-6">
         <div className="flex items-start justify-between gap-4">
@@ -94,9 +257,19 @@ function WorkOrderDetail({ id }: { id: string }) {
             </p>
             <p className="font-mono text-lg font-bold">{shortId(wo.id)}</p>
           </div>
-          <Badge variant="outline" className={STATUS_CLASS[wo.status]}>
-            {STATUS_LABEL[wo.status]}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowBarcodeDialog(true)}
+            >
+              <QrCode className="size-4" />
+              Tạo barcode
+            </Button>
+            <Badge variant="outline" className={STATUS_CLASS[wo.status]}>
+              {STATUS_LABEL[wo.status]}
+            </Badge>
+          </div>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
