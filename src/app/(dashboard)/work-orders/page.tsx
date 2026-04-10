@@ -93,6 +93,16 @@ function shortId(id: string) {
   return id.slice(0, 8).toUpperCase()
 }
 
+/** Human-readable label for a production plan. */
+function planLabel(p: { id: string; po_code?: string; deadline?: string }): string {
+  const base = p.po_code ? `PO ${p.po_code}` : `KH-${shortId(p.id)}`
+  if (p.deadline) {
+    const d = new Date(p.deadline).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return `${base} · HH ${d}`
+  }
+  return base
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('vi-VN', {
     day: '2-digit',
@@ -193,7 +203,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
                 )}
                 {approvedPlans.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.po_code ?? shortId(p.id)}
+                    {planLabel(p)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -298,6 +308,8 @@ function WorkOrdersContent() {
 
   const { data: plansData } = usePlans({ limit: 200 })
   const allPlans = plansData?.items ?? []
+  // Build a lookup map so rows can resolve plan labels without extra fetches.
+  const planById = Object.fromEntries(allPlans.map((p) => [p.id, p]))
 
   const { mutate: advance, isPending: advancing } = useAdvanceStatus()
 
@@ -345,7 +357,7 @@ function WorkOrdersContent() {
               <SelectItem value="ALL">Tất cả kế hoạch</SelectItem>
               {allPlans.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
-                  {p.po_code ?? shortId(p.id)}
+                  {planLabel(p)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -401,9 +413,11 @@ function WorkOrdersContent() {
                           {shortId(wo.id)}
                         </Link>
                       </TableCell>
-                      <TableCell>{wo.sku_code ?? wo.sku_id.slice(0, 8)}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {shortId(wo.plan_id)}
+                      <TableCell>{wo.sku_code ?? wo.sku_name ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {planById[wo.plan_id]
+                          ? planLabel(planById[wo.plan_id])
+                          : `KH-${shortId(wo.plan_id)}`}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={wo.status} />

@@ -10,16 +10,27 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { logout } from '@/lib/hooks/use-auth'
 
-const NAV_ITEMS = [
-  { href: '/overview', label: 'Tổng quan', icon: LayoutDashboard },
-  { href: '/pos', label: 'Đơn hàng', icon: ShoppingCart },
-  { href: '/plans', label: 'Kế hoạch SX', icon: ClipboardList },
-  { href: '/work-orders', label: 'Lệnh sản xuất', icon: ClipboardCheck },
-  { href: '/remnants', label: 'Kho tấm lẻ', icon: Package },
-  { href: '/costing', label: 'Giá thành', icon: DollarSign },
-  { href: '/materials', label: 'Nguyên liệu', icon: Layers },
-  { href: '/skus', label: 'Sản phẩm', icon: Boxes },
+// Full management nav — visible to admin, accountant, planner, warehouse, cnc_manager
+const MANAGEMENT_NAV = [
+  { href: '/overview',     label: 'Tổng quan',     icon: LayoutDashboard },
+  { href: '/pos',          label: 'Đơn hàng',      icon: ShoppingCart },
+  { href: '/plans',        label: 'Kế hoạch SX',   icon: ClipboardList },
+  { href: '/work-orders',  label: 'Lệnh sản xuất', icon: ClipboardCheck },
+  { href: '/remnants',     label: 'Kho tấm lẻ',    icon: Package },
+  { href: '/costing',      label: 'Giá thành',      icon: DollarSign },
+  { href: '/materials',    label: 'Nguyên liệu',   icon: Layers },
+  { href: '/skus',         label: 'Sản phẩm',      icon: Boxes },
 ] as const
+
+// Foreman nav — shop-floor supervisor: only work orders are relevant
+const FOREMAN_NAV = [
+  { href: '/work-orders',  label: 'Lệnh sản xuất', icon: ClipboardCheck },
+] as const
+
+function navItemsForRole(role: string | null) {
+  if (role === 'foreman') return FOREMAN_NAV
+  return MANAGEMENT_NAV
+}
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
@@ -64,7 +75,7 @@ export function SideNav() {
 
       {/* Nav links */}
       <nav className="flex flex-col gap-1 p-3">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {navItemsForRole(role).map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href)
           return (
             <Link
