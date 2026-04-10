@@ -382,8 +382,8 @@ function WorkOrdersContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mã WO</TableHead>
-                <TableHead>SKU</TableHead>
+                <TableHead>Mã Lệnh SX</TableHead>
+                <TableHead>Sản phẩm</TableHead>
                 <TableHead>Kế hoạch</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Phân công</TableHead>
@@ -438,7 +438,7 @@ function WorkOrdersContent() {
                               size="sm"
                               onClick={() => setAdvanceTarget(wo)}
                             >
-                              Advance
+                              Tính giá
                             </Button>
                           )}
                         </div>
