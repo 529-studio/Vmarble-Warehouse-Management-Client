@@ -183,70 +183,75 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
     }
   }, [mode])
 
-  if (mode === 'manual' || cameraErrorInfo) {
-    return (
-      <div className={cn('space-y-3', className)}>
-        {cameraErrorInfo && (
-          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-            {errorIcon[cameraErrorInfo.kind]}
-            <div className="space-y-1">
-              <p className="text-sm font-medium leading-none">{cameraErrorInfo.title}</p>
-              <p className="text-xs text-muted-foreground">{cameraErrorInfo.description}</p>
-            </div>
-          </div>
-        )}
-        {!cameraErrorInfo && (
-          <p className="text-sm text-muted-foreground">
-            Nhập mã thủ công (camera không khả dụng)
-          </p>
-        )}
-        <div className="flex gap-2">
-          <Input
-            value={manualInput}
-            onChange={(e) => setManualInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && manualInput.trim() && !disabled) {
-                onScan(manualInput.trim())
-                setManualInput('')
-              }
-            }}
-            placeholder="Nhập mã rồi nhấn Enter..."
-            className="h-12 text-base"
-            disabled={disabled}
-            autoFocus
-          />
-        </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setCameraErrorInfo(null)
-            setMode('camera')
-          }}
-        >
-          <Camera className="size-4" />
-          Thử lại camera
-        </Button>
-      </div>
-    )
-  }
+  const showManual = mode === 'manual' || cameraErrorInfo !== null
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div
-        id="qr-scanner-container"
-        ref={scannerRef}
-        className="overflow-hidden rounded-lg bg-black"
-        style={{ minHeight: 260 }}
-      />
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => setMode('manual')}
-      >
-        <Keyboard className="size-4" />
-        Nhập thủ công
-      </Button>
+      {/* Camera container — always mounted so the scanner can stop cleanly before
+          the video element is removed from the DOM. Hiding via CSS avoids the
+          AbortError that fires when play() is interrupted by a DOM removal. */}
+      <div className={showManual ? 'hidden' : undefined}>
+        <div
+          id="qr-scanner-container"
+          ref={scannerRef}
+          className="overflow-hidden rounded-lg bg-black"
+          style={{ minHeight: 260 }}
+        />
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setMode('manual')}
+        >
+          <Keyboard className="size-4" />
+          Nhập thủ công
+        </Button>
+      </div>
+
+      {showManual && (
+        <>
+          {cameraErrorInfo && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              {errorIcon[cameraErrorInfo.kind]}
+              <div className="space-y-1">
+                <p className="text-sm font-medium leading-none">{cameraErrorInfo.title}</p>
+                <p className="text-xs text-muted-foreground">{cameraErrorInfo.description}</p>
+              </div>
+            </div>
+          )}
+          {!cameraErrorInfo && (
+            <p className="text-sm text-muted-foreground">
+              Nhập mã thủ công (camera không khả dụng)
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={manualInput}
+              onChange={(e) => setManualInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && manualInput.trim() && !disabled) {
+                  onScan(manualInput.trim())
+                  setManualInput('')
+                }
+              }}
+              placeholder="Nhập mã rồi nhấn Enter..."
+              className="h-12 text-base"
+              disabled={disabled}
+              autoFocus
+            />
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setCameraErrorInfo(null)
+              setMode('camera')
+            }}
+          >
+            <Camera className="size-4" />
+            Thử lại camera
+          </Button>
+        </>
+      )}
     </div>
   )
 }
