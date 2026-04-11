@@ -12,7 +12,7 @@ export const KIOSK_ROLES = ['cnc'] as const
 // listed here so the middleware can enforce role-based access correctly.
 // A path missing from both lists is treated as public (no role check).
 
-const DASHBOARD_PATHS = ['/overview', '/remnants', '/costing', '/materials', '/skus', '/pos', '/plans', '/work-orders']
+const DASHBOARD_PATHS = ['/overview', '/remnants', '/costing', '/materials', '/skus', '/pos', '/plans', '/work-orders', '/barcodes']
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store']
 
 // ── Default landing page per role ────────────────────────────────────────────

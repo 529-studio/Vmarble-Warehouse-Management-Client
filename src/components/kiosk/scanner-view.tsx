@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 interface ScannerViewProps {
   onScan: (code: string) => void
   className?: string
+  /** When true, input is disabled and camera scans are ignored (e.g. while API call is in-flight) */
+  disabled?: boolean
 }
 
 type CameraErrorKind = 'not-allowed' | 'not-found' | 'insecure-context' | 'unknown'
@@ -84,7 +86,7 @@ const errorIcon: Record<CameraErrorKind, React.ReactNode> = {
  * Usage:
  *   <ScannerView onScan={(code) => handleCode(code)} />
  */
-export function ScannerView({ onScan, className }: ScannerViewProps) {
+export function ScannerView({ onScan, className, disabled = false }: ScannerViewProps) {
   const [mode, setMode] = useState<'camera' | 'manual'>('camera')
   const [manualInput, setManualInput] = useState('')
   const [cameraErrorInfo, setCameraErrorInfo] = useState<CameraErrorInfo | null>(null)
@@ -96,11 +98,17 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
   > | null>(null)
   // Tracks whether scanner.start() has resolved so cleanup knows it's safe to stop
   const isRunningRef = useRef(false)
-  // Stable ref for the onScan callback — prevents effect re-runs when parent re-renders
+  // Stable refs — prevent effect re-runs when parent re-renders
   const onScanRef = useRef(onScan)
   useEffect(() => {
     onScanRef.current = onScan
   }, [onScan])
+  const disabledRef = useRef(disabled)
+  useEffect(() => {
+    disabledRef.current = disabled
+  }, [disabled])
+  // Cooldown: ignore duplicate scans of the same code within 2 seconds
+  const lastScanRef = useRef<{ code: string; time: number } | null>(null)
 
   useEffect(() => {
     if (mode !== 'camera') return
@@ -134,8 +142,25 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
 
         await scanner.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          {
+            fps: 10,
+            // Adaptive qrbox — sized relative to the actual rendered viewfinder so
+            // the scan region is always fully visible on any screen width, including
+            // narrow mobile viewports where a fixed 250px box would overflow.
+            qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+              const side = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7)
+              return { width: side, height: side }
+            },
+            // Request 4:3 aspect ratio — stable on most phone cameras and prevents
+            // portrait-orientation stream issues on iOS rear cameras.
+            aspectRatio: 4 / 3,
+          },
           (decodedText: string) => {
+            if (disabledRef.current) return
+            const now = Date.now()
+            const last = lastScanRef.current
+            if (last && last.code === decodedText && now - last.time < 2000) return
+            lastScanRef.current = { code: decodedText, time: now }
             onScanRef.current(decodedText)
           },
           undefined,
@@ -170,69 +195,75 @@ export function ScannerView({ onScan, className }: ScannerViewProps) {
     }
   }, [mode])
 
-  if (mode === 'manual' || cameraErrorInfo) {
-    return (
-      <div className={cn('space-y-3', className)}>
-        {cameraErrorInfo && (
-          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-            {errorIcon[cameraErrorInfo.kind]}
-            <div className="space-y-1">
-              <p className="text-sm font-medium leading-none">{cameraErrorInfo.title}</p>
-              <p className="text-xs text-muted-foreground">{cameraErrorInfo.description}</p>
-            </div>
-          </div>
-        )}
-        {!cameraErrorInfo && (
-          <p className="text-sm text-muted-foreground">
-            Nhập mã thủ công (camera không khả dụng)
-          </p>
-        )}
-        <div className="flex gap-2">
-          <Input
-            value={manualInput}
-            onChange={(e) => setManualInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && manualInput.trim()) {
-                onScan(manualInput.trim())
-                setManualInput('')
-              }
-            }}
-            placeholder="Nhập mã rồi nhấn Enter..."
-            className="h-12 text-base"
-            autoFocus
-          />
-        </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setCameraErrorInfo(null)
-            setMode('camera')
-          }}
-        >
-          <Camera className="size-4" />
-          Thử lại camera
-        </Button>
-      </div>
-    )
-  }
+  const showManual = mode === 'manual' || cameraErrorInfo !== null
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div
-        id="qr-scanner-container"
-        ref={scannerRef}
-        className="overflow-hidden rounded-lg bg-black"
-        style={{ minHeight: 260 }}
-      />
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => setMode('manual')}
-      >
-        <Keyboard className="size-4" />
-        Nhập thủ công
-      </Button>
+      {/* Camera container — always mounted so the scanner can stop cleanly before
+          the video element is removed from the DOM. Hiding via CSS avoids the
+          AbortError that fires when play() is interrupted by a DOM removal. */}
+      <div className={showManual ? 'hidden' : undefined}>
+        <div
+          id="qr-scanner-container"
+          ref={scannerRef}
+          className="w-full overflow-hidden rounded-lg bg-black"
+          style={{ minHeight: 260 }}
+        />
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setMode('manual')}
+        >
+          <Keyboard className="size-4" />
+          Nhập thủ công
+        </Button>
+      </div>
+
+      {showManual && (
+        <>
+          {cameraErrorInfo && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              {errorIcon[cameraErrorInfo.kind]}
+              <div className="space-y-1">
+                <p className="text-sm font-medium leading-none">{cameraErrorInfo.title}</p>
+                <p className="text-xs text-muted-foreground">{cameraErrorInfo.description}</p>
+              </div>
+            </div>
+          )}
+          {!cameraErrorInfo && (
+            <p className="text-sm text-muted-foreground">
+              Nhập mã thủ công (camera không khả dụng)
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={manualInput}
+              onChange={(e) => setManualInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && manualInput.trim() && !disabled) {
+                  onScan(manualInput.trim())
+                  setManualInput('')
+                }
+              }}
+              placeholder="Nhập mã rồi nhấn Enter..."
+              className="h-12 text-base"
+              disabled={disabled}
+              autoFocus
+            />
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setCameraErrorInfo(null)
+              setMode('camera')
+            }}
+          >
+            <Camera className="size-4" />
+            Thử lại camera
+          </Button>
+        </>
+      )}
     </div>
   )
 }

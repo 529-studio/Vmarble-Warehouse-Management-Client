@@ -31,34 +31,31 @@ export function LabelPreview({
         className,
       )}
     >
-      {/* Top row: type badge + ID */}
+      {/* Top row: SKU code + ID tail */}
       <div className="flex items-start justify-between">
         <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
-          {barcode.entityType}
+          {barcode.sku_code}
         </span>
         <span className="text-[10px] text-gray-500">{barcode.id.slice(-6)}</span>
       </div>
 
-      {/* SKU */}
-      {barcode.sku && (
-        <p className="mt-1 truncate font-semibold">{barcode.sku}</p>
-      )}
+      {/* SKU name */}
+      <p className="mt-1 truncate font-semibold">{barcode.sku_name}</p>
 
-      {/* Dimensions */}
-      <p className="text-gray-600">
-        {barcode.dimensions.lengthMm} × {barcode.dimensions.widthMm} ×{' '}
-        {barcode.dimensions.thicknessMm} mm
-      </p>
+      {/* Dimensions (free-text from backend) */}
+      <p className="text-gray-600">{barcode.dimensions}</p>
 
-      {/* Lot + location */}
+      {/* Produced date */}
       <div className="flex justify-between text-gray-500">
-        <span>LOT: {barcode.lot}</span>
-        {barcode.location && <span>{barcode.location}</span>}
+        <span>
+          Ngày SX:{' '}
+          {barcode.produced_date
+            ? new Date(barcode.produced_date).toLocaleDateString('vi-VN')
+            : '—'}
+        </span>
       </div>
 
-      <p className="mt-1 text-center text-[9px] text-gray-400">
-        Nhấn để in
-      </p>
+      <p className="mt-1 text-center text-[9px] text-gray-400">Nhấn để in</p>
     </div>
   )
 }

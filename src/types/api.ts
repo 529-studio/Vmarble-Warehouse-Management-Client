@@ -39,8 +39,8 @@ export type GrainPattern = 'WITH_GRAIN' | 'CROSS_GRAIN' | 'NONE'
 
 export type ScanCheckpoint =
   | 'CNC_COMPLETE'
-  | 'FINISHING_COMPLETE'
-  | 'WAREHOUSE_SHIP'
+  | 'FINISHED_GOODS'
+  | 'SHIPPED'
 
 // ── Money (domain.Money) ─────────────────────────────────────────────────────
 
@@ -282,24 +282,40 @@ export interface SuggestAllocationResponse {
 
 // ── Barcode ──────────────────────────────────────────────────────────────────
 
-export interface BarcodeRecord {
-  id: string
-  entityType: 'WIP' | 'REMNANT'
-  entityId: string
-  sku: string | null
-  dimensions: { lengthMm: number; widthMm: number; thicknessMm: number }
-  lot: string
-  location: string | null
-  qrContent: string
-  createdAt: string
+/** POST /api/proxy/barcodes — mirrors backend barcode.GenerateBarcodeInput */
+export interface GenerateBarcodeInput {
+  work_order_id: string
+  sku_id: string
+  po_id: string
+  production_plan_id: string
+  sku_code: string
+  sku_name: string
+  dimensions: string
+  produced_date: string
 }
 
+/** GET /api/proxy/barcodes/:id — mirrors backend barcode.Barcode */
+export interface BarcodeRecord {
+  id: string
+  work_order_id: string
+  sku_id: string
+  po_id: string
+  production_plan_id: string
+  sku_code: string
+  sku_name: string
+  /** Free-text dimensions string, e.g. "800x600mm" */
+  dimensions: string
+  produced_date: string
+  created_at: string
+}
+
+/** POST /api/proxy/barcodes/:id/scans — mirrors backend barcode.ScanEvent */
 export interface ScanEvent {
   id: string
-  barcodeId: string
+  barcode_id: string
   checkpoint: ScanCheckpoint
-  scannedBy: string
-  scannedAt: string
+  scanned_by: string
+  scanned_at: string
 }
 
 // ── Dashboard (computed client-side from real API data) ──────────────────────

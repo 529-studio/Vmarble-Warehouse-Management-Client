@@ -1,40 +1,68 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { create } from 'zustand'
+import { toast } from 'sonner'
 import { barcodeApi } from '@/lib/api/barcode'
-import type { BarcodeRecord, ScanCheckpoint } from '@/types/api'
+import { ApiClientError } from '@/lib/api/client'
+import type { ScanEvent, ScanCheckpoint } from '@/types/api'
 
-// ── Zustand store for scan state ──────────────────────────────────────────────
+// ── Zustand scan-session store ────────────────────────────────────────────────
+
+interface ScanSessionEntry {
+  scanEvent: ScanEvent
+  /** Short display label — last 8 chars of barcode_id */
+  barcodeShort: string
+}
 
 interface ScanStore {
-  lastScanned: BarcodeRecord | null
-  scanHistory: BarcodeRecord[]
-  setLastScanned: (record: BarcodeRecord) => void
-  clearScan: () => void
+  history: ScanSessionEntry[]
+  addEntry: (entry: ScanSessionEntry) => void
+  clear: () => void
 }
 
 export const useScanStore = create<ScanStore>((set) => ({
-  lastScanned: null,
-  scanHistory: [],
-  setLastScanned: (record) =>
-    set((s) => ({
-      lastScanned: record,
-      scanHistory: [record, ...s.scanHistory].slice(0, 20),
-    })),
-  clearScan: () => set({ lastScanned: null }),
+  history: [],
+  addEntry: (entry) =>
+    set((s) => ({ history: [entry, ...s.history].slice(0, 5) })),
+  clear: () => set({ history: [] }),
 }))
 
-// ── Mutation hook for recording a checkpoint scan ─────────────────────────────
+// ── Mutation hook ─────────────────────────────────────────────────────────────
+
+const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
+  CNC_COMPLETE: 'Hoàn thành CNC',
+  FINISHED_GOODS: 'Hoàn thành gia công',
+  SHIPPED: 'Xuất kho',
+}
 
 export function useRecordScan() {
-  const queryClient = useQueryClient()
+  const addEntry = useScanStore((s) => s.addEntry)
+
   return useMutation({
     mutationFn: (input: {
       barcodeId: string
       checkpoint: ScanCheckpoint
       scannedBy: string
     }) => barcodeApi.recordScan(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['scan-events'] })
+
+    onSuccess: (scanEvent, variables) => {
+      const label = CHECKPOINT_LABEL[variables.checkpoint]
+      toast.success(`Đã quét: ${variables.barcodeId.slice(-8)} tại ${label}`)
+      addEntry({
+        scanEvent,
+        barcodeShort: variables.barcodeId.slice(-8),
+      })
+    },
+
+    onError: (err: unknown) => {
+      if (err instanceof ApiClientError) {
+        if (err.status === 404) {
+          toast.error('Mã không hợp lệ')
+        } else {
+          toast.error(`Lỗi: ${err.message}`)
+        }
+      } else {
+        toast.error('Lỗi không xác định')
+      }
     },
   })
 }
