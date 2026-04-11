@@ -7,6 +7,14 @@ import type { GenerateBarcodeInput, BarcodeRecord } from '@/types/api'
 export const BARCODES_KEY = 'barcodes'
 export const SCAN_EVENTS_KEY = 'scan-events'
 
+export function useBarcode(id: string) {
+  return useQuery({
+    queryKey: [BARCODES_KEY, id],
+    queryFn: () => barcodeApi.getById(id),
+    enabled: !!id,
+  })
+}
+
 export function useBarcodesForWorkOrder(workOrderId: string) {
   return useQuery({
     queryKey: [BARCODES_KEY, 'by-work-order', workOrderId],

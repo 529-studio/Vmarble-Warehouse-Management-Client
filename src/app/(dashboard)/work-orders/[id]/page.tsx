@@ -3,7 +3,7 @@
 import { use, useState } from 'react'
 import QRCode from 'react-qr-code'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardCheck, QrCode, Copy, Check } from 'lucide-react'
+import { ArrowLeft, ClipboardCheck, QrCode, Copy, Check, CheckCircle2, Circle, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -63,67 +63,74 @@ function formatDate(iso: string) {
 
 // ── Scan history ─────────────────────────────────────────────────────────────
 
+const CHECKPOINT_ORDER: ScanCheckpoint[] = ['CNC_COMPLETE', 'FINISHED_GOODS', 'SHIPPED']
+
 const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
   CNC_COMPLETE: 'Hoàn thành CNC',
   FINISHED_GOODS: 'Hoàn thành gia công',
   SHIPPED: 'Xuất kho',
 }
 
-const CHECKPOINT_CLASS: Record<ScanCheckpoint, string> = {
-  CNC_COMPLETE: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  FINISHED_GOODS: 'bg-green-100 text-green-800 border-green-200',
-  SHIPPED: 'bg-blue-100 text-blue-800 border-blue-200',
-}
-
 function BarcodeRow({ barcode }: { barcode: BarcodeRecord }) {
   const { data: events, isLoading } = useBarcodeScanEvents(barcode.id)
 
+  const doneSet = new Set((events ?? []).map((e: ScanEvent) => e.checkpoint))
+  const doneCount = CHECKPOINT_ORDER.filter((cp) => doneSet.has(cp)).length
+
   return (
     <div className="rounded-lg border">
-      <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2">
-        <span className="font-mono text-xs text-muted-foreground">
-          Barcode: {barcode.id.slice(0, 8).toUpperCase()}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {barcode.sku_code} · {barcode.dimensions}
-        </span>
+      <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground">
+            {barcode.id.slice(0, 8).toUpperCase()}
+          </span>
+          <span className="text-xs text-muted-foreground">·</span>
+          <span className="text-xs text-muted-foreground">
+            {barcode.sku_code} · {barcode.dimensions}
+          </span>
+        </div>
+        <Link
+          href={`/barcodes/${barcode.id}/scans`}
+          className="flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          Xem timeline
+          <ExternalLink className="size-3" />
+        </Link>
       </div>
 
-      {isLoading ? (
-        <div className="p-4">
-          <Skeleton className="h-8 w-full" />
-        </div>
-      ) : !events || events.length === 0 ? (
-        <p className="px-4 py-3 text-sm text-muted-foreground">Chưa có lần quét nào.</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Điểm kiểm tra</TableHead>
-              <TableHead>Quét bởi</TableHead>
-              <TableHead>Thời gian</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(events as ScanEvent[]).map((e) => (
-              <TableRow key={e.id}>
-                <TableCell>
-                  <Badge
-                    variant="outline"
-                    className={CHECKPOINT_CLASS[e.checkpoint] ?? ''}
-                  >
-                    {CHECKPOINT_LABEL[e.checkpoint] ?? e.checkpoint}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-sm">{e.scanned_by}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {formatDate(e.scanned_at)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      {/* Mini checkpoint progress */}
+      <div className="px-4 py-3">
+        {isLoading ? (
+          <Skeleton className="h-6 w-full" />
+        ) : (
+          <div className="flex items-center gap-2">
+            {CHECKPOINT_ORDER.map((cp, idx) => {
+              const done = doneSet.has(cp)
+              const isLast = idx === CHECKPOINT_ORDER.length - 1
+              return (
+                <div key={cp} className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    {done ? (
+                      <CheckCircle2 className="size-4 shrink-0 text-green-500" />
+                    ) : (
+                      <Circle className="size-4 shrink-0 text-muted-foreground/40" />
+                    )}
+                    <span className={`text-xs ${done ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                      {CHECKPOINT_LABEL[cp]}
+                    </span>
+                  </div>
+                  {!isLast && (
+                    <span className="text-muted-foreground/30">→</span>
+                  )}
+                </div>
+              )
+            })}
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+              {doneCount}/{CHECKPOINT_ORDER.length} checkpoint
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
