@@ -142,7 +142,19 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
 
         await scanner.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          {
+            fps: 10,
+            // Adaptive qrbox — sized relative to the actual rendered viewfinder so
+            // the scan region is always fully visible on any screen width, including
+            // narrow mobile viewports where a fixed 250px box would overflow.
+            qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+              const side = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7)
+              return { width: side, height: side }
+            },
+            // Request 4:3 aspect ratio — stable on most phone cameras and prevents
+            // portrait-orientation stream issues on iOS rear cameras.
+            aspectRatio: 4 / 3,
+          },
           (decodedText: string) => {
             if (disabledRef.current) return
             const now = Date.now()
@@ -194,7 +206,7 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
         <div
           id="qr-scanner-container"
           ref={scannerRef}
-          className="overflow-hidden rounded-lg bg-black"
+          className="w-full overflow-hidden rounded-lg bg-black"
           style={{ minHeight: 260 }}
         />
         <Button
