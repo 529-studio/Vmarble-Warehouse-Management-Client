@@ -12,10 +12,6 @@ const nextConfig: NextConfig = {
         port: '8080',
         pathname: '/api/v1/**',
       },
-      {
-        protocol: 'https',
-        hostname: 'api.qrserver.com',
-      },
     ],
   },
 

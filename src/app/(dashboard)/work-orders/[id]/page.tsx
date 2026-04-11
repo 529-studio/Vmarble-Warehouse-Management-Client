@@ -1,7 +1,7 @@
 'use client'
 
 import { use, useState } from 'react'
-import Image from 'next/image'
+import QRCode from 'react-qr-code'
 import Link from 'next/link'
 import { ArrowLeft, ClipboardCheck, QrCode, Copy, Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -203,10 +203,6 @@ function GenerateBarcodeDialog({ wo, open, onClose }: {
     onClose()
   }
 
-  const qrUrl = result
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(result.id)}`
-    : null
-
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="max-w-md">
@@ -218,16 +214,9 @@ function GenerateBarcodeDialog({ wo, open, onClose }: {
           /* ── Success state ── */
           <div className="space-y-4">
             <div className="flex flex-col items-center gap-3 rounded-lg border bg-muted/30 p-4">
-              {qrUrl && (
-                <Image
-                  src={qrUrl}
-                  alt="QR code barcode"
-                  width={200}
-                  height={200}
-                  className="rounded"
-                  unoptimized
-                />
-              )}
+              <div className="rounded bg-white p-2">
+                <QRCode value={result.id} size={200} />
+              </div>
               <p className="text-xs text-muted-foreground">Mã barcode</p>
               <p className="break-all font-mono text-sm font-semibold">{result.id}</p>
               <Button
