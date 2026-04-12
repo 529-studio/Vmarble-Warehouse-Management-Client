@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2, PackageX } from 'lucide-react'
 import { toast } from 'sonner'
@@ -112,11 +113,25 @@ function SuggestionSkeletons() {
 
 // ── Empty / no-dimension states ───────────────────────────────────────────────
 
-function EmptyState({ message }: { message: string }) {
+interface EmptyStateProps {
+  message: string
+  /** When true, show "Xem kho tấm lẻ →" link so worker can browse manually. */
+  showRemnantLink?: boolean
+}
+
+function EmptyState({ message, showRemnantLink }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
       <PackageX className="size-10 text-muted-foreground/40" aria-hidden="true" />
       <p className="text-sm text-muted-foreground">{message}</p>
+      {showRemnantLink && (
+        <Link
+          href="/remnant-list"
+          className="text-sm font-semibold text-primary underline-offset-2 hover:underline"
+        >
+          Xem kho tấm lẻ →
+        </Link>
+      )}
     </div>
   )
 }
@@ -220,7 +235,10 @@ export function RemnantSuggestionModal({
               </p>
             </div>
           ) : !suggestions || suggestions.length === 0 ? (
-            <EmptyState message="Không có tấm lẻ phù hợp kích thước này. Dùng tấm nguyên." />
+            <EmptyState
+              message="Không có tấm lẻ phù hợp kích thước này. Dùng tấm nguyên."
+              showRemnantLink
+            />
           ) : (
             <div className="divide-y">
               {suggestions.map((s) => (

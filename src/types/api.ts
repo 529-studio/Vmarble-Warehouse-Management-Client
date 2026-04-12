@@ -201,6 +201,11 @@ export interface CreateWOInput {
 /** POST /api/v1/work-orders/:id/advance */
 export interface AdvanceStatusInput {
   status: WorkOrderStatus
+  /**
+   * Optional: assign a board sheet when advancing PLANNED → IN_CUTTING.
+   * Backend sets issued_to_work_order_id on the sheet when provided.
+   */
+  sheet_id?: string
 }
 
 /** POST /api/v1/work-orders/:id/assign */

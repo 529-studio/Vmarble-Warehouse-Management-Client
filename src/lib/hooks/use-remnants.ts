@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { remnantsApi, type RemnantsFilter } from '@/lib/api/remnants'
+import { remnantsApi, sheetsApi, type RemnantsFilter, type SheetsFilter } from '@/lib/api/remnants'
 import type { Remnant, RemnantSuggestion } from '@/types/api'
 
 export const REMNANTS_KEY = 'remnants'
@@ -91,5 +91,21 @@ export function useAllocateRemnant() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [REMNANTS_KEY] })
     },
+  })
+}
+
+export const SHEETS_KEY = 'sheets'
+
+/**
+ * Fetches AVAILABLE board sheets for sheet selection.
+ * Only runs when `enabled` is true — pass false to skip the request
+ * (e.g. when a remnant_id is already selected, or sheet picker is not shown).
+ */
+export function useAvailableSheets(filter: SheetsFilter = {}, enabled = true) {
+  return useQuery({
+    queryKey: [SHEETS_KEY, filter],
+    queryFn: () => sheetsApi.list({ ...filter, status: 'AVAILABLE', limit: filter.limit ?? 50 }),
+    enabled,
+    staleTime: 30_000,
   })
 }

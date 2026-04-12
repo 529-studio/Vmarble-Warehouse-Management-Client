@@ -7,8 +7,16 @@ import { AlertTriangle, CheckCircle2, ChevronLeft, Printer } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { BigButton } from '@/components/kiosk/big-button'
 import { useCuttingOrder, useRecordCut } from '@/lib/hooks/use-cutting-orders'
+import { useAvailableSheets } from '@/lib/hooks/use-remnants'
 import { ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
@@ -219,8 +227,13 @@ function SuccessModal({ remnantId, onGoHome }: SuccessModalProps) {
 //
 // remnantLength and remnantWidth can be undefined when shouldUnregister unmounts
 // the fields (i.e. when the user chooses "Hao hụt toàn bộ").
+//
+// boardSheetId is used only when neither sheet_id nor remnant_id comes from
+// the URL — i.e. the worker chose "Dùng tấm nguyên" without a pre-selected
+// sheet. It maps to the sheet_id field in RecordCutInput.
 
 interface CutFormValues {
+  boardSheetId?: string
   usedLength: string
   usedWidth: string
   remnantLength?: string
@@ -242,6 +255,17 @@ export function ReportCutForm() {
   // ── Work order context (for display + area-conservation hint) ────────────
   const { data: workOrder, isLoading: isLoadingWO } = useCuttingOrder(woId)
 
+  // True when the worker came from "Dùng tấm nguyên" (skip remnant modal)
+  // and hasn't pre-selected any source material.
+  const needsBoardSheetInput = !sheetId && !remnantSourceId
+
+  // Fetch available sheets only when the worker needs to select one.
+  // Enabled flag prevents an unnecessary request when remnant_id is already set.
+  const {
+    data: sheetsData,
+    isLoading: isLoadingSheets,
+  } = useAvailableSheets({}, needsBoardSheetInput)
+
   // ── react-hook-form ───────────────────────────────────────────────────────
   const {
     control,
@@ -250,6 +274,7 @@ export function ReportCutForm() {
     formState: { errors },
   } = useForm<CutFormValues>({
     defaultValues: {
+      boardSheetId: '',
       usedLength: '',
       usedWidth: '',
       remnantLength: '',
@@ -298,7 +323,9 @@ export function ReportCutForm() {
 
     recordCut(
       {
-        sheet_id: sheetId,
+        // Exactly one of sheet_id / remnant_id is required by the backend.
+        // Priority: URL param → form input (when worker typed/scanned the ID).
+        sheet_id: sheetId ?? (data.boardSheetId?.trim() || undefined),
         remnant_id: remnantSourceId,
         work_order_id: woId,
         // workOrder is guaranteed non-null here because isDisabled blocks submit
@@ -383,6 +410,72 @@ export function ReportCutForm() {
           )}
         </div>
       </div>
+
+      {/* ── Board sheet source (only when no sheet/remnant from URL) ── */}
+      {needsBoardSheetInput && (
+        <Card>
+          <CardHeader className="pb-3 pt-4">
+            <CardTitle className="text-base">Chọn tấm ván</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <Controller
+              name="boardSheetId"
+              control={control}
+              rules={{ required: 'Chọn tấm ván trước khi báo cáo' }}
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <Label htmlFor={fid('board-sheet-id')}>
+                    Tấm ván nguyên liệu
+                  </Label>
+                  <Select
+                    value={field.value ?? ''}
+                    onValueChange={field.onChange}
+                    disabled={isDisabled || isLoadingSheets}
+                  >
+                    <SelectTrigger
+                      id={fid('board-sheet-id')}
+                      className={cn(
+                        'h-12 text-base',
+                        errors.boardSheetId && 'border-destructive focus:ring-destructive',
+                      )}
+                      aria-invalid={!!errors.boardSheetId}
+                    >
+                      <SelectValue
+                        placeholder={
+                          isLoadingSheets ? 'Đang tải danh sách tấm ván…' : 'Chọn tấm ván…'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(sheetsData?.items ?? []).length === 0 && !isLoadingSheets ? (
+                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                          Không có tấm ván khả dụng
+                        </div>
+                      ) : (
+                        (sheetsData?.items ?? []).map((sheet) => (
+                          <SelectItem key={sheet.id} value={sheet.id}>
+                            {sheet.dimensions.length_mm} × {sheet.dimensions.width_mm} mm
+                            {sheet.lot_id ? ` — Lô ${sheet.lot_id}` : ''}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {errors.boardSheetId && (
+                    <p
+                      id={`${fid('board-sheet-id')}-error`}
+                      className="text-xs text-destructive"
+                      role="alert"
+                    >
+                      {errors.boardSheetId.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Used dimension ── */}
       <Card>

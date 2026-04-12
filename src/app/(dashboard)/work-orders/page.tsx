@@ -47,6 +47,7 @@ import {
 } from '@/lib/hooks/use-work-orders'
 import { usePlans } from '@/lib/hooks/use-plans'
 import { useSKUs } from '@/lib/hooks/use-skus'
+import { useAvailableSheets } from '@/lib/hooks/use-remnants'
 import type {
   WorkOrderStatus,
   WorkOrder,
@@ -79,6 +80,15 @@ const NEXT_STATUS: Record<WorkOrderStatus, WorkOrderStatus | null> = {
   IN_PROCESSING: 'COMPLETED',
   COMPLETED: 'COSTED',
   COSTED: null,
+}
+
+/** CTA label for the advance button — describes the action, not the destination. */
+const ADVANCE_LABEL: Record<WorkOrderStatus, string> = {
+  PLANNED: 'Bắt đầu cắt',
+  IN_CUTTING: 'Hoàn thành cắt',
+  IN_PROCESSING: 'Đánh dấu hoàn thành',
+  COMPLETED: 'Tính giá',
+  COSTED: '', // terminal — button never shown
 }
 
 function StatusBadge({ status }: { status: WorkOrderStatus }) {
@@ -258,15 +268,30 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
 
 interface AdvanceDialogProps {
   wo: WorkOrder | null
-  onConfirm: () => void
+  onConfirm: (sheetId?: string) => void
   onCancel: () => void
   isPending: boolean
 }
 
 function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProps) {
+  const [selectedSheetId, setSelectedSheetId] = useState('')
+
+  const isPlannedToInCutting = wo?.status === 'PLANNED'
+
+  const { data: sheetsData, isLoading: isLoadingSheets } = useAvailableSheets(
+    { limit: 50 },
+    isPlannedToInCutting,
+  )
+  const availableSheets = sheetsData?.items ?? []
+
   if (!wo) return null
   const next = NEXT_STATUS[wo.status]
   if (!next) return null
+
+  function handleConfirm() {
+    onConfirm(isPlannedToInCutting && selectedSheetId ? selectedSheetId : undefined)
+  }
+
   return (
     <AlertDialog open>
       <AlertDialogContent>
@@ -278,9 +303,42 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
             <span className="font-medium">{STATUS_LABEL[next]}</span>. Hành động này không thể hoàn tác.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        {/* Sheet picker — only shown for PLANNED → IN_CUTTING */}
+        {isPlannedToInCutting && (
+          <div className="space-y-1.5 py-1">
+            <Label>Tấm ván (tuỳ chọn)</Label>
+            <Select
+              value={selectedSheetId}
+              onValueChange={setSelectedSheetId}
+              disabled={isLoadingSheets}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    isLoadingSheets ? 'Đang tải tấm ván…' : 'Chọn tấm ván để phân công trước'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">— Không chọn —</SelectItem>
+                {availableSheets.map((sheet) => (
+                  <SelectItem key={sheet.id} value={sheet.id}>
+                    {sheet.dimensions.length_mm} × {sheet.dimensions.width_mm} mm
+                    {sheet.lot_id ? ` — Lô ${sheet.lot_id.slice(0, 8).toUpperCase()}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Nếu chọn, tấm ván sẽ được gán trước cho lệnh này để thợ không phải chọn lại tại kiosk.
+            </p>
+          </div>
+        )}
+
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>Hủy</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} disabled={isPending}>
+          <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
             {isPending ? 'Đang xử lý…' : 'Xác nhận'}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -313,11 +371,11 @@ function WorkOrdersContent() {
 
   const { mutate: advance, isPending: advancing } = useAdvanceStatus()
 
-  function handleAdvanceConfirm() {
+  function handleAdvanceConfirm(sheetId?: string) {
     if (!advanceTarget) return
     const next = NEXT_STATUS[advanceTarget.status]
     if (!next) return
-    const input: AdvanceStatusInput = { status: next }
+    const input: AdvanceStatusInput = { status: next, sheet_id: sheetId }
     advance(
       { id: advanceTarget.id, input },
       { onSettled: () => setAdvanceTarget(null) },
@@ -436,9 +494,10 @@ function WorkOrdersContent() {
                           {canAdvance && (
                             <Button
                               size="sm"
+                              variant={wo.status === 'PLANNED' ? 'default' : 'outline'}
                               onClick={() => setAdvanceTarget(wo)}
                             >
-                              Tính giá
+                              {ADVANCE_LABEL[wo.status]}
                             </Button>
                           )}
                         </div>

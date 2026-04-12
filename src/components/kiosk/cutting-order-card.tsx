@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { WorkOrder, MaterialType } from '@/types/api'
@@ -30,11 +29,8 @@ function materialBadgeClass(type: MaterialType | undefined): string {
 interface CuttingOrderCardProps {
   order: WorkOrder
   className?: string
-  /**
-   * When provided, the action button calls this instead of navigating directly
-   * to /report-cut. Use to intercept the tap and show the remnant suggestion modal.
-   */
-  onStartCutting?: (order: WorkOrder) => void
+  /** Called when the worker taps the action button — opens the remnant suggestion modal. */
+  onStartCutting: (order: WorkOrder) => void
 }
 
 /**
@@ -97,32 +93,18 @@ export function CuttingOrderCard({ order, className, onStartCutting }: CuttingOr
       </div>
 
       {/* Action button — full-width strip, min-h 48px */}
-      {onStartCutting ? (
-        <button
-          type="button"
-          onClick={() => onStartCutting(order)}
-          className={cn(
-            'flex min-h-[48px] w-full items-center justify-center',
-            'bg-primary/5 px-4 py-3',
-            'border-t text-sm font-semibold text-primary',
-            'transition-colors active:bg-primary/10',
-          )}
-        >
-          Bắt đầu cắt →
-        </button>
-      ) : (
-        <Link
-          href={`/report-cut?wo_id=${order.id}`}
-          className={cn(
-            'flex min-h-[48px] w-full items-center justify-center',
-            'bg-primary/5 px-4 py-3',
-            'border-t text-sm font-semibold text-primary',
-            'transition-colors active:bg-primary/10',
-          )}
-        >
-          Báo cáo kết quả →
-        </Link>
-      )}
+      <button
+        type="button"
+        onClick={() => onStartCutting(order)}
+        className={cn(
+          'flex min-h-[48px] w-full items-center justify-center',
+          'bg-primary/5 px-4 py-3',
+          'border-t text-sm font-semibold text-primary',
+          'transition-colors active:bg-primary/10',
+        )}
+      >
+        Bắt đầu cắt →
+      </button>
     </article>
   )
 }
