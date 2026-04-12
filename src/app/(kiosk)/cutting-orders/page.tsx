@@ -1,11 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CuttingOrderCard } from '@/components/kiosk/cutting-order-card'
+import { RemnantSuggestionModal } from '@/components/kiosk/remnant-suggestion-modal'
 import { useCuttingOrdersForKiosk } from '@/lib/hooks/use-cutting-orders'
 import { usePullToRefresh } from '@/lib/hooks/use-pull-to-refresh'
 import { cn } from '@/lib/utils'
+import type { WorkOrder } from '@/types/api'
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
@@ -104,6 +107,9 @@ export default function CuttingOrdersPage() {
     onRefresh: refetch,
   })
 
+  // Track which work order the worker tapped — opens the remnant suggestion modal
+  const [selectedWO, setSelectedWO] = useState<WorkOrder | null>(null)
+
   return (
     /*
      * The container div must NOT be overflow-y-auto because the kiosk layout's
@@ -150,10 +156,21 @@ export default function CuttingOrdersPage() {
           <EmptyState />
         ) : (
           workOrders.map((wo) => (
-            <CuttingOrderCard key={wo.id} order={wo} />
+            <CuttingOrderCard
+              key={wo.id}
+              order={wo}
+              onStartCutting={setSelectedWO}
+            />
           ))
         )}
       </div>
+
+      {/* Remnant suggestion modal — mounts once, driven by selectedWO */}
+      <RemnantSuggestionModal
+        workOrder={selectedWO}
+        open={!!selectedWO}
+        onClose={() => setSelectedWO(null)}
+      />
     </div>
   )
 }

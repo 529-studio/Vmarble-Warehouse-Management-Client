@@ -69,6 +69,16 @@ export interface Remnant {
   dimensions: { length_mm: number; width_mm: number }
   status: RemnantStatus
   allocated_to_wo: string | null
+  // Inherited material metadata from source board/remnant
+  supplier_code?: string | null
+  lot_batch?: string | null
+  grain_pattern?: string | null
+  quality_grade?: string | null
+  // Usable area after any chipped corners are excluded; used for allocation matching
+  bounding_box_length_mm?: number | null
+  bounding_box_width_mm?: number | null
+  // Physical shelf reference — UUID only; fetch /storage-locations for the full label
+  bin_location_id?: string | null
   created_at: string
 }
 
