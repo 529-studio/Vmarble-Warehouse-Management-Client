@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { href: '/cutting-orders', label: 'Lệnh cắt',    icon: Scissors },
   { href: '/report-cut',     label: 'Báo cáo',      icon: ClipboardList },
   { href: '/scan',           label: 'Quét mã',      icon: QrCode },
-  { href: '/remnant-list',   label: 'Kho tấm lẻ',  icon: Package },
+  { href: '/remnant-store',  label: 'Kho tấm lẻ',  icon: Package },
   { href: '/account',        label: 'Tài khoản',    icon: User },
 ] as const
 

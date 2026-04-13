@@ -43,6 +43,16 @@ export const remnantsApi = {
   /** POST /api/v1/inventory/remnants/{id}/waste */
   markWaste: (remnantId: string) =>
     apiClient.post<void>(`/inventory/remnants/${remnantId}/waste`),
+
+  /** GET /api/v1/inventory/remnants/{id} */
+  getById: (remnantId: string) =>
+    apiClient.get<Remnant>(`/inventory/remnants/${remnantId}`),
+
+  /** POST /api/v1/inventory/remnants/{id}/stock */
+  stock: (remnantId: string, locationBarcode: string) =>
+    apiClient.post<{ status: string }>(`/inventory/remnants/${remnantId}/stock`, {
+      location_barcode: locationBarcode,
+    }),
 }
 
 // ── Board sheets API ──────────────────────────────────────────────────────────

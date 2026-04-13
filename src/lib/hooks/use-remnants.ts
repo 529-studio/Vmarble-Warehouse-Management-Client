@@ -94,6 +94,28 @@ export function useAllocateRemnant() {
   })
 }
 
+/** Fetches a single remnant by UUID. Disabled when id is empty. */
+export function useRemnant(id: string) {
+  return useQuery({
+    queryKey: [REMNANTS_KEY, 'detail', id],
+    queryFn: () => remnantsApi.getById(id),
+    enabled: !!id,
+    staleTime: 30_000,
+  })
+}
+
+/** Mutation to assign a remnant to a physical storage bin by location barcode. */
+export function useStockRemnant() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ remnantId, locationBarcode }: { remnantId: string; locationBarcode: string }) =>
+      remnantsApi.stock(remnantId, locationBarcode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [REMNANTS_KEY] })
+    },
+  })
+}
+
 export const SHEETS_KEY = 'sheets'
 
 /**
