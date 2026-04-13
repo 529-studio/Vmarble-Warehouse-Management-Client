@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { remnantsApi, sheetsApi, type RemnantsFilter, type SheetsFilter } from '@/lib/api/remnants'
-import type { Remnant, RemnantSuggestion } from '@/types/api'
+import { remnantsApi, sheetsApi, storageLocationsApi, type RemnantsFilter, type SheetsFilter } from '@/lib/api/remnants'
+import type { Remnant, StorageLocation, RemnantSuggestion } from '@/types/api'
 
 export const REMNANTS_KEY = 'remnants'
 
@@ -117,6 +117,28 @@ export function useStockRemnant() {
 }
 
 export const SHEETS_KEY = 'sheets'
+
+export const STORAGE_LOCATIONS_KEY = 'storage-locations'
+
+/**
+ * Fetches all active storage locations. Cached for 5 minutes since shelf
+ * configuration rarely changes during a shift.
+ * Returns a Map<id, StorageLocation> for O(1) lookup per remnant card.
+ */
+export function useStorageLocations() {
+  return useQuery({
+    queryKey: [STORAGE_LOCATIONS_KEY],
+    queryFn: async () => {
+      const locs = await storageLocationsApi.list()
+      const map = new Map<string, StorageLocation>()
+      for (const loc of locs ?? []) {
+        map.set(loc.id, loc)
+      }
+      return map
+    },
+    staleTime: 5 * 60_000,
+  })
+}
 
 /**
  * Fetches AVAILABLE board sheets for sheet selection.
