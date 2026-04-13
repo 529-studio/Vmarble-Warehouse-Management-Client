@@ -455,7 +455,8 @@ export function ReportCutForm() {
                         (sheetsData?.items ?? []).map((sheet) => (
                           <SelectItem key={sheet.id} value={sheet.id}>
                             {sheet.dimensions.length_mm} × {sheet.dimensions.width_mm} mm
-                            {sheet.lot_id ? ` — Lô ${sheet.lot_id}` : ''}
+                            {' — Lô '}
+                            {sheet.lot_batch ?? sheet.supplier_code ?? sheet.lot_id.slice(0, 8).toUpperCase()}
                           </SelectItem>
                         ))
                       )}

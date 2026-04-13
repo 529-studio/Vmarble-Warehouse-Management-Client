@@ -59,6 +59,10 @@ export interface BoardSheet {
   cost_per_sheet: Money
   issued_to_work_order_id: string | null
   status: string
+  /** Human-readable lot batch code (e.g. "SUP-ABC-001") — preferred for display */
+  lot_batch?: string | null
+  /** Supplier code inherited from board sheet material */
+  supplier_code?: string | null
 }
 
 /** GET /api/v1/inventory/remnants */

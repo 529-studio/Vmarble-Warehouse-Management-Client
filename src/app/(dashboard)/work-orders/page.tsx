@@ -274,7 +274,8 @@ interface AdvanceDialogProps {
 }
 
 function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProps) {
-  const [selectedSheetId, setSelectedSheetId] = useState('')
+  const NONE = '__none__'
+  const [selectedSheetId, setSelectedSheetId] = useState(NONE)
 
   const isPlannedToInCutting = wo?.status === 'PLANNED'
 
@@ -289,7 +290,14 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
   if (!next) return null
 
   function handleConfirm() {
-    onConfirm(isPlannedToInCutting && selectedSheetId ? selectedSheetId : undefined)
+    const sheetId = isPlannedToInCutting && selectedSheetId !== NONE ? selectedSheetId : undefined
+    onConfirm(sheetId)
+    setSelectedSheetId(NONE)
+  }
+
+  function handleCancel() {
+    setSelectedSheetId(NONE)
+    onCancel()
   }
 
   return (
@@ -321,11 +329,12 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Không chọn —</SelectItem>
+                <SelectItem value={NONE}>— Không chọn —</SelectItem>
                 {availableSheets.map((sheet) => (
                   <SelectItem key={sheet.id} value={sheet.id}>
                     {sheet.dimensions.length_mm} × {sheet.dimensions.width_mm} mm
-                    {sheet.lot_id ? ` — Lô ${sheet.lot_id.slice(0, 8).toUpperCase()}` : ''}
+                    {' — Lô '}
+                    {sheet.lot_batch ?? sheet.supplier_code ?? sheet.lot_id.slice(0, 8).toUpperCase()}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -337,7 +346,7 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Hủy</AlertDialogCancel>
+          <AlertDialogCancel onClick={handleCancel}>Hủy</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
             {isPending ? 'Đang xử lý…' : 'Xác nhận'}
           </AlertDialogAction>
