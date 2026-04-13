@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { usePlan, useApprovePlan, useCancelPlan } from '@/lib/hooks/use-plans'
+import { useSKUs } from '@/lib/hooks/use-skus'
 import type { PlanStatus } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -67,6 +68,13 @@ export default function PlanDetailPage({
 }) {
   const { id } = use(params)
   const { data: plan, isLoading, isError } = usePlan(id)
+
+  // Load SKUs to resolve code + name for plan items.
+  // The GET /plans/:id endpoint returns only sku_id on each item.
+  // useSKUs result is cached (staleTime 60s), so this is free when the SKU
+  // list is already loaded from another page in the same session.
+  const { data: skusData } = useSKUs({ limit: 500 })
+  const skuById = Object.fromEntries((skusData?.items ?? []).map((s) => [s.id, s]))
 
   const [approveOpen, setApproveOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
@@ -193,14 +201,19 @@ export default function PlanDetailPage({
                   </TableCell>
                 </TableRow>
               ) : (
-                plan.items.map((item, idx) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                    <TableCell className="font-mono text-sm">{item.sku_code ?? item.sku_id.slice(0, 8)}</TableCell>
-                    <TableCell>{item.sku_name ?? '—'}</TableCell>
-                    <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                  </TableRow>
-                ))
+                plan.items.map((item, idx) => {
+                  const sku = skuById[item.sku_id]
+                  const code = item.sku_code ?? sku?.code ?? item.sku_id.slice(0, 8).toUpperCase()
+                  const name = item.sku_name ?? sku?.name ?? '—'
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell className="font-mono text-sm font-medium">{code}</TableCell>
+                      <TableCell>{name}</TableCell>
+                      <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>

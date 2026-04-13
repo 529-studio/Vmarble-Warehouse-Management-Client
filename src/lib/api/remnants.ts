@@ -1,4 +1,4 @@
-import type { Remnant, CostingRecord, PagedResult, PageParams } from '@/types/api'
+import type { Remnant, BoardSheet, CostingRecord, PagedResult, PageParams } from '@/types/api'
 import { apiClient } from './client'
 
 // ── Remnant list filters ─────────────────────────────────────────────────────
@@ -43,6 +43,29 @@ export const remnantsApi = {
   /** POST /api/v1/inventory/remnants/{id}/waste */
   markWaste: (remnantId: string) =>
     apiClient.post<void>(`/inventory/remnants/${remnantId}/waste`),
+}
+
+// ── Board sheets API ──────────────────────────────────────────────────────────
+
+export interface SheetsFilter extends PageParams {
+  status?: string
+  work_order_id?: string
+}
+
+export const sheetsApi = {
+  /**
+   * GET /api/v1/inventory/sheets
+   * Returns a paged result of board sheets.
+   */
+  list: (filter: SheetsFilter = {}) =>
+    apiClient.get<PagedResult<BoardSheet>>('/inventory/sheets', {
+      params: {
+        page: filter.page,
+        limit: filter.limit,
+        status: filter.status,
+        work_order_id: filter.work_order_id,
+      },
+    }),
 }
 
 // ── Costing API ──────────────────────────────────────────────────────────────

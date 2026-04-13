@@ -1,4 +1,5 @@
-import Link from 'next/link'
+'use client'
+
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { WorkOrder, MaterialType } from '@/types/api'
@@ -28,6 +29,8 @@ function materialBadgeClass(type: MaterialType | undefined): string {
 interface CuttingOrderCardProps {
   order: WorkOrder
   className?: string
+  /** Called when the worker taps the action button — opens the remnant suggestion modal. */
+  onStartCutting: (order: WorkOrder) => void
 }
 
 /**
@@ -36,7 +39,7 @@ interface CuttingOrderCardProps {
  * Touch-target height is guaranteed ≥ 48px by the card layout; the
  * "Báo cáo kết quả" button enforces its own min-h-[48px].
  */
-export function CuttingOrderCard({ order, className }: CuttingOrderCardProps) {
+export function CuttingOrderCard({ order, className, onStartCutting }: CuttingOrderCardProps) {
   const skuDisplay = order.sku_code ?? `${order.sku_id.slice(0, 8)}\u2026`
   const skuName = order.sku_name ?? 'Chưa có tên SKU'
   const hasDim = !!order.dimensions
@@ -90,8 +93,9 @@ export function CuttingOrderCard({ order, className }: CuttingOrderCardProps) {
       </div>
 
       {/* Action button — full-width strip, min-h 48px */}
-      <Link
-        href={`/report-cut?wo_id=${order.id}`}
+      <button
+        type="button"
+        onClick={() => onStartCutting(order)}
         className={cn(
           'flex min-h-[48px] w-full items-center justify-center',
           'bg-primary/5 px-4 py-3',
@@ -99,8 +103,8 @@ export function CuttingOrderCard({ order, className }: CuttingOrderCardProps) {
           'transition-colors active:bg-primary/10',
         )}
       >
-        Báo cáo kết quả →
-      </Link>
+        Bắt đầu cắt →
+      </button>
     </article>
   )
 }

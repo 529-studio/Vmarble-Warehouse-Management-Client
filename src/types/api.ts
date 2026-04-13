@@ -59,6 +59,10 @@ export interface BoardSheet {
   cost_per_sheet: Money
   issued_to_work_order_id: string | null
   status: string
+  /** Human-readable lot batch code (e.g. "SUP-ABC-001") — preferred for display */
+  lot_batch?: string | null
+  /** Supplier code inherited from board sheet material */
+  supplier_code?: string | null
 }
 
 /** GET /api/v1/inventory/remnants */
@@ -69,6 +73,16 @@ export interface Remnant {
   dimensions: { length_mm: number; width_mm: number }
   status: RemnantStatus
   allocated_to_wo: string | null
+  // Inherited material metadata from source board/remnant
+  supplier_code?: string | null
+  lot_batch?: string | null
+  grain_pattern?: string | null
+  quality_grade?: string | null
+  // Usable area after any chipped corners are excluded; used for allocation matching
+  bounding_box_length_mm?: number | null
+  bounding_box_width_mm?: number | null
+  // Physical shelf reference — UUID only; fetch /storage-locations for the full label
+  bin_location_id?: string | null
   created_at: string
 }
 
@@ -191,6 +205,11 @@ export interface CreateWOInput {
 /** POST /api/v1/work-orders/:id/advance */
 export interface AdvanceStatusInput {
   status: WorkOrderStatus
+  /**
+   * Optional: assign a board sheet when advancing PLANNED → IN_CUTTING.
+   * Backend sets issued_to_work_order_id on the sheet when provided.
+   */
+  sheet_id?: string
 }
 
 /** POST /api/v1/work-orders/:id/assign */
