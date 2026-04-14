@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { href: '/cutting-orders', label: 'Lệnh cắt',    icon: Scissors },
   { href: '/report-cut',     label: 'Báo cáo',      icon: ClipboardList },
   { href: '/scan',           label: 'Quét mã',      icon: QrCode },
-  { href: '/remnant-store',  label: 'Kho tấm lẻ',  icon: Package },
+  { href: '/remnant-store',  label: 'Tấm lẻ',      icon: Package },
   { href: '/account',        label: 'Tài khoản',    icon: User },
 ] as const
 
@@ -20,7 +20,11 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 flex h-16 items-stretch justify-around border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-        const active = pathname === href || pathname.startsWith(href + '/')
+        const active =
+          pathname === href ||
+          pathname.startsWith(href + '/') ||
+          // Highlight "Tấm lẻ" tab for both remnant-store and remnant-list
+          (href === '/remnant-store' && pathname.startsWith('/remnant-list'))
         return (
           <Link
             key={href}

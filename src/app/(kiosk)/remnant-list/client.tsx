@@ -281,9 +281,9 @@ export function RemnantListClient() {
   }
 
   return (
-    <div className="space-y-4 p-4 pb-6">
+    <div className="mt-4 space-y-4 pb-2">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Kho tấm lẻ</h1>
+        <h1 className="text-xl font-bold">Tồn kho tấm lẻ</h1>
         {data && (
           <span className="text-sm text-muted-foreground">
             {filtered.length}/{data.total_items} tấm

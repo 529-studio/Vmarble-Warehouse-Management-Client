@@ -147,7 +147,7 @@ export function RemnantStoreClient() {
     : remnantId.slice(0, 8).toUpperCase()
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4">
       {/* Header + step tracker */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Nhập kho tấm lẻ</h1>

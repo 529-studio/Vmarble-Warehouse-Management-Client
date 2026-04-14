@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useId } from 'react'
+import { useState, useId, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm, Controller } from 'react-hook-form'
-import { AlertTriangle, CheckCircle2, ChevronLeft, Printer } from 'lucide-react'
+import QRCode from 'react-qr-code'
+import { AlertTriangle, CheckCircle2, ChevronLeft, Copy, Check } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -163,6 +164,15 @@ interface SuccessModalProps {
 }
 
 function SuccessModal({ remnantId, onGoHome }: SuccessModalProps) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(() => {
+    if (!remnantId) return
+    navigator.clipboard.writeText(remnantId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [remnantId])
+
   return (
     <div
       role="dialog"
@@ -183,12 +193,8 @@ function SuccessModal({ remnantId, onGoHome }: SuccessModalProps) {
       {remnantId ? (
         <div className="w-full max-w-xs space-y-3">
           <div className="rounded-xl border bg-muted/40 p-4 text-center">
-            {/* QR placeholder — Sprint 4 will replace with actual QR image */}
-            <div
-              className="mx-auto mb-3 flex size-36 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-white"
-              aria-label="Chỗ để QR code (Sprint 4)"
-            >
-              <span className="text-xs text-muted-foreground">QR · Sprint 4</span>
+            <div className="mx-auto mb-3 rounded-lg bg-white p-2">
+              <QRCode value={remnantId} size={144} />
             </div>
             <p className="text-xs text-muted-foreground">Mã tấm lẻ</p>
             <p className="mt-0.5 break-all font-mono text-sm font-medium">
@@ -196,16 +202,22 @@ function SuccessModal({ remnantId, onGoHome }: SuccessModalProps) {
             </p>
           </div>
 
-          {/* Print label — disabled until Sprint 4 */}
+          {/* Copy button */}
           <button
             type="button"
-            disabled
-            title="Tính năng in tem sẽ có trong Sprint 4"
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/30 text-sm font-semibold text-muted-foreground opacity-60"
+            onClick={handleCopy}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors hover:bg-muted/50"
           >
-            <Printer className="size-4" aria-hidden="true" />
-            In tem (Sprint 4)
+            {copied ? (
+              <><Check className="size-4 text-green-600" aria-hidden="true" /> Đã sao chép</>
+            ) : (
+              <><Copy className="size-4" aria-hidden="true" /> Sao chép mã tấm lẻ</>
+            )}
           </button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            In hoặc chụp mã QR rồi dán lên tấm lẻ để quét nhập kho.
+          </p>
         </div>
       ) : (
         <div className="rounded-xl border bg-muted/40 px-6 py-4 text-center">
