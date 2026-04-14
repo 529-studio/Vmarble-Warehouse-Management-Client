@@ -148,7 +148,10 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
             // the scan region is always fully visible on any screen width, including
             // narrow mobile viewports where a fixed 250px box would overflow.
             qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-              const side = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7)
+              // Clamp to 50px minimum — html5-qrcode throws if qrbox < 50px.
+              // This guards against reading a hidden container (display:none →
+              // clientWidth=0) when two ScannerView instances share the page.
+              const side = Math.max(50, Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7))
               return { width: side, height: side }
             },
             // Request 4:3 aspect ratio — stable on most phone cameras and prevents

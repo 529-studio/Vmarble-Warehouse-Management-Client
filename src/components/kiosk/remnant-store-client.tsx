@@ -7,7 +7,9 @@ import { BigButton } from '@/components/kiosk/big-button'
 import { ScannerView } from '@/components/kiosk/scanner-view'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useRemnant, useStockRemnant } from '@/lib/hooks/use-remnants'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { useRemnant, useStockRemnant, useStorageLocations } from '@/lib/hooks/use-remnants'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -64,6 +66,41 @@ function SuccessOverlay({ remnantShort, locationLabel, onReset }: SuccessOverlay
   )
 }
 
+// ── Shelf code manual input ───────────────────────────────────────────────────
+// QR generation for shelf locations is deferred — workers enter the code by hand.
+
+function ShelfCodeInput({ onConfirm }: { onConfirm: (code: string) => void }) {
+  const [value, setValue] = useState('')
+
+  function handleConfirm() {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    onConfirm(trimmed)
+  }
+
+  return (
+    <div className="space-y-3">
+      <Input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') handleConfirm()
+        }}
+        placeholder="Nhập mã kệ rồi nhấn Xác nhận..."
+        className="h-12 text-base"
+        autoFocus
+      />
+      <Button
+        className="h-12 w-full text-base"
+        onClick={handleConfirm}
+        disabled={!value.trim()}
+      >
+        Xác nhận mã kệ
+      </Button>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function RemnantStoreClient() {
@@ -76,6 +113,9 @@ export function RemnantStoreClient() {
   const { data: remnant, isError: remnantNotFound, isFetching: fetchingRemnant } = useRemnant(remnantId)
 
   const { mutate: stockRemnant, isPending: isStocking } = useStockRemnant()
+
+  // Preload location data so we can resolve barcode → human-readable label
+  const { data: locationsMap } = useStorageLocations()
 
   // Stable ref — avoids re-triggering effect when handler identity changes
   const prevRemnantIdRef = useRef('')
@@ -106,8 +146,13 @@ export function RemnantStoreClient() {
     const trimmed = code.trim()
     if (!trimmed) return
     setLocationBarcode(trimmed)
-    // Use the barcode as the display label until confirmation (server will validate)
-    setLocationLabel(trimmed)
+    // Resolve human-readable label from the location catalogue.
+    // Falls back to the raw code if locations haven't loaded or the barcode
+    // doesn't match any known location (server will validate on confirm).
+    const match = locationsMap
+      ? Array.from(locationsMap.values()).find((loc) => loc.barcode === trimmed)
+      : undefined
+    setLocationLabel(match?.label ?? trimmed)
   }
 
   function handleConfirm() {
@@ -199,12 +244,12 @@ export function RemnantStoreClient() {
         </CardContent>
       </Card>
 
-      {/* Step 2 — scan shelf */}
+      {/* Step 2 — enter shelf code manually */}
       <Card className={step !== 'scan_shelf' ? 'opacity-60' : undefined}>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="size-4" />
-            Bước 2 — Quét mã QR kệ
+            Bước 2 — Nhập mã kệ
             {locationBarcode && (
               <Badge variant="secondary" className="ml-auto text-xs">
                 {locationLabel}
@@ -213,16 +258,13 @@ export function RemnantStoreClient() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={step !== 'scan_shelf' ? 'hidden' : undefined}>
-            <ScannerView
-              onScan={handleShelfScan}
-              disabled={step !== 'scan_shelf'}
-            />
-          </div>
+          {step === 'scan_shelf' && !locationBarcode && (
+            <ShelfCodeInput onConfirm={handleShelfScan} />
+          )}
 
           {locationBarcode && step === 'scan_shelf' && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Đã quét kệ <span className="font-semibold">{locationLabel}</span>. Nhấn xác nhận để lưu.
+            <p className="text-sm text-muted-foreground">
+              Đã nhập kệ <span className="font-semibold">{locationLabel}</span>. Nhấn xác nhận để lưu.
             </p>
           )}
 
