@@ -1,4 +1,4 @@
-import type { Remnant, BoardSheet, CostingRecord, PagedResult, PageParams } from '@/types/api'
+import type { Remnant, BoardSheet, CostingRecord, StorageLocation, PagedResult, PageParams } from '@/types/api'
 import { apiClient } from './client'
 
 // ── Remnant list filters ─────────────────────────────────────────────────────
@@ -43,6 +43,23 @@ export const remnantsApi = {
   /** POST /api/v1/inventory/remnants/{id}/waste */
   markWaste: (remnantId: string) =>
     apiClient.post<void>(`/inventory/remnants/${remnantId}/waste`),
+
+  /** GET /api/v1/inventory/remnants/{id} */
+  getById: (remnantId: string) =>
+    apiClient.get<Remnant>(`/inventory/remnants/${remnantId}`),
+
+  /** POST /api/v1/inventory/remnants/{id}/stock */
+  stock: (remnantId: string, locationBarcode: string) =>
+    apiClient.post<{ status: string }>(`/inventory/remnants/${remnantId}/stock`, {
+      location_barcode: locationBarcode,
+    }),
+}
+
+// ── Storage locations API ─────────────────────────────────────────────────────
+
+export const storageLocationsApi = {
+  /** GET /api/v1/storage-locations — returns active locations only */
+  list: () => apiClient.get<StorageLocation[]>('/storage-locations'),
 }
 
 // ── Board sheets API ──────────────────────────────────────────────────────────
