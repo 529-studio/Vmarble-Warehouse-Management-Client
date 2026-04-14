@@ -69,13 +69,13 @@ function RemnantCard({ remnant: r, location }: RemnantCardProps) {
         <div className="flex items-center gap-1 text-sm">
           <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
           {location ? (
-            <span className="font-mono font-medium">{location.barcode}</span>
+            <span className="font-medium">{location.label}</span>
           ) : (
             <span className="text-muted-foreground italic">Chưa xếp kệ</span>
           )}
         </div>
         <span className={`text-xs ${isOld ? 'font-medium text-amber-600' : 'text-muted-foreground'}`}>
-          {days} ngày
+          {days === 0 ? 'Hôm nay' : `${days} ngày`}
         </span>
       </div>
     </div>
@@ -234,6 +234,8 @@ export function RemnantListClient() {
     status: 'AVAILABLE',
     min_length_mm: serverDims.minLength || undefined,
     min_width_mm: serverDims.minWidth || undefined,
+    sort_by: 'created_at',
+    order: 'desc',
     limit: PAGE_SIZE,
   })
 
@@ -250,20 +252,24 @@ export function RemnantListClient() {
     [allItems],
   )
 
-  // Client-side filters: search + quality grade
+  // Client-side filters: search + quality grade, then sort newest first.
+  // Client-side sort is the source of truth — server sort_by param is a hint
+  // only; backend may not honour it for all fields.
   const filtered = useMemo(() => {
     const q = filters.search.toLowerCase()
-    return allItems.filter((r) => {
-      if (filters.quality !== 'all' && r.quality_grade !== filters.quality) return false
-      if (!q) return true
-      return (
-        r.id.toLowerCase().includes(q) ||
-        (r.lot_batch?.toLowerCase().includes(q) ?? false) ||
-        (r.supplier_code?.toLowerCase().includes(q) ?? false) ||
-        `${r.dimensions.length_mm}`.includes(q) ||
-        `${r.dimensions.width_mm}`.includes(q)
-      )
-    })
+    return allItems
+      .filter((r) => {
+        if (filters.quality !== 'all' && r.quality_grade !== filters.quality) return false
+        if (!q) return true
+        return (
+          r.id.toLowerCase().includes(q) ||
+          (r.lot_batch?.toLowerCase().includes(q) ?? false) ||
+          (r.supplier_code?.toLowerCase().includes(q) ?? false) ||
+          `${r.dimensions.length_mm}`.includes(q) ||
+          `${r.dimensions.width_mm}`.includes(q)
+        )
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }, [allItems, filters.search, filters.quality])
 
   const hasActiveFilter =
