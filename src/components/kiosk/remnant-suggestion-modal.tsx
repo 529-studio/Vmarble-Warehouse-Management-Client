@@ -155,7 +155,7 @@ interface RemnantSuggestionModalProps {
 
 /**
  * Kiosk modal — shown when a worker starts a cutting order.
- * Fetches top-5 remnant suggestions (client-side Best Fit scoring) and lets
+ * Fetches top-5 remnant suggestions from backend (Best Fit + FIFO) and lets
  * the worker pick one or skip to use a full board.
  *
  * Tap count to select: 2 (open via card button + tap a suggestion = navigate)
