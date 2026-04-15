@@ -166,8 +166,8 @@ function GenerateBarcodeDialog({ wo, open, onClose }: {
   onClose: () => void
 }) {
   const today = new Date().toISOString().slice(0, 10)
-  const defaultDimensions = wo.dimensions
-    ? `${wo.dimensions.length_mm}x${wo.dimensions.width_mm}mm`
+  const defaultDimensions = wo.sku_dimensions
+    ? `${wo.sku_dimensions.length_mm}x${wo.sku_dimensions.width_mm}mm`
     : ''
 
   const [dimensions, setDimensions] = useState(defaultDimensions)
@@ -372,10 +372,10 @@ function WorkOrderDetail({ id }: { id: string }) {
             }
           />
           <Field label="Số lượng" value={wo.quantity.toString()} />
-          {wo.dimensions && (
+          {wo.sku_dimensions && (
             <Field
               label="Kích thước"
-              value={`${wo.dimensions.length_mm} × ${wo.dimensions.width_mm} mm`}
+              value={`${wo.sku_dimensions.length_mm} × ${wo.sku_dimensions.width_mm} mm`}
             />
           )}
           <Field

@@ -183,8 +183,8 @@ export interface WorkOrder {
   sku_code?: string
   /** Human-readable SKU name */
   sku_name?: string
-  /** Required cut dimensions from the SKU */
-  dimensions?: { length_mm: number; width_mm: number }
+  /** Required cut dimensions from the SKU — JSON key matches backend sku_dimensions */
+  sku_dimensions?: { length_mm: number; width_mm: number }
   /** Material type (PLYWOOD / MDF / HDF) */
   material_type?: MaterialType
   quantity: number
@@ -283,11 +283,8 @@ export interface RecordCutResponse {
 
 export interface RemnantSuggestion {
   remnant: Remnant
-  fitScore: number
-  ageScore: number
-  combinedScore: number
-  wasteAreaMm2: number
-  wastePct: number
+  location: StorageLocation | null
+  rank: number
 }
 
 export interface SuggestAllocationInput {
