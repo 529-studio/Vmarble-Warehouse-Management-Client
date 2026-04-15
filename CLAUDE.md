@@ -24,6 +24,31 @@ Project-specific skills live in `.claude/skills/`. They are loaded on-demand bas
 | `kiosk-component` | Mobile kiosk components — BigButton, ScannerView, touch rules |
 | `remnant-flow-domain` | Business logic — remnant lifecycle, allocation, costing, overflow |
 | `typescript-patterns` | DTO imports, hook generics, strict null, `cn()`, error handling |
+| `product-manager` | Backlog management, sprint planning, creating/triaging GitHub issues |
+| `business-auditor` | Task touches business logic, BR-* rules, or requires spec validation against `docs/` |
+| `integration-architect` | New API hook, type change in `types/api.ts`, or contract alignment with backend required |
+
+> **Rule for `integration-architect`**: invoke it whenever you touch `src/types/api.ts`, `src/lib/api/*.ts`, or any TanStack Query hook that calls a backend endpoint. It guards DTO alignment with the Go `iface.go` source of truth.
+
+---
+
+## Automation Workflow
+
+**Trigger**: user says "Làm task tiếp theo" / "Start next task" / picks an issue from the GitHub Projects Kanban board.
+
+1. **Fetch** — invoke `product-manager` skill to identify the highest-priority open issue:
+   ```bash
+   gh issue list --repo giangdq202/Vmarble-Warehouse-Management-Client \
+     --assignee @me --state open --json number,title,labels \
+     | jq 'sort_by(.labels[].name) | .[0]'
+   ```
+2. **Analyze** — read the full requirement and DoD:
+   ```bash
+   gh issue view <number> --repo giangdq202/Vmarble-Warehouse-Management-Client
+   ```
+3. **Audit** — invoke `business-auditor` if the task touches business rules or domain logic. For frontend issues, validate against the API contract in the backend `iface.go` files (not the frontend `types/api.ts` — that is the *copy*, not the source).
+4. **Implement** — activate `senior-workflow-frontend` skill and start with codebase understanding before writing code.
+5. **Architect** — invoke `integration-architect` if the task introduces new API calls, modifies `types/api.ts`, or changes how the frontend consumes a backend endpoint. Check contract consistency before opening a PR.
 
 ---
 

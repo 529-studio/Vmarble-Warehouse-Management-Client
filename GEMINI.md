@@ -65,6 +65,16 @@ src/
 └── types/api.ts                    ← Shared API DTOs (mirrors backend iface.go)
 ```
 
+## Automation Workflow (Trigger: "Làm task tiếp theo" / "Start next task")
+
+1. **Fetch**: Use the `product-manager` skill to identify the latest frontend issue from `gh issue list`.
+2. **Analyze**: Use `gh issue view <id>` to understand the UI/UX requirements and responsive targets.
+3. **Audit**: Invoke the `business-auditor` skill to ensure terminology and logic match the Vietnamese business spec.
+4. **Implement**: Automatically activate the `senior-workflow-frontend` skill and proceed directly to **Phase 1: Requirements Clarification**.
+5. **Architect**: Use the `integration-architect` skill to verify API alignment with `src/types/api.ts` and Backend models.
+
+---
+
 ## Architecture rules
 
 ### Route groups
