@@ -30,6 +30,7 @@ function fitScoreBg(score: number): string {
 
 interface SuggestionCardProps {
   suggestion: RemnantSuggestion
+  requiredDimensions: { length_mm: number; width_mm: number }
   /** True when THIS card's remnant is being allocated. */
   isAllocating: boolean
   /** True when ANY allocation is in flight — disables all non-selected cards. */
@@ -37,10 +38,19 @@ interface SuggestionCardProps {
   onSelect: () => void
 }
 
-function SuggestionCard({ suggestion, isAllocating, isAnyAllocating, onSelect }: SuggestionCardProps) {
-  const { remnant, fitScore, wastePct } = suggestion
-  const pct = Math.round(fitScore * 100)
+function SuggestionCard({ suggestion, requiredDimensions, isAllocating, isAnyAllocating, onSelect }: SuggestionCardProps) {
+  const { remnant, location } = suggestion
   const { length_mm, width_mm } = remnant.dimensions
+
+  // Compute fit score and waste percentage client-side from the remnant dimensions
+  const rl = remnant.bounding_box_length_mm ?? length_mm
+  const rw = remnant.bounding_box_width_mm ?? width_mm
+  const remnantArea = rl * rw
+  const requiredArea = requiredDimensions.length_mm * requiredDimensions.width_mm
+  const fitScore = remnantArea > 0 ? Math.min(1, requiredArea / remnantArea) : 0
+  const wasteAreaMm2 = Math.max(0, remnantArea - requiredArea)
+  const wastePct = remnantArea > 0 ? (wasteAreaMm2 / remnantArea) * 100 : 0
+  const pct = Math.round(fitScore * 100)
   const disabled = isAnyAllocating
 
   return (
@@ -79,9 +89,7 @@ function SuggestionCard({ suggestion, isAllocating, isAnyAllocating, onSelect }:
       <div className="shrink-0 text-right">
         <p className="text-xs text-muted-foreground">Vị trí</p>
         <p className="text-sm font-medium font-mono">
-          {remnant.bin_location_id
-            ? remnant.bin_location_id.slice(0, 8).toUpperCase()
-            : '—'}
+          {location?.barcode ?? '—'}
         </p>
       </div>
 
@@ -245,6 +253,7 @@ export function RemnantSuggestionModal({
                 <SuggestionCard
                   key={s.remnant.id}
                   suggestion={s}
+                  requiredDimensions={workOrder!.dimensions!}
                   isAllocating={allocatingId === s.remnant.id}
                   isAnyAllocating={!!allocatingId}
                   onSelect={() => handleSelect(s.remnant.id)}

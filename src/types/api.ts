@@ -283,11 +283,8 @@ export interface RecordCutResponse {
 
 export interface RemnantSuggestion {
   remnant: Remnant
-  fitScore: number
-  ageScore: number
-  combinedScore: number
-  wasteAreaMm2: number
-  wastePct: number
+  location: StorageLocation | null
+  rank: number
 }
 
 export interface SuggestAllocationInput {

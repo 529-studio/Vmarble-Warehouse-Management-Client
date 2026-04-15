@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { remnantsApi, sheetsApi, storageLocationsApi, type RemnantsFilter, type SheetsFilter } from '@/lib/api/remnants'
-import type { Remnant, StorageLocation, RemnantSuggestion } from '@/types/api'
+import type { Remnant, RemnantSuggestion, StorageLocation } from '@/types/api'
 
 export const REMNANTS_KEY = 'remnants'
 
@@ -20,8 +20,10 @@ export function useRemnants(filter: RemnantsFilter = {}) {
 // GET /inventory/remnants with dimension filters, then scoring client-side.
 // Replace with the real endpoint when the backend ships it.
 //
-// Scoring: fitScore = requiredArea / remnantArea  (1.0 = perfect fit, no waste)
-// ageScore and combinedScore are set to fitScore as placeholders.
+// Sorting: fitScore = requiredArea / remnantArea  (1.0 = perfect fit, no waste).
+// The returned RemnantSuggestion shape mirrors the backend iface.go struct:
+//   { remnant, location, rank } — location is null because the list endpoint
+//   does not embed location data (only bin_location_id UUID is available).
 
 function scoreRemnants(
   remnants: Remnant[],
@@ -32,29 +34,23 @@ function scoreRemnants(
   if (requiredArea <= 0) return []
 
   return remnants
-    .map((remnant): RemnantSuggestion | null => {
+    .map((remnant): { remnant: Remnant; fitScore: number } | null => {
       // Prefer bounding-box dimensions (usable area after chips), fall back to full dims
       const rl = remnant.bounding_box_length_mm ?? remnant.dimensions.length_mm
       const rw = remnant.bounding_box_width_mm ?? remnant.dimensions.width_mm
       const remnantArea = rl * rw
       if (remnantArea <= 0) return null
 
-      const wasteAreaMm2 = Math.max(0, remnantArea - requiredArea)
-      const wastePct = (wasteAreaMm2 / remnantArea) * 100
-      const fitScore = Math.min(1, requiredArea / remnantArea)
-
-      return {
-        remnant,
-        fitScore,
-        ageScore: 0,          // not computed client-side
-        combinedScore: fitScore,
-        wasteAreaMm2,
-        wastePct,
-      }
+      return { remnant, fitScore: Math.min(1, requiredArea / remnantArea) }
     })
-    .filter((s): s is RemnantSuggestion => s !== null)
+    .filter((s): s is { remnant: Remnant; fitScore: number } => s !== null)
     .sort((a, b) => b.fitScore - a.fitScore)
     .slice(0, limit)
+    .map((s, i): RemnantSuggestion => ({
+      remnant: s.remnant,
+      location: null, // not available from list endpoint; real value comes from backend suggest endpoint
+      rank: i + 1,
+    }))
 }
 
 /**
