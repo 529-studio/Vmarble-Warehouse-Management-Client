@@ -15,10 +15,37 @@ env:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────
+  # JOB 0: QUALITY GATES — type-check + production build
+  # Fail-fast: chặn deploy nếu có type error hoặc build failure.
+  # ─────────────────────────────────────────────────────────────────────────
+  quality:
+    name: "🛡️ Quality Gates"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type-check
+        run: npx tsc --noEmit
+
+      - name: Next.js production build
+        run: npm run build
+
+  # ─────────────────────────────────────────────────────────────────────────
   # JOB 1: BUILD & PUSH IMAGE LÊN GHCR
   # ─────────────────────────────────────────────────────────────────────────
   build:
     name: "🔨 Build & Push"
+    needs: quality
     runs-on: ubuntu-latest
     permissions:
       contents: read
