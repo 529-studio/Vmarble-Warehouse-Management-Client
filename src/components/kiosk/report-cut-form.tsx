@@ -21,31 +21,25 @@ import { useAvailableSheets } from '@/lib/hooks/use-remnants'
 import { ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
-// ── Error message map ─────────────────────────────────────────────────────────
-// Maps API error codes (from the Go backend BizError) to Vietnamese strings
-// shown on-screen so the worker never sees raw JSON.
-
-const API_ERROR_VI: Record<string, string> = {
-  // domain.ErrAreaConservation
-  ERR_AREA_CONSERVATION:
-    'Diện tích vượt quá tấm nguồn. Kiểm tra lại kích thước.',
-  // domain.ErrPreconditionFailed
-  ERR_PRECONDITION_FAILED:
-    'Tấm này đã được cắt hoặc không khả dụng.',
-  // domain.ErrInvalidInput
-  ERR_INVALID_INPUT:
-    'Dữ liệu nhập không hợp lệ. Kiểm tra lại các trường.',
-  // domain.ErrNotFound
-  ERR_NOT_FOUND:
-    'Không tìm thấy lệnh cắt hoặc tấm nguyên liệu.',
-}
+// Maps HTTP status codes from the Go backend to Vietnamese user-facing strings.
+// Backend httpkit.Error() returns { "error": "..." } — no "code" field.
+// Status codes: 400 ERR_INVALID_INPUT, 404 NOT_FOUND, 409 CONFLICT,
+//               412 ERR_PRECONDITION_FAILED, 422 ERR_AREA_CONSERVATION.
 
 function mapApiError(err: unknown): string {
   if (err instanceof ApiClientError) {
-    // Backend sends code like "ERR_AREA_CONSERVATION" or HTTP-mapped codes.
-    const mapped = API_ERROR_VI[err.code]
-    if (mapped) return mapped
-    // Fallback: show the human message from the server if it exists.
+    switch (err.status) {
+      case 422:
+        return 'Diện tích vượt quá tấm nguồn. Kiểm tra lại kích thước.'
+      case 412:
+        return 'Tấm này đã được cắt hoặc không khả dụng.'
+      case 409:
+        return 'Tấm này đã được cắt hoặc không khả dụng.'
+      case 400:
+        return 'Dữ liệu nhập không hợp lệ. Kiểm tra lại các trường.'
+      case 404:
+        return 'Không tìm thấy lệnh cắt hoặc tấm nguyên liệu.'
+    }
     if (err.message) return err.message
   }
   return 'Có lỗi xảy ra. Vui lòng thử lại.'

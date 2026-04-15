@@ -53,11 +53,12 @@ async function request<T>(
   })
 
   if (!response.ok) {
-    const err: ApiError = await response.json().catch(() => ({
-      code: 'UNKNOWN',
-      message: `HTTP ${response.status}`,
-    }))
-    throw new ApiClientError(response.status, err.code, err.message, err.details)
+    // Backend httpkit.Error() sends { "error": "..." } — no "code" field.
+    // ApiError shape expects { code, message }, so we normalize both formats.
+    const body = await response.json().catch(() => null)
+    const code: string = body?.code ?? 'UNKNOWN'
+    const message: string = body?.message ?? body?.error ?? `HTTP ${response.status}`
+    throw new ApiClientError(response.status, code, message, body?.details)
   }
 
   // 204 No Content
