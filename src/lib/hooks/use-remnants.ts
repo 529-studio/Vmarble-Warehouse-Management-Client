@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { remnantsApi, sheetsApi, storageLocationsApi, type RemnantsFilter, type SheetsFilter } from '@/lib/api/remnants'
-import type { Remnant, RemnantSuggestion, StorageLocation } from '@/types/api'
+import type { RemnantSuggestion, StorageLocation } from '@/types/api'
 
 export const REMNANTS_KEY = 'remnants'
 
@@ -13,49 +13,10 @@ export function useRemnants(filter: RemnantsFilter = {}) {
   })
 }
 
-// ── Client-side remnant scoring ───────────────────────────────────────────────
-//
-// NOTE: POST /inventory/suggest-allocation is planned but not yet implemented in
-// the backend (as of 2026-04-12). This hook approximates Best Fit by calling
-// GET /inventory/remnants with dimension filters, then scoring client-side.
-// Replace with the real endpoint when the backend ships it.
-//
-// Sorting: fitScore = requiredArea / remnantArea  (1.0 = perfect fit, no waste).
-// The returned RemnantSuggestion shape mirrors the backend iface.go struct:
-//   { remnant, location, rank } — location is null because the list endpoint
-//   does not embed location data (only bin_location_id UUID is available).
-
-function scoreRemnants(
-  remnants: Remnant[],
-  required: { length_mm: number; width_mm: number },
-  limit: number,
-): RemnantSuggestion[] {
-  const requiredArea = required.length_mm * required.width_mm
-  if (requiredArea <= 0) return []
-
-  return remnants
-    .map((remnant): { remnant: Remnant; fitScore: number } | null => {
-      // Prefer bounding-box dimensions (usable area after chips), fall back to full dims
-      const rl = remnant.bounding_box_length_mm ?? remnant.dimensions.length_mm
-      const rw = remnant.bounding_box_width_mm ?? remnant.dimensions.width_mm
-      const remnantArea = rl * rw
-      if (remnantArea <= 0) return null
-
-      return { remnant, fitScore: Math.min(1, requiredArea / remnantArea) }
-    })
-    .filter((s): s is { remnant: Remnant; fitScore: number } => s !== null)
-    .sort((a, b) => b.fitScore - a.fitScore)
-    .slice(0, limit)
-    .map((s, i): RemnantSuggestion => ({
-      remnant: s.remnant,
-      location: null, // not available from list endpoint; real value comes from backend suggest endpoint
-      rank: i + 1,
-    }))
-}
-
 /**
- * Returns up to `limit` remnant suggestions for the given work order dimensions,
- * scored by best fit (least waste). Uses client-side scoring via GET /remnants.
+ * Returns up to `limit` remnant suggestions for the given work order dimensions
+ * using the backend Best Fit + FIFO algorithm.
+ * GET /api/v1/inventory/remnants/suggestions?length_mm=X&width_mm=Y&limit=N
  */
 export function useSuggestRemnants(
   workOrderId: string,
@@ -64,16 +25,8 @@ export function useSuggestRemnants(
 ) {
   return useQuery({
     queryKey: [REMNANTS_KEY, 'suggest', workOrderId, dimensions],
-    queryFn: async () => {
-      if (!dimensions) return []
-      const result = await remnantsApi.list({
-        min_length_mm: dimensions.length_mm,
-        min_width_mm: dimensions.width_mm,
-        status: 'AVAILABLE',
-        limit: 20,
-      })
-      return scoreRemnants(result.items ?? [], dimensions, limit)
-    },
+    queryFn: () =>
+      remnantsApi.suggest(dimensions!.length_mm, dimensions!.width_mm, limit),
     enabled: !!workOrderId && !!dimensions,
     staleTime: 30_000,
   })
