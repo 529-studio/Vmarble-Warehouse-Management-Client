@@ -170,10 +170,10 @@ export function RemnantSuggestionModal({
 
   const { mutate: allocate } = useAllocateRemnant()
 
-  const hasDimensions = !!workOrder?.dimensions
+  const hasDimensions = !!workOrder?.sku_dimensions
   const { data: suggestions, isLoading, isError } = useSuggestRemnants(
     workOrder?.id ?? '',
-    workOrder?.dimensions,
+    workOrder?.sku_dimensions,
   )
 
   function handleSelect(remnantId: string) {
@@ -223,9 +223,9 @@ export function RemnantSuggestionModal({
         {/* Header — pr-12 avoids overlap with the shadcn close (×) button */}
         <DialogHeader className="shrink-0 border-b px-4 py-4 pr-12 text-left">
           <DialogTitle className="text-lg">Chọn tấm lẻ để cắt</DialogTitle>
-          {workOrder?.dimensions && (
+          {workOrder?.sku_dimensions && (
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Cần: {workOrder.dimensions.length_mm} × {workOrder.dimensions.width_mm} mm
+              Cần: {workOrder.sku_dimensions.length_mm} × {workOrder.sku_dimensions.width_mm} mm
             </p>
           )}
         </DialogHeader>
@@ -253,7 +253,7 @@ export function RemnantSuggestionModal({
                 <SuggestionCard
                   key={s.remnant.id}
                   suggestion={s}
-                  requiredDimensions={workOrder!.dimensions!}
+                  requiredDimensions={workOrder!.sku_dimensions!}
                   isAllocating={allocatingId === s.remnant.id}
                   isAnyAllocating={!!allocatingId}
                   onSelect={() => handleSelect(s.remnant.id)}

@@ -42,7 +42,7 @@ interface CuttingOrderCardProps {
 export function CuttingOrderCard({ order, className, onStartCutting }: CuttingOrderCardProps) {
   const skuDisplay = order.sku_code ?? `${order.sku_id.slice(0, 8)}\u2026`
   const skuName = order.sku_name ?? 'Chưa có tên SKU'
-  const hasDim = !!order.dimensions
+  const hasDim = !!order.sku_dimensions
   const hasMaterial = !!order.material_type
 
   return (
@@ -70,7 +70,7 @@ export function CuttingOrderCard({ order, className, onStartCutting }: CuttingOr
           <div className="flex flex-wrap items-center gap-2 pt-0.5">
             {hasDim && (
               <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
-                {order.dimensions!.length_mm} × {order.dimensions!.width_mm} mm
+                {order.sku_dimensions!.length_mm} × {order.sku_dimensions!.width_mm} mm
               </span>
             )}
             <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">

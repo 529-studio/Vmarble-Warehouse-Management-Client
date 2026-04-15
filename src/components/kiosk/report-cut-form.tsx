@@ -318,8 +318,8 @@ export function ReportCutForm() {
   // watch() re-runs on every keystroke; we derive the warning from live values.
   const watchedUsedLength = watch('usedLength')
   const watchedUsedWidth = watch('usedWidth')
-  const sourceL = workOrder?.dimensions?.length_mm
-  const sourceW = workOrder?.dimensions?.width_mm
+  const sourceL = workOrder?.sku_dimensions?.length_mm
+  const sourceW = workOrder?.sku_dimensions?.width_mm
   const uLNum = parseFloat(watchedUsedLength)
   const uWNum = parseFloat(watchedUsedWidth)
   const areaWarning =
@@ -392,7 +392,7 @@ export function ReportCutForm() {
   // Block submission while loading WO (prevents sending sku_id as empty string)
   // or while a mutation is in flight.
   const isDisabled = isPending || isLoadingWO
-  const sourceDim = workOrder?.dimensions
+  const sourceDim = workOrder?.sku_dimensions
 
   return (
     <form
