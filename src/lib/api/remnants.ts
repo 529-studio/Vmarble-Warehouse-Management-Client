@@ -1,4 +1,4 @@
-import type { Remnant, BoardSheet, CostingRecord, StorageLocation, PagedResult, PageParams } from '@/types/api'
+import type { Remnant, BoardSheet, CostingRecord, RemnantSuggestion, StorageLocation, PagedResult, PageParams } from '@/types/api'
 import { apiClient } from './client'
 
 // ── Remnant list filters ─────────────────────────────────────────────────────
@@ -52,6 +52,16 @@ export const remnantsApi = {
   stock: (remnantId: string, locationBarcode: string) =>
     apiClient.post<{ status: string }>(`/inventory/remnants/${remnantId}/stock`, {
       location_barcode: locationBarcode,
+    }),
+
+  /**
+   * GET /api/v1/inventory/remnants/suggestions?length_mm=X&width_mm=Y&limit=N
+   * Returns up to `limit` AVAILABLE remnants ranked by Best Fit + FIFO.
+   * Each suggestion includes the remnant's storage location when stocked.
+   */
+  suggest: (lengthMm: number, widthMm: number, limit = 3) =>
+    apiClient.get<RemnantSuggestion[]>('/inventory/remnants/suggestions', {
+      params: { length_mm: lengthMm, width_mm: widthMm, limit },
     }),
 }
 

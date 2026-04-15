@@ -131,7 +131,7 @@ Managed with `pressly/goose/v3` in `migrations/`. Use the next sequence number w
 - **Remnant**: Leftover plywood after cutting. Inherits `supplier_code`, `lot_batch`, `grain_pattern`, `quality_grade` from its source (`board_sheet` or `parent_remnant`). Has `bounding_box_length_mm` / `bounding_box_width_mm` for allocation matching. Physical shelf is referenced by `bin_location_id` (UUID pointer); the full label is fetched from `GET /storage-locations`.
 - **Lineage**: `remnant.parent_remnant_id` chains nested cuts. Area conservation applies at each level.
 - **Remnant status lifecycle**: `AVAILABLE → ALLOCATED → USED / DEPLETED`; locked `ALLOCATED` auto-releases after 24 h.
-- **Best Fit + FIFO algorithm** (`SuggestRemnants`): `score = w1 * fit_score + w2 * age_score`. Weights are configurable via env vars (defaults: `w1=0.6`, `w2=0.4`). ⚠️ The backend endpoint `POST /inventory/suggest-allocation` is **planned but not yet implemented**. The frontend currently approximates Best Fit client-side in `useSuggestRemnants` (hook: `src/lib/hooks/use-remnants.ts`) by querying `GET /inventory/remnants` with dimension filters and scoring by `requiredArea / remnantArea`. Migrate to the real endpoint when the backend ships it.
+- **Best Fit + FIFO algorithm** (`SuggestRemnants`): `score = w1 * fit_score + w2 * age_score`. Weights are configurable via env vars (defaults: `w1=0.6`, `w2=0.4`). Backend endpoint: `GET /inventory/remnants/suggestions?length_mm=X&width_mm=Y&limit=N`. Frontend hook: `useSuggestRemnants` in `src/lib/hooks/use-remnants.ts`.
 - **Overflow alert**: `total_remnant_area / total_raw_stock_area > REMNANT_OVERFLOW_THRESHOLD_PCT` (default 15%) → RED status; blocks new sheet issuance.
 - **Costing**: Area-based allocation. For nested remnants: `cost = (area / parent_remnant_area) * parent_remnant_value`. Waste is absorbed as overhead (BR-C03).
 
@@ -238,7 +238,7 @@ Notable endpoints (reference for context):
 | GET | `/inventory/remnants/:id/lineage` | Full lineage chain | ✅ Implemented |
 | POST | `/inventory/remnants/:id/allocate` | Lock remnant to work order | ✅ Implemented |
 | POST | `/inventory/remnants/:id/waste` | Mark remnant as waste | ✅ Implemented |
-| POST | `/inventory/suggest-allocation` | Best Fit + FIFO suggestions | ⚠️ **Planned — not yet implemented in backend**. Frontend uses client-side scoring via `useSuggestRemnants` as interim. |
+| GET | `/inventory/remnants/suggestions` | Best Fit + FIFO suggestions | ✅ Implemented |
 | GET | `/storage-locations` | All active storage locations (zone/rack/shelf) | ✅ Implemented |
 | GET | `/barcode/:id/qr` | QR code PNG | ✅ Implemented |
 | GET | `/barcode/:id/label` | Printable PDF label | ✅ Implemented |
