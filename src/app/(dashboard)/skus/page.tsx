@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Pencil, FlaskConical, Trash2, Wrench } from 'lucide-react'
+import { mapApiErrorVi } from '@/lib/api/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -99,7 +100,7 @@ function CreateSKUDialog({ open, onOpenChange }: CreateSKUDialogProps) {
           onOpenChange(false)
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : 'Tạo thất bại, thử lại')
+          toast.error(mapApiErrorVi(err, 'Tạo sản phẩm thất bại, thử lại'))
         },
       },
     )
@@ -299,7 +300,7 @@ function BOMEditorDialog({ sku, onClose }: BOMEditorDialogProps) {
           onClose()
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : 'Lưu thất bại')
+          toast.error(mapApiErrorVi(err, 'Lưu BOM thất bại'))
         },
       },
     )

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { barcodeApi } from '@/lib/api/barcode'
-import { ApiClientError } from '@/lib/api/client'
+import { mapApiErrorVi } from '@/lib/api/client'
 import type { GenerateBarcodeInput, BarcodeRecord } from '@/types/api'
 
 export const BARCODES_KEY = 'barcodes'
@@ -43,11 +43,7 @@ export function useGenerateBarcode(opts?: { onSuccess?: (bc: BarcodeRecord) => v
       opts?.onSuccess?.(bc)
     },
     onError: (err: unknown) => {
-      if (err instanceof ApiClientError) {
-        toast.error(`Lỗi: ${err.message}`)
-      } else {
-        toast.error('Tạo barcode thất bại')
-      }
+      toast.error(mapApiErrorVi(err, 'Tạo barcode thất bại'))
     },
   })
 }

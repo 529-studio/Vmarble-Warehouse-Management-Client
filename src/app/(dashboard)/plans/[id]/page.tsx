@@ -4,6 +4,7 @@ import { use, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ArrowLeft, ClipboardList } from 'lucide-react'
+import { mapApiErrorVi } from '@/lib/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -89,7 +90,7 @@ export default function PlanDetailPage({
         setApproveOpen(false)
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : 'Duyệt thất bại')
+        toast.error(mapApiErrorVi(err, 'Duyệt thất bại'))
       },
     })
   }
@@ -101,7 +102,7 @@ export default function PlanDetailPage({
         setCancelOpen(false)
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : 'Hủy thất bại')
+        toast.error(mapApiErrorVi(err, 'Hủy thất bại'))
       },
     })
   }

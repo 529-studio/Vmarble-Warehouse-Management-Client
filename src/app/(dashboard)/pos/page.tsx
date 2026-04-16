@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { mapApiErrorVi } from '@/lib/api/client'
 import { usePOs, useCreatePO } from '@/lib/hooks/use-pos'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { usePageParams } from '@/lib/hooks/use-page-params'
@@ -149,7 +150,7 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
         handleOpenChange(false)
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : 'Tạo đơn hàng thất bại, thử lại')
+        toast.error(mapApiErrorVi(err, 'Tạo đơn hàng thất bại, thử lại'))
       },
     })
   }
