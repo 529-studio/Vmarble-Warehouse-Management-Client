@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
+import { mapApiErrorVi } from '@/lib/api/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -113,7 +114,7 @@ function CreateMaterialDialog({ open, onOpenChange }: CreateDialogProps) {
           setErrors({})
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : 'Tạo thất bại, thử lại')
+          toast.error(mapApiErrorVi(err, 'Tạo vật liệu thất bại, thử lại'))
         },
       },
     )

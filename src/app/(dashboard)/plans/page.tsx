@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ClipboardList, Plus } from 'lucide-react'
+import { mapApiErrorVi } from '@/lib/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -167,7 +168,7 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
         setErrors({})
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : 'Tạo kế hoạch thất bại, thử lại')
+        toast.error(mapApiErrorVi(err, 'Tạo kế hoạch thất bại, thử lại'))
       },
     })
   }
@@ -383,7 +384,7 @@ function PlansContent() {
         setApproveTarget(null)
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : 'Duyệt thất bại')
+        toast.error(mapApiErrorVi(err, 'Duyệt thất bại'))
       },
     })
   }
@@ -396,7 +397,7 @@ function PlansContent() {
         setCancelTarget(null)
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : 'Hủy thất bại')
+        toast.error(mapApiErrorVi(err, 'Hủy thất bại'))
       },
     })
   }

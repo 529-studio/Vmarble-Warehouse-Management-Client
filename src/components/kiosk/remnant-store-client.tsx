@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { CheckCircle2, Package, MapPin, RotateCcw } from 'lucide-react'
+import { mapApiErrorVi } from '@/lib/api/client'
 import { BigButton } from '@/components/kiosk/big-button'
 import { ScannerView } from '@/components/kiosk/scanner-view'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -164,8 +165,7 @@ export function RemnantStoreClient() {
           setStep('done')
         },
         onError: (err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Lỗi không xác định'
-          toast.error(`Nhập kho thất bại: ${msg}`)
+          toast.error(mapApiErrorVi(err, 'Nhập kho thất bại'))
           // Reset shelf scan so worker can try again with a different shelf
           setLocationBarcode('')
           setLocationLabel('')

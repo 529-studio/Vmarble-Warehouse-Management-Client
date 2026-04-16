@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { workOrdersApi, type WorkOrdersFilter } from '@/lib/api/work-orders'
 import type { CreateWOInput, AdvanceStatusInput, AssignWorkOrderInput } from '@/types/api'
-import type { ApiClientError } from '@/lib/api/client'
+import { mapApiErrorVi } from '@/lib/api/client'
 
 export const WORK_ORDERS_KEY = 'work-orders'
 export const CONSUMPTIONS_KEY = 'consumptions'
@@ -31,8 +31,8 @@ export function useCreateWorkOrder() {
       queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
       toast.success('Đã tạo lệnh sản xuất')
     },
-    onError: (err: ApiClientError) => {
-      toast.error(err.message ?? 'Tạo lệnh thất bại')
+    onError: (err) => {
+      toast.error(mapApiErrorVi(err, 'Tạo lệnh thất bại'))
     },
   })
 }
@@ -46,12 +46,8 @@ export function useAdvanceStatus() {
       queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
       toast.success('Đã cập nhật trạng thái')
     },
-    onError: (err: ApiClientError) => {
-      if (err.status === 409) {
-        toast.error('Không thể chuyển trạng thái')
-      } else {
-        toast.error(err.message ?? 'Cập nhật thất bại')
-      }
+    onError: (err) => {
+      toast.error(mapApiErrorVi(err, 'Cập nhật trạng thái thất bại'))
     },
   })
 }
@@ -73,8 +69,8 @@ export function useAssignWorkOrder() {
       queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
       toast.success('Đã phân công')
     },
-    onError: (err: ApiClientError) => {
-      toast.error(err.message ?? 'Phân công thất bại')
+    onError: (err) => {
+      toast.error(mapApiErrorVi(err, 'Phân công thất bại'))
     },
   })
 }

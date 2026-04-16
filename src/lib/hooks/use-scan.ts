@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import { barcodeApi } from '@/lib/api/barcode'
-import { ApiClientError } from '@/lib/api/client'
+import { mapApiErrorVi } from '@/lib/api/client'
 import type { ScanEvent, ScanCheckpoint } from '@/types/api'
 
 // ── Zustand scan-session store ────────────────────────────────────────────────
@@ -54,15 +54,7 @@ export function useRecordScan() {
     },
 
     onError: (err: unknown) => {
-      if (err instanceof ApiClientError) {
-        if (err.status === 404) {
-          toast.error('Mã không hợp lệ')
-        } else {
-          toast.error(`Lỗi: ${err.message}`)
-        }
-      } else {
-        toast.error('Lỗi không xác định')
-      }
+      toast.error(mapApiErrorVi(err, 'Quét mã thất bại'))
     },
   })
 }
