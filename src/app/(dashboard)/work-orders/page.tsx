@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ClipboardCheck, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -46,7 +46,6 @@ import {
   useAdvanceStatus,
 } from '@/lib/hooks/use-work-orders'
 import { usePlans } from '@/lib/hooks/use-plans'
-import { useSKUs } from '@/lib/hooks/use-skus'
 import { useAvailableSheets } from '@/lib/hooks/use-remnants'
 import type {
   WorkOrderStatus,
@@ -155,16 +154,42 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
   const { data: plansData } = usePlans({ status: 'APPROVED', limit: 200 })
   const approvedPlans = plansData?.items ?? []
 
-  const { data: skusData } = useSKUs({ limit: 200 })
-  const skus = skusData?.items ?? []
+  // Derive available SKUs from the selected plan's items — no free SKU dropdown.
+  const selectedPlan = useMemo(
+    () => approvedPlans.find((p) => p.id === planId),
+    [approvedPlans, planId],
+  )
+  const planItems = selectedPlan?.items ?? []
+
+  // Find the selected plan item to enforce max quantity.
+  const selectedPlanItem = useMemo(
+    () => planItems.find((item) => item.sku_id === skuId),
+    [planItems, skuId],
+  )
+  const maxQuantity = selectedPlanItem?.quantity ?? 1
 
   const { mutate, isPending } = useCreateWorkOrder()
+
+  function handlePlanChange(newPlanId: string) {
+    setPlanId(newPlanId)
+    setSkuId('')
+    setQuantity(1)
+    setErrors((prev) => ({ ...prev, plan_id: '', sku_id: '' }))
+  }
+
+  function handleSkuChange(newSkuId: string) {
+    setSkuId(newSkuId)
+    const item = planItems.find((i) => i.sku_id === newSkuId)
+    if (item) setQuantity(item.quantity)
+    setErrors((prev) => ({ ...prev, sku_id: '' }))
+  }
 
   function validate(): boolean {
     const next: Record<string, string> = {}
     if (!planId) next.plan_id = 'Chọn kế hoạch'
     if (!skuId) next.sku_id = 'Chọn sản phẩm'
     if (quantity < 1) next.quantity = 'Số lượng phải ≥ 1'
+    if (quantity > maxQuantity) next.quantity = `Số lượng không được vượt quá ${maxQuantity}`
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -201,7 +226,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>Kế hoạch *</Label>
-            <Select value={planId} onValueChange={setPlanId}>
+            <Select value={planId} onValueChange={handlePlanChange}>
               <SelectTrigger>
                 <SelectValue placeholder="— Chọn kế hoạch đã duyệt —" />
               </SelectTrigger>
@@ -222,15 +247,27 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
           </div>
 
           <div className="space-y-1">
-            <Label>Sản phẩm *</Label>
-            <Select value={skuId} onValueChange={setSkuId}>
+            <Label>Sản phẩm (từ kế hoạch) *</Label>
+            <Select
+              value={skuId}
+              onValueChange={handleSkuChange}
+              disabled={!planId}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="— Chọn SKU —" />
+                <SelectValue
+                  placeholder={
+                    !planId
+                      ? '— Chọn kế hoạch trước —'
+                      : planItems.length === 0
+                        ? '— Kế hoạch không có sản phẩm —'
+                        : '— Chọn sản phẩm —'
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {skus.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.code} — {s.name}
+                {planItems.map((item) => (
+                  <SelectItem key={item.sku_id} value={item.sku_id}>
+                    {item.sku_code ?? item.sku_id.slice(0, 8)} — {item.sku_name ?? 'N/A'} (SL: {item.quantity})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -239,13 +276,17 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="wo-quantity">Số lượng *</Label>
+            <Label htmlFor="wo-quantity">
+              Số lượng *{selectedPlanItem ? ` (tối đa: ${maxQuantity})` : ''}
+            </Label>
             <Input
               id="wo-quantity"
               type="number"
               min={1}
+              max={maxQuantity}
               value={quantity}
               onChange={(e) => setQuantity(Number(e.target.value))}
+              disabled={!skuId}
             />
             {errors.quantity && <p className="text-xs text-destructive">{errors.quantity}</p>}
           </div>
