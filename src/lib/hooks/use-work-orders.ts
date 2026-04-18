@@ -74,3 +74,9 @@ export function useAssignWorkOrder() {
     },
   })
 }
+
+export function useSuggestAssignment() {
+  return useMutation({
+    mutationFn: (woId: string) => workOrdersApi.suggestAssignment(woId),
+  })
+}

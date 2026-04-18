@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, LogOut, UserCircle } from 'lucide-react'
+import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -12,14 +12,21 @@ import { logout } from '@/lib/hooks/use-auth'
 
 // Full management nav — visible to admin, accountant, planner, warehouse, cnc_manager
 const MANAGEMENT_NAV = [
-  { href: '/overview',     label: 'Tổng quan',     icon: LayoutDashboard },
-  { href: '/pos',          label: 'Đơn hàng',      icon: ShoppingCart },
-  { href: '/plans',        label: 'Kế hoạch SX',   icon: ClipboardList },
-  { href: '/work-orders',  label: 'Lệnh sản xuất', icon: ClipboardCheck },
-  { href: '/remnants',     label: 'Kho tấm lẻ',    icon: Package },
-  { href: '/costing',      label: 'Giá thành',      icon: DollarSign },
-  { href: '/materials',    label: 'Nguyên liệu',   icon: Layers },
-  { href: '/skus',         label: 'Sản phẩm',      icon: Boxes },
+  { href: '/overview',          label: 'Tổng quan',       icon: LayoutDashboard },
+  { href: '/pos',               label: 'Đơn hàng',        icon: ShoppingCart },
+  { href: '/plans',             label: 'Kế hoạch SX',     icon: ClipboardList },
+  { href: '/work-orders',       label: 'Lệnh sản xuất',   icon: ClipboardCheck },
+  { href: '/cutting-dispatch',  label: 'Điều phối cắt',   icon: Scissors },
+  { href: '/remnants',          label: 'Kho tấm lẻ',      icon: Package },
+  { href: '/costing',           label: 'Giá thành',       icon: DollarSign },
+  { href: '/materials',         label: 'Nguyên liệu',     icon: Layers },
+  { href: '/skus',              label: 'Sản phẩm',        icon: Boxes },
+] as const
+
+// CNC Manager nav — cutting dispatch + work orders
+const CNC_MANAGER_NAV = [
+  { href: '/cutting-dispatch', label: 'Điều phối cắt', icon: Scissors },
+  { href: '/work-orders',      label: 'Lệnh sản xuất', icon: ClipboardCheck },
 ] as const
 
 // Foreman nav — shop-floor supervisor: only work orders are relevant
@@ -29,6 +36,7 @@ const FOREMAN_NAV = [
 
 function navItemsForRole(role: string | null) {
   if (role === 'foreman') return FOREMAN_NAV
+  if (role === 'cnc_manager') return CNC_MANAGER_NAV
   return MANAGEMENT_NAV
 }
 

@@ -3,6 +3,7 @@ import type {
   CreateWOInput,
   AdvanceStatusInput,
   AssignWorkOrderInput,
+  SuggestAssignmentResult,
   ConsumptionRecord,
   PagedResult,
 } from '@/types/api'
@@ -40,4 +41,8 @@ export const workOrdersApi = {
   /** POST /api/v1/work-orders/:id/assign */
   assign: (id: string, input: AssignWorkOrderInput) =>
     apiClient.post<WorkOrder>(`/work-orders/${id}/assign`, input),
+
+  /** POST /api/v1/work-orders/:id/suggest-assignment */
+  suggestAssignment: (id: string) =>
+    apiClient.post<SuggestAssignmentResult>(`/work-orders/${id}/suggest-assignment`, {}),
 }
