@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ClipboardList, Plus } from 'lucide-react'
@@ -114,15 +114,21 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
   const { data: posData } = usePOs({ limit: 200 })
   const pos = posData?.items ?? []
 
+  const { data: skusData } = useSKUs({ limit: 500 })
+  const skuMap = useMemo(
+    () => new Map((skusData?.items ?? []).map((s) => [s.id, s.code])),
+    [skusData],
+  )
+
   // Load PO line items when a PO is selected to auto-populate rows
   const { data: lineItems } = usePOLineItems(poId || null)
 
-  const { data: skusData } = useSKUs({ limit: 200 })
-  const skus = skusData?.items ?? []
+  const selectedPO = useMemo(() => pos.find((p) => p.id === poId), [pos, poId])
 
   const { mutate, isPending } = useCreatePlan()
 
-  // Auto-populate rows when line items load for the selected PO
+  // Auto-populate rows when line items load for the selected PO.
+  // SKU is fixed from PO — user can only adjust quantity.
   useEffect(() => {
     if (!lineItems) return
     setRows(
@@ -132,21 +138,39 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
     )
   }, [lineItems])
 
-  // Reset rows to a blank row when PO changes (before lineItems arrive)
+  // Reset rows and auto-fill deadline when PO changes
   function handlePoChange(id: string) {
     setPoId(id)
     setRows([emptyRow()])
+    setErrors({})
+    // Auto-fill deadline from PO's expected_delivery
+    const po = pos.find((p) => p.id === id)
+    if (po?.expected_delivery) {
+      setDeadline(po.expected_delivery.slice(0, 10)) // YYYY-MM-DD for input[type=date]
+    } else {
+      setDeadline('')
+    }
   }
 
-  function updateRow(key: number, patch: Partial<PlanRowDraft>) {
-    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+  function updateRowQuantity(key: number, quantity: number) {
+    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, quantity } : r)))
   }
 
   function validate(): boolean {
     const next: Record<string, string> = {}
     if (!poId) next.po_id = 'Chọn đơn hàng'
-    const invalid = rows.some((r) => !r.sku_id || r.quantity < 1)
-    if (invalid) next.rows = 'Mỗi dòng cần chọn sản phẩm và số lượng ≥ 1'
+    const items = lineItems ?? []
+    for (const row of rows) {
+      if (!row.sku_id || row.quantity < 1) {
+        next.rows = 'Mỗi dòng cần có sản phẩm và số lượng ≥ 1'
+        break
+      }
+      const li = items.find((i) => i.sku_id === row.sku_id)
+      if (li && row.quantity > li.quantity) {
+        next.rows = `Số lượng không được vượt quá SL đơn hàng (${li.quantity})`
+        break
+      }
+    }
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -197,86 +221,72 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
               </SelectContent>
             </Select>
             {errors.po_id && <p className="text-xs text-destructive">{errors.po_id}</p>}
+            {selectedPO && (
+              <p className="text-xs text-muted-foreground">
+                Hạn giao hàng: {formatDate(selectedPO.expected_delivery)}
+              </p>
+            )}
           </div>
 
           {/* Deadline */}
           <div className="space-y-1">
-            <Label htmlFor="plan-deadline">Hạn hoàn thành *</Label>
+            <Label htmlFor="plan-deadline">Hạn hoàn thành</Label>
             <Input
               id="plan-deadline"
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
             />
-            {errors.deadline && <p className="text-xs text-destructive">{errors.deadline}</p>}
           </div>
 
-          {/* Items */}
+          {/* Items — auto-populated from PO line items */}
           <div className="space-y-2">
-            <Label>Sản phẩm</Label>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Sản phẩm</TableHead>
-                  <TableHead className="w-28">Số lượng</TableHead>
-                  <TableHead className="w-12" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.key}>
-                    <TableCell>
-                      <Select
-                        value={row.sku_id}
-                        onValueChange={(v) => updateRow(row.key, { sku_id: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="— Chọn —" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {skus.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.code} — {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={row.quantity}
-                        onChange={(e) =>
-                          updateRow(row.key, { quantity: Number(e.target.value) })
-                        }
-                        className="h-9"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={rows.length === 1}
-                        onClick={() => setRows((prev) => prev.filter((r) => r.key !== row.key))}
-                      >
-                        ✕
-                      </Button>
-                    </TableCell>
+            <Label>Sản phẩm (từ đơn hàng)</Label>
+            {!poId && (
+              <p className="text-xs text-muted-foreground">Chọn đơn hàng để hiện danh sách sản phẩm</p>
+            )}
+            {poId && (lineItems ?? []).length === 0 && (
+              <p className="text-xs text-muted-foreground">Đơn hàng không có sản phẩm</p>
+            )}
+            {poId && (lineItems ?? []).length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Sản phẩm</TableHead>
+                    <TableHead className="w-28">SL đơn hàng</TableHead>
+                    <TableHead className="w-28">SL sản xuất</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row) => {
+                    const li = (lineItems ?? []).find((i) => i.sku_id === row.sku_id)
+                    return (
+                      <TableRow key={row.key}>
+                        <TableCell className="text-sm">
+                          {skuMap.get(row.sku_id) ?? row.sku_id.slice(0, 8)}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {li?.quantity ?? '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={li?.quantity}
+                            value={row.quantity}
+                            onChange={(e) =>
+                              updateRowQuantity(row.key, Number(e.target.value))
+                            }
+                            className="h-9"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
             {errors.rows && <p className="text-xs text-destructive">{errors.rows}</p>}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRows((prev) => [...prev, emptyRow()])}
-            >
-              + Thêm dòng
-            </Button>
           </div>
         </div>
 
@@ -373,6 +383,12 @@ function PlansContent() {
   const plans = data?.items ?? []
   const totalItems = data?.total_items ?? 0
 
+  const { data: posData } = usePOs({ limit: 200 })
+  const poMap = useMemo(
+    () => new Map((posData?.items ?? []).map((p) => [p.id, p.code])),
+    [posData],
+  )
+
   const { mutate: approve, isPending: approving } = useApprovePlan()
   const { mutate: cancel, isPending: canceling } = useCancelPlan()
 
@@ -463,7 +479,7 @@ function PlansContent() {
                         href={`/plans/${plan.id}`}
                         className="hover:underline"
                       >
-                        {plan.po_code ?? plan.po_id.slice(0, 8)}
+                        {poMap.get(plan.po_id) ?? plan.po_id.slice(0, 8)}
                       </Link>
                     </TableCell>
                     <TableCell>
@@ -508,7 +524,7 @@ function PlansContent() {
       <ConfirmActionDialog
         open={approveTarget !== null}
         title="Duyệt kế hoạch sản xuất?"
-        description={`Kế hoạch cho đơn hàng "${approveTarget?.po_code ?? ''}" sẽ chuyển sang trạng thái Đã duyệt. Hành động này không thể hoàn tác.`}
+        description={`Kế hoạch cho đơn hàng "${approveTarget ? (poMap.get(approveTarget.po_id) ?? approveTarget.po_id.slice(0, 8)) : ''}" sẽ chuyển sang trạng thái Đã duyệt. Hành động này không thể hoàn tác.`}
         actionLabel="Duyệt"
         isPending={approving}
         onConfirm={handleApprove}
@@ -518,7 +534,7 @@ function PlansContent() {
       <ConfirmActionDialog
         open={cancelTarget !== null}
         title="Hủy kế hoạch sản xuất?"
-        description={`Kế hoạch cho đơn hàng "${cancelTarget?.po_code ?? ''}" sẽ bị hủy và không thể khôi phục.`}
+        description={`Kế hoạch cho đơn hàng "${cancelTarget ? (poMap.get(cancelTarget.po_id) ?? cancelTarget.po_id.slice(0, 8)) : ''}" sẽ bị hủy và không thể khôi phục.`}
         actionLabel="Hủy kế hoạch"
         actionVariant="destructive"
         isPending={canceling}
