@@ -93,7 +93,6 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
   const scannerRef = useRef<HTMLDivElement>(null)
   const html5QrCodeRef = useRef<InstanceType<
     // Dynamically-typed import to avoid SSR issues
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     any
   > | null>(null)
   // Tracks whether scanner.start() has resolved so cleanup knows it's safe to stop
@@ -213,8 +212,9 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
           style={{ minHeight: 260 }}
         />
         <Button
-          size="sm"
+          size="default"
           variant="ghost"
+          className="min-h-[48px] text-base"
           onClick={() => setMode('manual')}
         >
           <Keyboard className="size-4" />
@@ -228,13 +228,13 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
             <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
               {errorIcon[cameraErrorInfo.kind]}
               <div className="space-y-1">
-                <p className="text-sm font-medium leading-none">{cameraErrorInfo.title}</p>
-                <p className="text-xs text-muted-foreground">{cameraErrorInfo.description}</p>
+                <p className="text-base font-medium leading-none">{cameraErrorInfo.title}</p>
+                <p className="text-sm text-muted-foreground">{cameraErrorInfo.description}</p>
               </div>
             </div>
           )}
           {!cameraErrorInfo && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Nhập mã thủ công (camera không khả dụng)
             </p>
           )}
@@ -255,8 +255,9 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
             />
           </div>
           <Button
-            size="sm"
+            size="default"
             variant="ghost"
+            className="min-h-[48px] text-base"
             onClick={() => {
               setCameraErrorInfo(null)
               setMode('camera')

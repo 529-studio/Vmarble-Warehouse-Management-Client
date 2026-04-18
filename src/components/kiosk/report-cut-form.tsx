@@ -2,7 +2,7 @@
 
 import { useState, useId, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import QRCode from 'react-qr-code'
 import { AlertTriangle, CheckCircle2, ChevronLeft, Copy, Check } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -79,7 +79,7 @@ function NumericField({
 }: NumericFieldProps) {
   return (
     <div className="space-y-1">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="text-base">{label}</Label>
       <Input
         id={id}
         type="number"
@@ -92,10 +92,10 @@ function NumericField({
         disabled={disabled}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
-        className={cn(error && 'border-destructive focus-visible:ring-destructive')}
+        className={cn('h-12 text-base', error && 'border-destructive focus-visible:ring-destructive')}
       />
       {error && (
-        <p id={`${id}-error`} className="text-xs text-destructive" role="alert">
+        <p id={`${id}-error`} className="text-sm text-destructive" role="alert">
           {error}
         </p>
       )}
@@ -126,7 +126,7 @@ function WasteToggle({ hasRemnant, onChange, disabled }: WasteToggleProps) {
         disabled={disabled}
         onClick={() => onChange(true)}
         className={cn(
-          'flex min-h-[48px] items-center justify-center rounded-xl border-2 px-3 text-sm font-semibold transition-all',
+          'flex min-h-[48px] items-center justify-center rounded-xl border-2 px-3 text-base font-semibold transition-all',
           hasRemnant
             ? 'border-primary bg-primary/10 text-primary'
             : 'border-border bg-white text-muted-foreground',
@@ -142,7 +142,7 @@ function WasteToggle({ hasRemnant, onChange, disabled }: WasteToggleProps) {
         disabled={disabled}
         onClick={() => onChange(false)}
         className={cn(
-          'flex min-h-[48px] items-center justify-center rounded-xl border-2 px-3 text-sm font-semibold transition-all',
+          'flex min-h-[48px] items-center justify-center rounded-xl border-2 px-3 text-base font-semibold transition-all',
           !hasRemnant
             ? 'border-destructive bg-destructive/10 text-destructive'
             : 'border-border bg-white text-muted-foreground',
@@ -196,8 +196,8 @@ function SuccessModal({ remnantId, onGoHome }: SuccessModalProps) {
             <div className="mx-auto mb-3 rounded-lg bg-white p-2">
               <QRCode value={remnantId} size={144} />
             </div>
-            <p className="text-xs text-muted-foreground">Mã tấm lẻ</p>
-            <p className="mt-0.5 break-all font-mono text-sm font-medium">
+            <p className="text-base text-muted-foreground">Mã tấm lẻ</p>
+            <p className="mt-0.5 break-all font-mono text-base font-medium">
               {remnantId}
             </p>
           </div>
@@ -206,7 +206,7 @@ function SuccessModal({ remnantId, onGoHome }: SuccessModalProps) {
           <button
             type="button"
             onClick={handleCopy}
-            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors hover:bg-muted/50"
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-base font-semibold transition-colors hover:bg-muted/50"
           >
             {copied ? (
               <><Check className="size-4 text-green-600" aria-hidden="true" /> Đã sao chép</>
@@ -316,8 +316,8 @@ export function ReportCutForm() {
 
   // ── Client-side area-conservation warning (non-blocking) ────────────────
   // watch() re-runs on every keystroke; we derive the warning from live values.
-  const watchedUsedLength = watch('usedLength')
-  const watchedUsedWidth = watch('usedWidth')
+  const watchedUsedLength = useWatch({ control, name: 'usedLength' })
+  const watchedUsedWidth = useWatch({ control, name: 'usedWidth' })
   const sourceL = workOrder?.sku_dimensions?.length_mm
   const sourceW = workOrder?.sku_dimensions?.width_mm
   const uLNum = parseFloat(watchedUsedLength)
@@ -405,7 +405,7 @@ export function ReportCutForm() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex size-10 items-center justify-center rounded-xl border bg-white text-muted-foreground shadow-sm active:bg-muted"
+          className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border bg-white text-muted-foreground shadow-sm active:bg-muted"
           aria-label="Quay lại"
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
@@ -413,7 +413,7 @@ export function ReportCutForm() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold leading-tight">Báo cáo kết quả cắt</h1>
           {workOrder && (
-            <p className="truncate text-sm text-muted-foreground">
+            <p className="truncate text-base text-muted-foreground">
               {workOrder.sku_code ?? workOrder.sku_id.slice(0, 12) + '…'}
               {sourceDim
                 ? ` · ${sourceDim.length_mm}×${sourceDim.width_mm} mm`
@@ -436,7 +436,7 @@ export function ReportCutForm() {
               rules={{ required: 'Chọn tấm ván trước khi báo cáo' }}
               render={({ field }) => (
                 <div className="space-y-1">
-                  <Label htmlFor={fid('board-sheet-id')}>
+                  <Label htmlFor={fid('board-sheet-id')} className="text-base">
                     Tấm ván nguyên liệu
                   </Label>
                   <Select
@@ -460,12 +460,12 @@ export function ReportCutForm() {
                     </SelectTrigger>
                     <SelectContent>
                       {(sheetsData?.items ?? []).length === 0 && !isLoadingSheets ? (
-                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                        <div className="px-3 py-4 text-center text-base text-muted-foreground">
                           Không có tấm ván khả dụng
                         </div>
                       ) : (
                         (sheetsData?.items ?? []).map((sheet) => (
-                          <SelectItem key={sheet.id} value={sheet.id}>
+                          <SelectItem key={sheet.id} value={sheet.id} className="min-h-[48px] text-base">
                             {sheet.dimensions.length_mm} × {sheet.dimensions.width_mm} mm
                             {' — Lô '}
                             {sheet.lot_batch ?? sheet.supplier_code ?? sheet.lot_id.slice(0, 8).toUpperCase()}
@@ -477,7 +477,7 @@ export function ReportCutForm() {
                   {errors.boardSheetId && (
                     <p
                       id={`${fid('board-sheet-id')}-error`}
-                      className="text-xs text-destructive"
+                      className="text-sm text-destructive"
                       role="alert"
                     >
                       {errors.boardSheetId.message}
@@ -551,7 +551,7 @@ export function ReportCutForm() {
                 className="mt-0.5 size-4 shrink-0 text-amber-500"
                 aria-hidden="true"
               />
-              <span>
+              <span className="text-sm">
                 Diện tích vượt quá tấm nguồn. Server sẽ kiểm tra lại — bạn vẫn
                 có thể tiếp tục gửi.
               </span>
