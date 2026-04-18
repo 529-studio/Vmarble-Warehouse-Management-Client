@@ -12,14 +12,15 @@ import { logout } from '@/lib/hooks/use-auth'
 
 // Full management nav — visible to admin, accountant, planner, warehouse, cnc_manager
 const MANAGEMENT_NAV = [
-  { href: '/overview',     label: 'Tổng quan',     icon: LayoutDashboard },
-  { href: '/pos',          label: 'Đơn hàng',      icon: ShoppingCart },
-  { href: '/plans',        label: 'Kế hoạch SX',   icon: ClipboardList },
-  { href: '/work-orders',  label: 'Lệnh sản xuất', icon: ClipboardCheck },
-  { href: '/remnants',     label: 'Kho tấm lẻ',    icon: Package },
-  { href: '/costing',      label: 'Giá thành',      icon: DollarSign },
-  { href: '/materials',    label: 'Nguyên liệu',   icon: Layers },
-  { href: '/skus',         label: 'Sản phẩm',      icon: Boxes },
+  { href: '/overview',          label: 'Tổng quan',       icon: LayoutDashboard },
+  { href: '/pos',               label: 'Đơn hàng',        icon: ShoppingCart },
+  { href: '/plans',             label: 'Kế hoạch SX',     icon: ClipboardList },
+  { href: '/work-orders',       label: 'Lệnh sản xuất',   icon: ClipboardCheck },
+  { href: '/cutting-dispatch',  label: 'Điều phối cắt',   icon: Scissors },
+  { href: '/remnants',          label: 'Kho tấm lẻ',      icon: Package },
+  { href: '/costing',           label: 'Giá thành',       icon: DollarSign },
+  { href: '/materials',         label: 'Nguyên liệu',     icon: Layers },
+  { href: '/skus',              label: 'Sản phẩm',        icon: Boxes },
 ] as const
 
 // CNC Manager nav — cutting dispatch + work orders
