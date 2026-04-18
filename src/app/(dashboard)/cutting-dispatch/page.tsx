@@ -37,6 +37,7 @@ import {
   useAssignWorkOrder,
   useSuggestAssignment,
 } from '@/lib/hooks/use-work-orders'
+import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
 import type { WorkOrder, WorkOrderStatus } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -107,8 +108,16 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
         setUserId(result.user_id)
         setSuggestedCount(result.in_cutting_count)
       },
-      onError: () => {
-        toast.error('Không tìm được công nhân phù hợp')
+      onError: (err) => {
+        if (
+          err instanceof ApiClientError
+          && err.status === 404
+          && err.message === 'HTTP 404'
+        ) {
+          toast.error('Backend chưa hỗ trợ API gợi ý công nhân CNC')
+          return
+        }
+        toast.error(mapApiErrorVi(err, 'Không tìm được công nhân phù hợp'))
       },
     })
   }
