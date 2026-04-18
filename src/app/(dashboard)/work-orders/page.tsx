@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { Suspense, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ClipboardCheck, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -48,6 +48,8 @@ import {
 import { usePlans } from '@/lib/hooks/use-plans'
 import { usePOs } from '@/lib/hooks/use-pos'
 import { useAvailableSheets } from '@/lib/hooks/use-remnants'
+import { usePageParams } from '@/lib/hooks/use-page-params'
+import { DataPagination } from '@/components/ui/data-pagination'
 import type {
   WorkOrderStatus,
   WorkOrder,
@@ -412,14 +414,19 @@ function WorkOrdersContent() {
   const [createOpen, setCreateOpen] = useState(false)
   const [advanceTarget, setAdvanceTarget] = useState<WorkOrder | null>(null)
 
+  const { page, limit, setPage } = usePageParams(15)
+
   const filter = {
     ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
     ...(planFilter !== 'ALL' ? { plan_id: planFilter } : {}),
+    page,
+    limit,
   }
 
-  const { data, isLoading, isError } = useWorkOrders(filter)
+  const { data, isLoading, isFetching, isError } = useWorkOrders(filter)
   const workOrders = data?.items ?? []
   const totalItems = data?.total_items ?? 0
+  const totalPages = data?.total_pages ?? 1
 
   const { data: plansData } = usePlans({ limit: 200 })
   const allPlans = plansData?.items ?? []
@@ -454,7 +461,7 @@ function WorkOrdersContent() {
         <div className="flex flex-wrap gap-2">
           <Select
             value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as WorkOrderStatus | 'ALL')}
+            onValueChange={(v) => { setStatusFilter(v as WorkOrderStatus | 'ALL'); setPage(1) }}
           >
             <SelectTrigger className="w-44">
               <SelectValue />
@@ -471,7 +478,7 @@ function WorkOrdersContent() {
 
           <Select
             value={planFilter}
-            onValueChange={setPlanFilter}
+            onValueChange={(v) => { setPlanFilter(v); setPage(1) }}
           >
             <SelectTrigger className="w-52">
               <SelectValue />
@@ -494,7 +501,7 @@ function WorkOrdersContent() {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border">
+      <div className={`rounded-lg border transition-opacity ${isFetching && !isLoading ? 'opacity-60' : ''}`}>
         <div className="border-b px-4 py-3 text-sm font-medium text-muted-foreground">
           {isLoading ? 'Đang tải…' : `Tất cả lệnh sản xuất (${totalItems})`}
         </div>
@@ -576,6 +583,16 @@ function WorkOrdersContent() {
         )}
       </div>
 
+      {!isLoading && !isError && (
+        <DataPagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          limit={limit}
+          onPageChange={setPage}
+        />
+      )}
+
       <CreateWODialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <AdvanceDialog
@@ -597,7 +614,9 @@ export default function WorkOrdersPage() {
         <ClipboardCheck className="size-6 text-muted-foreground" aria-hidden="true" />
         <h1 className="text-2xl font-bold">Lệnh sản xuất</h1>
       </div>
-      <WorkOrdersContent />
+      <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>
+        <WorkOrdersContent />
+      </Suspense>
     </div>
   )
 }

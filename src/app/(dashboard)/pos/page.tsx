@@ -62,15 +62,31 @@ function formatMoney(amount: number, currency: string) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency }).format(amount)
 }
 
+// ── Helpers — price formatting ────────────────────────────────────────────────
+
+/** Format a number with thousand-separators: 1500000 → "1,500,000" */
+function formatPrice(amount: number): string {
+  if (!amount) return ''
+  return amount.toLocaleString('en-US')
+}
+
+/** Parse a formatted price string back to a number: "1,500,000" → 1500000 */
+function parsePrice(raw: string): number {
+  const n = Number(raw.replace(/,/g, ''))
+  return isNaN(n) ? 0 : n
+}
+
 // ── Line item row draft ───────────────────────────────────────────────────────
 
 interface LineItemDraft extends CreateLineItemInput {
   _key: number
+  /** Display string for the price input — keeps formatted value while user types */
+  _priceDisplay: string
 }
 
 let _keyCounter = 0
 function emptyLine(): LineItemDraft {
-  return { _key: ++_keyCounter, sku_id: '', quantity: 1, selling_price: { amount: 0, currency: 'VND' } }
+  return { _key: ++_keyCounter, sku_id: '', quantity: 1, selling_price: { amount: 0, currency: 'VND' }, _priceDisplay: '' }
 }
 
 // ── Create PO Dialog ──────────────────────────────────────────────────────────
@@ -80,13 +96,15 @@ interface CreatePODialogProps {
   onOpenChange: (v: boolean) => void
 }
 
-type FormErrors = Partial<Record<'code' | 'expected_delivery' | 'line_items', string>>
+type FormErrors = Partial<Record<'code' | 'expected_delivery', string>>
+type RowErrors = Record<number, { sku_id?: string; quantity?: string; price?: string }>
 
 function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
   const [code, setCode] = useState('')
   const [expectedDelivery, setExpectedDelivery] = useState('')
   const [lines, setLines] = useState<LineItemDraft[]>([emptyLine()])
   const [errors, setErrors] = useState<FormErrors>({})
+  const [rowErrors, setRowErrors] = useState<RowErrors>({})
 
   const { mutate, isPending } = useCreatePO()
   // Load all SKUs for the picker (no pagination — catalog is small)
@@ -98,6 +116,7 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
     setExpectedDelivery('')
     setLines([emptyLine()])
     setErrors({})
+    setRowErrors({})
   }
 
   function handleOpenChange(v: boolean) {
@@ -113,24 +132,40 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
     setLines((l) => l.length > 1 ? l.filter((x) => x._key !== key) : l)
   }
 
-  function updateLine(key: number, patch: Partial<CreateLineItemInput>) {
+  function updateLine(key: number, patch: Partial<LineItemDraft>) {
     setLines((l) => l.map((x) => x._key === key ? { ...x, ...patch } : x))
-    setErrors((e) => ({ ...e, line_items: undefined }))
+    setRowErrors((e) => ({ ...e, [key]: {} }))
+  }
+
+  function handlePriceInput(key: number, raw: string) {
+    // Allow only digits and commas while typing; reformat on each keystroke
+    const digitsOnly = raw.replace(/[^0-9]/g, '')
+    const amount = Number(digitsOnly)
+    const display = digitsOnly ? Number(digitsOnly).toLocaleString('en-US') : ''
+    updateLine(key, { selling_price: { amount, currency: 'VND' }, _priceDisplay: display })
   }
 
   function validate(): boolean {
-    const next: FormErrors = {}
-    if (!code.trim()) next.code = 'Mã PO không được để trống'
-    if (!expectedDelivery) next.expected_delivery = 'Chọn ngày giao hàng dự kiến'
-    const lineInvalid = lines.some(
-      (l) => !l.sku_id || l.quantity <= 0 || l.selling_price.amount <= 0,
-    )
-    if (lineInvalid) next.line_items = 'Mỗi dòng cần chọn sản phẩm, số lượng ≥ 1 và đơn giá > 0'
-    const skuIds = lines.map((l) => l.sku_id).filter(Boolean)
-    if (new Set(skuIds).size !== skuIds.length)
-      next.line_items = 'Mỗi sản phẩm chỉ xuất hiện 1 lần trong đơn hàng'
-    setErrors(next)
-    return Object.keys(next).length === 0
+    const nextForm: FormErrors = {}
+    const nextRows: RowErrors = {}
+
+    if (!code.trim()) nextForm.code = 'Mã PO không được để trống'
+    if (!expectedDelivery) nextForm.expected_delivery = 'Chọn ngày giao hàng dự kiến'
+
+    const seenSkus = new Set<string>()
+    for (const l of lines) {
+      const rowErr: RowErrors[number] = {}
+      if (!l.sku_id) rowErr.sku_id = 'Chọn sản phẩm'
+      else if (seenSkus.has(l.sku_id)) rowErr.sku_id = 'Sản phẩm đã được chọn ở dòng khác'
+      if (l.sku_id) seenSkus.add(l.sku_id)
+      if (l.quantity < 1) rowErr.quantity = 'SL ≥ 1'
+      if (l.selling_price.amount <= 0) rowErr.price = 'Đơn giá > 0'
+      if (Object.keys(rowErr).length) nextRows[l._key] = rowErr
+    }
+
+    setErrors(nextForm)
+    setRowErrors(nextRows)
+    return Object.keys(nextForm).length === 0 && Object.keys(nextRows).length === 0
   }
 
   function handleSubmit() {
@@ -214,6 +249,7 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
                     const usedSkuIds = new Set(
                       lines.filter((l) => l._key !== line._key).map((l) => l.sku_id),
                     )
+                    const re = rowErrors[line._key] ?? {}
                     return (
                       <TableRow key={line._key}>
                         {/* SKU picker */}
@@ -221,7 +257,7 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
                           <select
                             value={line.sku_id}
                             onChange={(e) => updateLine(line._key, { sku_id: e.target.value })}
-                            className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            className={`w-full rounded-md border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring ${re.sku_id ? 'border-destructive' : 'border-input'}`}
                           >
                             <option value="">— Chọn sản phẩm —</option>
                             {skus.map((s) => (
@@ -234,6 +270,7 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
                               </option>
                             ))}
                           </select>
+                          {re.sku_id && <p className="mt-1 text-xs text-destructive">{re.sku_id}</p>}
                         </TableCell>
 
                         {/* Quantity */}
@@ -245,23 +282,29 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
                             onChange={(e) =>
                               updateLine(line._key, { quantity: Number(e.target.value) })
                             }
+                            className={re.quantity ? 'border-destructive' : ''}
                           />
+                          {re.quantity && <p className="mt-1 text-xs text-destructive">{re.quantity}</p>}
                         </TableCell>
 
-                        {/* Price */}
+                        {/* Price — text input with comma formatting */}
                         <TableCell>
                           <Input
-                            type="number"
-                            min={0}
-                            step={1000}
-                            value={line.selling_price.amount || ''}
-                            onChange={(e) =>
-                              updateLine(line._key, {
-                                selling_price: { amount: Number(e.target.value), currency: 'VND' },
-                              })
-                            }
-                            placeholder="1500000"
+                            type="text"
+                            inputMode="numeric"
+                            value={line._priceDisplay}
+                            onChange={(e) => handlePriceInput(line._key, e.target.value)}
+                            onBlur={() => {
+                              // Reformat on blur to clean up partial input
+                              const display = line.selling_price.amount
+                                ? formatPrice(line.selling_price.amount)
+                                : ''
+                              updateLine(line._key, { _priceDisplay: display })
+                            }}
+                            placeholder="1,500,000"
+                            className={re.price ? 'border-destructive' : ''}
                           />
+                          {re.price && <p className="mt-1 text-xs text-destructive">{re.price}</p>}
                         </TableCell>
 
                         {/* Remove */}
@@ -290,9 +333,6 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
               Thêm sản phẩm
             </Button>
 
-            {errors.line_items && (
-              <p className="text-sm text-destructive">{errors.line_items}</p>
-            )}
           </div>
         </div>
 
