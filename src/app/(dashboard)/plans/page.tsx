@@ -48,6 +48,7 @@ import {
   useCancelPlan,
 } from '@/lib/hooks/use-plans'
 import { usePOs, usePOLineItems } from '@/lib/hooks/use-pos'
+import { useSKUs } from '@/lib/hooks/use-skus'
 import type { PlanStatus, ProductionPlan, CreatePlanInput, LineItem } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -112,6 +113,12 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
   const { data: posData } = usePOs({ limit: 200 })
   const pos = posData?.items ?? []
 
+  const { data: skusData } = useSKUs({ limit: 500 })
+  const skuMap = useMemo(
+    () => new Map((skusData?.items ?? []).map((s) => [s.id, s.code])),
+    [skusData],
+  )
+
   // Load PO line items when a PO is selected to auto-populate rows
   const { data: lineItems } = usePOLineItems(poId || null)
 
@@ -130,11 +137,18 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
     )
   }, [lineItems])
 
-  // Reset rows to a blank row when PO changes (before lineItems arrive)
+  // Reset rows and auto-fill deadline when PO changes
   function handlePoChange(id: string) {
     setPoId(id)
     setRows([emptyRow()])
     setErrors({})
+    // Auto-fill deadline from PO's expected_delivery
+    const po = pos.find((p) => p.id === id)
+    if (po?.expected_delivery) {
+      setDeadline(po.expected_delivery.slice(0, 10)) // YYYY-MM-DD for input[type=date]
+    } else {
+      setDeadline('')
+    }
   }
 
   function updateRowQuantity(key: number, quantity: number) {
@@ -248,7 +262,7 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
                     return (
                       <TableRow key={row.key}>
                         <TableCell className="text-sm">
-                          {li?.sku_code ?? row.sku_id.slice(0, 8)}
+                          {skuMap.get(row.sku_id) ?? row.sku_id.slice(0, 8)}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {li?.quantity ?? '—'}
@@ -368,6 +382,12 @@ function PlansContent() {
   const plans = data?.items ?? []
   const totalItems = data?.total_items ?? 0
 
+  const { data: posData } = usePOs({ limit: 200 })
+  const poMap = useMemo(
+    () => new Map((posData?.items ?? []).map((p) => [p.id, p.code])),
+    [posData],
+  )
+
   const { mutate: approve, isPending: approving } = useApprovePlan()
   const { mutate: cancel, isPending: canceling } = useCancelPlan()
 
@@ -458,7 +478,7 @@ function PlansContent() {
                         href={`/plans/${plan.id}`}
                         className="hover:underline"
                       >
-                        {plan.po_code ?? plan.po_id.slice(0, 8)}
+                        {poMap.get(plan.po_id) ?? plan.po_id.slice(0, 8)}
                       </Link>
                     </TableCell>
                     <TableCell>
@@ -503,7 +523,7 @@ function PlansContent() {
       <ConfirmActionDialog
         open={approveTarget !== null}
         title="Duyệt kế hoạch sản xuất?"
-        description={`Kế hoạch cho đơn hàng "${approveTarget?.po_code ?? ''}" sẽ chuyển sang trạng thái Đã duyệt. Hành động này không thể hoàn tác.`}
+        description={`Kế hoạch cho đơn hàng "${approveTarget ? (poMap.get(approveTarget.po_id) ?? approveTarget.po_id.slice(0, 8)) : ''}" sẽ chuyển sang trạng thái Đã duyệt. Hành động này không thể hoàn tác.`}
         actionLabel="Duyệt"
         isPending={approving}
         onConfirm={handleApprove}
@@ -513,7 +533,7 @@ function PlansContent() {
       <ConfirmActionDialog
         open={cancelTarget !== null}
         title="Hủy kế hoạch sản xuất?"
-        description={`Kế hoạch cho đơn hàng "${cancelTarget?.po_code ?? ''}" sẽ bị hủy và không thể khôi phục.`}
+        description={`Kế hoạch cho đơn hàng "${cancelTarget ? (poMap.get(cancelTarget.po_id) ?? cancelTarget.po_id.slice(0, 8)) : ''}" sẽ bị hủy và không thể khôi phục.`}
         actionLabel="Hủy kế hoạch"
         actionVariant="destructive"
         isPending={canceling}
