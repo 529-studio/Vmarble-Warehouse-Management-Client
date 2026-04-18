@@ -43,7 +43,7 @@ export default function ScanPage() {
 
       {/* Checkpoint selector */}
       <div>
-        <p className="mb-2 text-sm text-muted-foreground">Chọn điểm kiểm tra:</p>
+        <p className="mb-2 text-base text-muted-foreground">Chọn điểm kiểm tra:</p>
         <div className="flex flex-wrap gap-2">
           {CHECKPOINTS.map((cp) => (
             <button
@@ -51,7 +51,7 @@ export default function ScanPage() {
               type="button"
               onClick={() => setSelectedCheckpoint(cp.key)}
               className={cn(
-                'min-h-12 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                'min-h-12 rounded-full border px-4 py-2 text-base font-medium transition-colors',
                 selectedCheckpoint === cp.key
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-background hover:bg-muted',
@@ -69,7 +69,7 @@ export default function ScanPage() {
           <CardTitle className="flex items-center gap-2 text-base">
             Quét mã QR sản phẩm
             {selectedCheckpoint && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-sm">
                 {CHECKPOINTS.find((c) => c.key === selectedCheckpoint)?.label}
               </Badge>
             )}
@@ -81,7 +81,7 @@ export default function ScanPage() {
             disabled={isPending}
           />
           {isPending && (
-            <p className="mt-2 text-center text-sm text-muted-foreground">Đang xử lý...</p>
+            <p className="mt-2 text-center text-base text-muted-foreground">Đang xử lý...</p>
           )}
         </CardContent>
       </Card>
@@ -93,9 +93,9 @@ export default function ScanPage() {
             <CardTitle className="text-base">Lịch sử quét (phiên này)</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <table className="w-full text-sm">
+            <table className="w-full text-base">
               <thead>
-                <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+                <tr className="border-b bg-muted/50 text-left text-sm text-muted-foreground">
                   <th className="px-4 py-2">Mã barcode</th>
                   <th className="px-4 py-2">Điểm kiểm tra</th>
                   <th className="px-4 py-2">Thời gian</th>
@@ -104,7 +104,7 @@ export default function ScanPage() {
               <tbody>
                 {history.map((entry, i) => (
                   <tr key={entry.scanEvent.id ?? i} className="border-b last:border-0">
-                    <td className="px-4 py-3 font-mono text-xs">{entry.barcodeShort}</td>
+                    <td className="px-4 py-3 font-mono text-sm">{entry.barcodeShort}</td>
                     <td className="px-4 py-3">
                       {CHECKPOINTS.find((c) => c.key === entry.scanEvent.checkpoint)?.label ??
                         entry.scanEvent.checkpoint}

@@ -38,14 +38,14 @@ function RemnantCard({ remnant: r, location }: RemnantCardProps) {
           {(r.bounding_box_length_mm != null || r.bounding_box_width_mm != null) &&
             (r.bounding_box_length_mm !== r.dimensions.length_mm ||
               r.bounding_box_width_mm !== r.dimensions.width_mm) && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Thực tế: {r.dimensions.length_mm} × {r.dimensions.width_mm} mm
               </p>
             )}
         </div>
         <Badge
           variant="secondary"
-          className="shrink-0 bg-green-100 text-green-700"
+          className="shrink-0 bg-green-100 text-sm text-green-700"
         >
           Khả dụng
         </Badge>
@@ -114,7 +114,7 @@ function FilterBar({
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Tìm lô, nhà cung cấp, ID..."
-            className="h-11 pl-9 text-base"
+            className="h-12 pl-9 text-base"
             value={filters.search}
             onChange={(e) => onChange({ search: e.target.value })}
             inputMode="text"
@@ -134,7 +134,7 @@ function FilterBar({
           type="button"
           variant={showDims || hasActive ? 'default' : 'outline'}
           size="icon"
-          className="size-11 shrink-0"
+          className="size-12 shrink-0"
           onClick={() => setShowDims((p) => !p)}
           aria-label="Bộ lọc"
         >
@@ -147,24 +147,24 @@ function FilterBar({
         <div className="rounded-xl border bg-muted/30 p-3 space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Dài tối thiểu (mm)</label>
+              <label className="mb-1 block text-sm text-muted-foreground">Dài tối thiểu (mm)</label>
               <Input
                 type="number"
                 inputMode="numeric"
                 placeholder="0"
-                className="h-11 text-base"
+                className="h-12 text-base"
                 value={filters.minLength}
                 onChange={(e) => onChange({ minLength: e.target.value })}
                 min={0}
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Rộng tối thiểu (mm)</label>
+              <label className="mb-1 block text-sm text-muted-foreground">Rộng tối thiểu (mm)</label>
               <Input
                 type="number"
                 inputMode="numeric"
                 placeholder="0"
-                className="h-11 text-base"
+                className="h-12 text-base"
                 value={filters.minWidth}
                 onChange={(e) => onChange({ minWidth: e.target.value })}
                 min={0}
@@ -174,7 +174,7 @@ function FilterBar({
 
           {qualityOptions.length > 0 && (
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Cấp chất lượng</label>
+              <label className="mb-1 block text-sm text-muted-foreground">Cấp chất lượng</label>
               <Select
                 value={filters.quality}
                 onValueChange={(v) => onChange({ quality: v })}
@@ -196,8 +196,8 @@ function FilterBar({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="w-full text-destructive hover:text-destructive"
+              size="default"
+              className="min-h-[48px] w-full text-base text-destructive hover:text-destructive"
               onClick={onReset}
             >
               <X className="mr-1 size-3.5" />
@@ -241,7 +241,7 @@ export function RemnantListClient() {
 
   const { data: locationMap } = useStorageLocations()
 
-  const allItems = data?.items ?? []
+  const allItems = useMemo(() => data?.items ?? [], [data?.items])
 
   // Derive quality grade options from loaded results
   const qualityOptions = useMemo(
@@ -318,12 +318,12 @@ export function RemnantListClient() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border p-8 text-center">
           <Package className="size-10 text-muted-foreground/50" />
-          <p className="text-sm font-medium">Không có tấm lẻ nào</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-base font-medium">Không có tấm lẻ nào</p>
+          <p className="text-sm text-muted-foreground">
             {hasActiveFilter ? 'Thử điều chỉnh bộ lọc' : 'Kho hiện chưa có tấm lẻ khả dụng'}
           </p>
           {hasActiveFilter && (
-            <Button variant="ghost" size="sm" onClick={handleReset}>
+            <Button variant="ghost" size="default" className="min-h-[48px] text-base" onClick={handleReset}>
               Xóa bộ lọc
             </Button>
           )}

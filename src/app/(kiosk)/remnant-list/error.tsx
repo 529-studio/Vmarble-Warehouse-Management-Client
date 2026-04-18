@@ -10,8 +10,8 @@ export default function RemnantListError({ reset }: { reset: () => void }) {
       <p className="text-base font-medium">Không thể tải danh sách tấm lẻ</p>
       <p className="text-sm text-muted-foreground">Kiểm tra kết nối mạng và thử lại.</p>
       <div className="flex gap-3">
-        <Button variant="outline" onClick={() => router.back()}>Quay lại</Button>
-        <Button onClick={reset}>Thử lại</Button>
+        <Button variant="outline" className="min-h-[48px] text-base" onClick={() => router.back()}>Quay lại</Button>
+        <Button className="min-h-[48px] text-base" onClick={reset}>Thử lại</Button>
       </div>
     </div>
   )

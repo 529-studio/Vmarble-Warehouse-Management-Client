@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { LogOut, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -18,12 +18,11 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 function useCurrentRole(): string | null {
-  const [role, setRole] = useState<string | null>(null)
-  useEffect(() => {
+  return useMemo(() => {
+    if (typeof document === 'undefined') return null
     const match = document.cookie.match(/(?:^|;\s*)auth_role=([^;]+)/)
-    setRole(match ? decodeURIComponent(match[1]) : null)
+    return match ? decodeURIComponent(match[1]) : null
   }, [])
-  return role
 }
 
 export function KioskLogoutButton() {
@@ -41,7 +40,7 @@ export function KioskLogoutButton() {
       {role && (
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <UserCircle className="size-4 shrink-0" aria-hidden="true" />
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-base">
             {ROLE_LABELS[role] ?? role}
           </Badge>
         </div>
@@ -49,8 +48,8 @@ export function KioskLogoutButton() {
       <Button
         type="button"
         variant="ghost"
-        size="sm"
-        className="gap-2"
+        size="default"
+        className="min-h-[48px] gap-2 text-base"
         onClick={handleLogout}
       >
         <LogOut className="size-4" aria-hidden="true" />

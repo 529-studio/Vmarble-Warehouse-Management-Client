@@ -21,7 +21,7 @@ export function RemnantTabNav() {
             key={href}
             href={href}
             className={cn(
-              'flex-1 rounded-md py-2 text-center text-sm font-medium transition-colors',
+              'flex min-h-[48px] flex-1 items-center justify-center rounded-md px-3 py-2 text-center text-base font-medium transition-colors',
               active
                 ? 'bg-white text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',

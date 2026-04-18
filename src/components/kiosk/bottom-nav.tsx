@@ -18,7 +18,7 @@ export function BottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 flex h-16 items-stretch justify-around border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-20 flex h-20 items-stretch justify-around border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active =
           pathname === href ||
@@ -30,7 +30,7 @@ export function BottomNav() {
             key={href}
             href={href}
             className={cn(
-              'tap-transparent relative flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition-colors',
+              'tap-transparent relative flex min-h-[48px] flex-1 flex-col items-center justify-center gap-1 py-2 text-sm font-medium transition-colors',
               active
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground',
@@ -43,7 +43,7 @@ export function BottomNav() {
               className={cn('size-6', active && 'stroke-[2.5]')}
               aria-hidden="true"
             />
-            <span className="text-[12px] leading-none">{label}</span>
+            <span className="text-base leading-none">{label}</span>
           </Link>
         )
       })}
