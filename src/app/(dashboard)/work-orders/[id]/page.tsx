@@ -101,32 +101,42 @@ function BarcodeRow({ barcode }: { barcode: BarcodeRecord }) {
       {/* Mini checkpoint progress */}
       <div className="px-4 py-3">
         {isLoading ? (
-          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-10 w-full" />
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             {CHECKPOINT_ORDER.map((cp, idx) => {
               const done = doneSet.has(cp)
               const isLast = idx === CHECKPOINT_ORDER.length - 1
               return (
-                <div key={cp} className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5">
+                <div key={cp} className="flex flex-1 items-center">
+                  {/* Step */}
+                  <div className="flex shrink-0 flex-col items-center gap-1">
                     {done ? (
-                      <CheckCircle2 className="size-4 shrink-0 text-green-500" />
+                      <CheckCircle2 className="size-5 shrink-0 text-green-500" />
                     ) : (
-                      <Circle className="size-4 shrink-0 text-muted-foreground/40" />
+                      <Circle className="size-5 shrink-0 text-muted-foreground/30" />
                     )}
-                    <span className={`text-xs ${done ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                    <span className={`text-center text-xs leading-tight ${done ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                       {CHECKPOINT_LABEL[cp]}
                     </span>
                   </div>
+                  {/* Connector line — spans to next step */}
                   {!isLast && (
-                    <span className="text-muted-foreground/30">→</span>
+                    <div
+                      className={`mx-1 h-px flex-1 ${
+                        doneSet.has(CHECKPOINT_ORDER[idx + 1])
+                          ? 'bg-green-400'
+                          : done
+                            ? 'bg-green-200'
+                            : 'bg-muted-foreground/20'
+                      }`}
+                    />
                   )}
                 </div>
               )
             })}
-            <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-              {doneCount}/{CHECKPOINT_ORDER.length} checkpoint
+            <span className="ml-3 shrink-0 text-xs text-muted-foreground">
+              {doneCount}/{CHECKPOINT_ORDER.length}
             </span>
           </div>
         )}
