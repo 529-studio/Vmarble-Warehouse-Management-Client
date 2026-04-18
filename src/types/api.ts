@@ -220,6 +220,8 @@ export interface AssignWorkOrderInput {
 /** POST /api/v1/work-orders/:id/suggest-assignment */
 export interface SuggestAssignmentResult {
   user_id: string
+  username?: string | null
+  full_name?: string | null
   in_cutting_count: number
 }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Scissors, UserCheck, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -90,12 +90,21 @@ function TableSkeleton() {
 
 interface AssignDialogProps {
   wo: WorkOrder | null
+  suggestedWorkerName?: string | null
+  suggestedWorkerUsername?: string | null
+  onSuggestedUserMetaChange?: (meta: { userId: string; username?: string | null; fullName?: string | null }) => void
   onClose: () => void
 }
 
-function AssignDialog({ wo, onClose }: AssignDialogProps) {
+function AssignDialog({ wo, suggestedWorkerName, suggestedWorkerUsername, onSuggestedUserMetaChange, onClose }: AssignDialogProps) {
   const [userId, setUserId] = useState('')
   const [suggestedCount, setSuggestedCount] = useState<number | null>(null)
+  const [suggestedUserId, setSuggestedUserId] = useState<string | null>(null)
+
+  const suggestedWorkerLabel = suggestedWorkerName
+    ?? (suggestedUserId ? `Công nhân ${shortId(suggestedUserId)}` : null)
+  const suggestedUsernameLabel = suggestedWorkerUsername
+    ?? (suggestedUserId ? shortId(suggestedUserId) : null)
 
   const { mutate: assign, isPending: assigning } = useAssignWorkOrder()
   const { mutate: suggest, isPending: suggesting } = useSuggestAssignment()
@@ -106,7 +115,13 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
     suggest(wo!.id, {
       onSuccess: (result) => {
         setUserId(result.user_id)
+        setSuggestedUserId(result.user_id)
         setSuggestedCount(result.in_cutting_count)
+        onSuggestedUserMetaChange?.({
+          userId: result.user_id,
+          username: result.username,
+          fullName: result.full_name,
+        })
       },
       onError: (err) => {
         if (
@@ -140,6 +155,7 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
 
   function handleClose() {
     setUserId('')
+    setSuggestedUserId(null)
     setSuggestedCount(null)
     onClose()
   }
@@ -186,9 +202,17 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
               </Button>
             </div>
             {suggestedCount !== null && (
-              <p className="text-xs text-muted-foreground">
-                Gợi ý: công nhân hiện có {suggestedCount} lệnh đang cắt
-              </p>
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-1">
+                <p>
+                  Gợi ý công nhân: <span className="font-medium text-foreground">{suggestedWorkerLabel ?? 'Chưa có tên hiển thị'}</span>
+                </p>
+                <p>
+                  Username: <span className="font-mono">{suggestedUsernameLabel ?? '—'}</span>
+                </p>
+                <p>
+                  Tải hiện tại: {suggestedCount} lệnh đang cắt
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -211,6 +235,11 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
 function CuttingDispatchContent() {
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
   const [assignTarget, setAssignTarget] = useState<WorkOrder | null>(null)
+  const [lastSuggestedUserMeta, setLastSuggestedUserMeta] = useState<{
+    userId: string
+    username?: string | null
+    fullName?: string | null
+  } | null>(null)
 
   const { page, limit, setPage } = usePageParams(15)
 
@@ -221,9 +250,24 @@ function CuttingDispatchContent() {
   }
 
   const { data, isLoading, isFetching, isError } = useWorkOrders(filter)
-  const workOrders = data?.items ?? []
+  const workOrders = useMemo(() => data?.items ?? [], [data?.items])
   const totalItems = data?.total_items ?? 0
   const totalPages = data?.total_pages ?? 1
+
+  const workerNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const wo of workOrders) {
+      if (!wo.assigned_to_id || !wo.assigned_to_name) continue
+      map.set(wo.assigned_to_id, wo.assigned_to_name)
+    }
+    return map
+  }, [workOrders])
+
+  const suggestedWorkerName = lastSuggestedUserMeta
+    ? lastSuggestedUserMeta.fullName ?? workerNameById.get(lastSuggestedUserMeta.userId) ?? null
+    : null
+
+  const suggestedWorkerUsername = lastSuggestedUserMeta?.username ?? null
 
   return (
     <div className="space-y-4">
@@ -332,7 +376,16 @@ function CuttingDispatchContent() {
         />
       )}
 
-      <AssignDialog wo={assignTarget} onClose={() => setAssignTarget(null)} />
+      <AssignDialog
+        wo={assignTarget}
+        suggestedWorkerName={suggestedWorkerName}
+        suggestedWorkerUsername={suggestedWorkerUsername}
+        onSuggestedUserMetaChange={setLastSuggestedUserMeta}
+        onClose={() => {
+          setAssignTarget(null)
+          setLastSuggestedUserMeta(null)
+        }}
+      />
     </div>
   )
 }
