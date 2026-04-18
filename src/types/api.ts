@@ -217,6 +217,12 @@ export interface AssignWorkOrderInput {
   user_id: string
 }
 
+/** POST /api/v1/work-orders/:id/suggest-assignment */
+export interface SuggestAssignmentResult {
+  user_id: string
+  in_cutting_count: number
+}
+
 /** GET /api/v1/work-orders/:id/consumptions */
 export interface ConsumptionRecord {
   id: string
