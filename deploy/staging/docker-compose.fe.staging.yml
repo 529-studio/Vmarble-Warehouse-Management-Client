@@ -8,6 +8,11 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
       - "10.8.0.1:3000:3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
     environment:
       # Next.js server-side proxy: forwards /api/proxy/* → BE
       # Next.js container reaches BE via VPN IP (same server)
