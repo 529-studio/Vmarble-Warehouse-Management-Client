@@ -46,6 +46,7 @@ import {
   useAdvanceStatus,
 } from '@/lib/hooks/use-work-orders'
 import { usePlans } from '@/lib/hooks/use-plans'
+import { usePOs } from '@/lib/hooks/use-pos'
 import { useAvailableSheets } from '@/lib/hooks/use-remnants'
 import type {
   WorkOrderStatus,
@@ -102,9 +103,9 @@ function shortId(id: string) {
   return id.slice(0, 8).toUpperCase()
 }
 
-/** Human-readable label for a production plan. */
-function planLabel(p: { id: string; po_code?: string; deadline?: string }): string {
-  const base = p.po_code ? `PO ${p.po_code}` : `KH-${shortId(p.id)}`
+/** Human-readable label for a production plan. poCode is resolved from a PO lookup map by the caller. */
+function planLabel(p: { id: string; deadline?: string }, poCode?: string): string {
+  const base = poCode ? `PO ${poCode}` : `KH-${shortId(p.id)}`
   if (p.deadline) {
     const d = new Date(p.deadline).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     return `${base} · HH ${d}`
@@ -153,6 +154,12 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
 
   const { data: plansData } = usePlans({ status: 'APPROVED', limit: 200 })
   const approvedPlans = plansData?.items ?? []
+
+  const { data: posDataDialog } = usePOs({ limit: 200 })
+  const poMapDialog = useMemo(
+    () => new Map((posDataDialog?.items ?? []).map((p) => [p.id, p.code])),
+    [posDataDialog],
+  )
 
   // Derive available SKUs from the selected plan's items — no free SKU dropdown.
   const selectedPlan = useMemo(
@@ -238,7 +245,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
                 )}
                 {approvedPlans.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {planLabel(p)}
+                    {planLabel(p, poMapDialog.get(p.po_id))}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -416,8 +423,16 @@ function WorkOrdersContent() {
 
   const { data: plansData } = usePlans({ limit: 200 })
   const allPlans = plansData?.items ?? []
-  // Build a lookup map so rows can resolve plan labels without extra fetches.
-  const planById = Object.fromEntries(allPlans.map((p) => [p.id, p]))
+  const planById = useMemo(
+    () => Object.fromEntries(allPlans.map((p) => [p.id, p])),
+    [allPlans],
+  )
+
+  const { data: posData } = usePOs({ limit: 200 })
+  const poMap = useMemo(
+    () => new Map((posData?.items ?? []).map((p) => [p.id, p.code])),
+    [posData],
+  )
 
   const { mutate: advance, isPending: advancing } = useAdvanceStatus()
 
@@ -465,7 +480,7 @@ function WorkOrdersContent() {
               <SelectItem value="ALL">Tất cả kế hoạch</SelectItem>
               {allPlans.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
-                  {planLabel(p)}
+                  {planLabel(p, poMap.get(p.po_id))}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -524,7 +539,7 @@ function WorkOrdersContent() {
                       <TableCell>{wo.sku_code ?? wo.sku_name ?? <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {planById[wo.plan_id]
-                          ? planLabel(planById[wo.plan_id])
+                          ? planLabel(planById[wo.plan_id], poMap.get(planById[wo.plan_id].po_id))
                           : `KH-${shortId(wo.plan_id)}`}
                       </TableCell>
                       <TableCell>

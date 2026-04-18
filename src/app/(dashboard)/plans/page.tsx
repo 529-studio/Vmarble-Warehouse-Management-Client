@@ -121,7 +121,7 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
   )
 
   // Load PO line items when a PO is selected to auto-populate rows
-  const { data: lineItems } = usePOLineItems(poId || null)
+  const { data: lineItems, isLoading: lineItemsLoading } = usePOLineItems(poId || null)
 
   const selectedPO = useMemo(() => pos.find((p) => p.id === poId), [pos, poId])
 
@@ -245,10 +245,13 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
             {!poId && (
               <p className="text-xs text-muted-foreground">Chọn đơn hàng để hiện danh sách sản phẩm</p>
             )}
-            {poId && (lineItems ?? []).length === 0 && (
+            {poId && lineItemsLoading && (
+              <p className="text-xs text-muted-foreground">Đang tải sản phẩm…</p>
+            )}
+            {poId && !lineItemsLoading && (lineItems ?? []).length === 0 && (
               <p className="text-xs text-muted-foreground">Đơn hàng không có sản phẩm</p>
             )}
-            {poId && (lineItems ?? []).length > 0 && (
+            {poId && !lineItemsLoading && (lineItems ?? []).length > 0 && (
               <Table>
                 <TableHeader>
                   <TableRow>
