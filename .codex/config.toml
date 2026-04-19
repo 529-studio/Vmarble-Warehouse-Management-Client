@@ -1,0 +1,41 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# Codex project-local config for Vmarble
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
+
+persistent_instructions = "Follow .codex/AGENTS.md and project CLAUDE.md. Enforce automation workflow for 'làm task tiếp theo'."
+
+[project]
+name = "Vmarble-Warehouse-Management-Client"
+
+[features]
+multi_agent = true
+
+[agents]
+max_threads = 4
+max_depth = 1
+
+[agents.explorer]
+description = "Read-only codebase explorer for evidence gathering before implementation"
+config_file = "agents/explorer.toml"
+
+[agents.reviewer]
+description = "Reviewer focusing on correctness, integration, and security"
+config_file = "agents/reviewer.toml"
+
+[agents.docs_researcher]
+description = "Documentation and contract verifier"
+config_file = "agents/docs-researcher.toml"
+
+[profiles.strict]
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+web_search = "cached"
+
+[profiles.yolo]
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+web_search = "live"
