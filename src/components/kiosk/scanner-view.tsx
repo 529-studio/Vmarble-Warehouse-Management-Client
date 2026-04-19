@@ -1,16 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { cn } from '@/lib/utils'
+import { useEffect, useId, useRef, useState } from 'react'
+import type { Html5Qrcode } from 'html5-qrcode'
+import { Camera, CameraOff, Keyboard, Lock, ShieldAlert } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Camera, Keyboard, ShieldAlert, CameraOff, Lock } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 interface ScannerViewProps {
   onScan: (code: string) => void
   className?: string
-  /** When true, input is disabled and camera scans are ignored (e.g. while API call is in-flight) */
   disabled?: boolean
+  showControls?: boolean
 }
 
 type CameraErrorKind = 'not-allowed' | 'not-found' | 'insecure-context' | 'unknown'
@@ -21,8 +23,55 @@ interface CameraErrorInfo {
   description: string
 }
 
+interface CameraControlState {
+  torchSupported: boolean
+  focusSupported: boolean
+  torchOn: boolean
+}
+
+interface ExtendedMediaTrackCapabilities extends MediaTrackCapabilities {
+  torch?: boolean
+  focusMode?: string[]
+}
+
+interface ExtendedMediaTrackSettings extends MediaTrackSettings {
+  torch?: boolean
+}
+
+interface ExtendedMediaTrackConstraintSet extends MediaTrackConstraintSet {
+  torch?: boolean
+  focusMode?: string
+}
+
+function normalizeDecodedText(decodedText: string): string {
+  const trimmed = decodedText.trim()
+  if (!trimmed) return ''
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed) as Record<string, unknown>
+      const candidate = parsed.id ?? parsed.barcode_id ?? parsed.barcodeId
+      return typeof candidate === 'string' ? candidate.trim() : trimmed
+    } catch {
+      return trimmed
+    }
+  }
+  return trimmed
+}
+
+function detectCameraControls(scanner: Html5Qrcode): CameraControlState {
+  try {
+    const capabilities = scanner.getRunningTrackCapabilities() as ExtendedMediaTrackCapabilities
+    const settings = scanner.getRunningTrackSettings() as ExtendedMediaTrackSettings
+    const torchSupported = typeof capabilities.torch === 'boolean' ? capabilities.torch : false
+    const focusSupported = Array.isArray(capabilities.focusMode) && capabilities.focusMode.length > 0
+    const torchOn = typeof settings.torch === 'boolean' ? settings.torch : false
+    return { torchSupported, focusSupported, torchOn }
+  } catch {
+    return { torchSupported: false, focusSupported: false, torchOn: false }
+  }
+}
+
 function classifyCameraError(err: unknown): CameraErrorInfo {
-  // Insecure context check (highest priority — happens before getUserMedia is called)
   if (typeof window !== 'undefined' && !window.isSecureContext) {
     return {
       kind: 'insecure-context',
@@ -77,37 +126,69 @@ const errorIcon: Record<CameraErrorKind, React.ReactNode> = {
   unknown: <CameraOff className="size-5 text-destructive" />,
 }
 
-/**
- * QR / barcode scanner view using html5-qrcode.
- * Falls back to manual text input when the camera is unavailable, and
- * shows a specific error message (NotAllowedError, NotFoundError, insecure
- * context) so workers know exactly how to resolve the issue.
- *
- * Usage:
- *   <ScannerView onScan={(code) => handleCode(code)} />
- */
-export function ScannerView({ onScan, className, disabled = false }: ScannerViewProps) {
+async function setTorchState(scanner: Html5Qrcode, enabled: boolean): Promise<void> {
+  const torchConstraint: ExtendedMediaTrackConstraintSet = { torch: enabled }
+  await scanner.applyVideoConstraints({
+    advanced: [torchConstraint as MediaTrackConstraintSet],
+  })
+}
+
+async function applyAutofocus(scanner: Html5Qrcode): Promise<void> {
+  const focusConstraint: ExtendedMediaTrackConstraintSet = { focusMode: 'continuous' }
+  await scanner.applyVideoConstraints({
+    advanced: [focusConstraint as MediaTrackConstraintSet],
+  })
+}
+
+export function ScannerView({ onScan, className, disabled = false, showControls = true }: ScannerViewProps) {
   const [mode, setMode] = useState<'camera' | 'manual'>('camera')
   const [manualInput, setManualInput] = useState('')
   const [cameraErrorInfo, setCameraErrorInfo] = useState<CameraErrorInfo | null>(null)
+  const [cameraControlState, setCameraControlState] = useState<CameraControlState>({
+    torchSupported: false,
+    focusSupported: false,
+    torchOn: false,
+  })
+  const scannerContainerId = useId().replace(/:/g, '-')
   const scannerRef = useRef<HTMLDivElement>(null)
-  const html5QrCodeRef = useRef<InstanceType<
-    // Dynamically-typed import to avoid SSR issues
-    any
-  > | null>(null)
-  // Tracks whether scanner.start() has resolved so cleanup knows it's safe to stop
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null)
   const isRunningRef = useRef(false)
-  // Stable refs — prevent effect re-runs when parent re-renders
   const onScanRef = useRef(onScan)
+
   useEffect(() => {
     onScanRef.current = onScan
   }, [onScan])
+
   const disabledRef = useRef(disabled)
   useEffect(() => {
     disabledRef.current = disabled
   }, [disabled])
-  // Cooldown: ignore duplicate scans of the same code within 2 seconds
+
   const lastScanRef = useRef<{ code: string; time: number } | null>(null)
+
+  async function handleToggleTorch() {
+    const scanner = html5QrCodeRef.current
+    if (!scanner || !cameraControlState.torchSupported) return
+    const nextTorch = !cameraControlState.torchOn
+    try {
+      await setTorchState(scanner, nextTorch)
+      setCameraControlState((prev) => ({ ...prev, torchOn: nextTorch }))
+      toast.success(nextTorch ? 'Đã bật đèn flash camera' : 'Đã tắt đèn flash camera')
+    } catch {
+      toast.error('Thiết bị không hỗ trợ bật đèn flash')
+    }
+  }
+
+  async function handleAutofocus() {
+    const scanner = html5QrCodeRef.current
+    if (!scanner || !cameraControlState.focusSupported) return
+    try {
+      await applyAutofocus(scanner)
+      toast.success('Đã kích hoạt lấy nét tự động')
+    } catch {
+      toast.error('Không thể kích hoạt lấy nét tự động')
+    }
+  }
 
   useEffect(() => {
     if (mode !== 'camera') return
@@ -115,9 +196,6 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
     let cancelled = false
 
     async function startScanner() {
-      // Check secure context before attempting getUserMedia.
-      // Return the info object directly — classifyCameraError re-checks
-      // isSecureContext internally but we skip it here to avoid ambiguity.
       if (typeof window !== 'undefined' && !window.isSecureContext) {
         if (!cancelled) {
           setCameraErrorInfo({
@@ -133,51 +211,44 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
 
       try {
         const { Html5Qrcode } = await import('html5-qrcode')
-        // If the effect was cleaned up while we were awaiting the import, bail out
         if (cancelled || !scannerRef.current) return
 
-        const scanner = new Html5Qrcode('qr-scanner-container')
+        const scanner = new Html5Qrcode(scannerContainerId)
         html5QrCodeRef.current = scanner
 
         await scanner.start(
           { facingMode: 'environment' },
           {
             fps: 10,
-            // Adaptive qrbox — sized relative to the actual rendered viewfinder so
-            // the scan region is always fully visible on any screen width, including
-            // narrow mobile viewports where a fixed 250px box would overflow.
             qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-              // Clamp to 50px minimum — html5-qrcode throws if qrbox < 50px.
-              // This guards against reading a hidden container (display:none →
-              // clientWidth=0) when two ScannerView instances share the page.
               const side = Math.max(50, Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7))
               return { width: side, height: side }
             },
-            // Request 4:3 aspect ratio — stable on most phone cameras and prevents
-            // portrait-orientation stream issues on iOS rear cameras.
             aspectRatio: 4 / 3,
           },
           (decodedText: string) => {
             if (disabledRef.current) return
+            const normalized = normalizeDecodedText(decodedText)
+            if (!normalized) return
             const now = Date.now()
             const last = lastScanRef.current
-            if (last && last.code === decodedText && now - last.time < 2000) return
-            lastScanRef.current = { code: decodedText, time: now }
-            onScanRef.current(decodedText)
+            if (last && last.code === normalized && now - last.time < 1200) return
+            lastScanRef.current = { code: normalized, time: now }
+            onScanRef.current(normalized)
           },
           undefined,
         )
 
-        // scanner.start() resolved — it is now safe to call stop() in cleanup
         if (cancelled) {
-          // Effect was cleaned up while start() was in flight; stop immediately
           scanner.stop().catch(() => {})
           isRunningRef.current = false
         } else {
           isRunningRef.current = true
+          setCameraControlState(detectCameraControls(scanner))
         }
       } catch (err) {
         if (!cancelled) {
+          setCameraControlState({ torchSupported: false, focusSupported: false, torchOn: false })
           setCameraErrorInfo(classifyCameraError(err))
           setMode('manual')
         }
@@ -190,27 +261,44 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
       cancelled = true
       if (isRunningRef.current && html5QrCodeRef.current) {
         isRunningRef.current = false
-        html5QrCodeRef.current.stop().catch(() => {
-          // ignore cleanup errors
-        })
+        html5QrCodeRef.current.stop().catch(() => {})
       }
     }
-  }, [mode])
+  }, [mode, scannerContainerId])
 
   const showManual = mode === 'manual' || cameraErrorInfo !== null
 
   return (
     <div className={cn('space-y-3', className)}>
-      {/* Camera container — always mounted so the scanner can stop cleanly before
-          the video element is removed from the DOM. Hiding via CSS avoids the
-          AbortError that fires when play() is interrupted by a DOM removal. */}
       <div className={showManual ? 'hidden' : undefined}>
         <div
-          id="qr-scanner-container"
+          id={scannerContainerId}
           ref={scannerRef}
-          className="w-full overflow-hidden rounded-lg bg-black"
-          style={{ minHeight: 260 }}
+          className="min-h-65 w-full overflow-hidden rounded-lg bg-black"
         />
+        {showControls && (cameraControlState.torchSupported || cameraControlState.focusSupported) && (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button
+              size="default"
+              variant="secondary"
+              className="min-h-[48px] text-base"
+              onClick={handleToggleTorch}
+              disabled={!cameraControlState.torchSupported || disabled}
+            >
+              {cameraControlState.torchOn ? 'Tắt đèn flash' : 'Bật đèn flash'}
+            </Button>
+            <Button
+              size="default"
+              variant="secondary"
+              className="min-h-[48px] text-base"
+              onClick={handleAutofocus}
+              disabled={!cameraControlState.focusSupported || disabled}
+            >
+              Lấy nét tự động
+            </Button>
+          </div>
+        )}
+
         <Button
           size="default"
           variant="ghost"
@@ -244,7 +332,9 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
               onChange={(e) => setManualInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && manualInput.trim() && !disabled) {
-                  onScan(manualInput.trim())
+                  const normalized = normalizeDecodedText(manualInput)
+                  if (!normalized) return
+                  onScan(normalized)
                   setManualInput('')
                 }
               }}
@@ -260,6 +350,7 @@ export function ScannerView({ onScan, className, disabled = false }: ScannerView
             className="min-h-[48px] text-base"
             onClick={() => {
               setCameraErrorInfo(null)
+              setCameraControlState({ torchSupported: false, focusSupported: false, torchOn: false })
               setMode('camera')
             }}
           >
