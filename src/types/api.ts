@@ -59,6 +59,10 @@ export interface BoardSheet {
   cost_per_sheet: Money
   issued_to_work_order_id: string | null
   status: string
+  /** Material ID from catalog — used to filter sheets for a selected work order material */
+  material_id?: string | null
+  /** Human-readable material name */
+  material_name?: string | null
   /** Human-readable lot batch code (e.g. "SUP-ABC-001") — preferred for display */
   lot_batch?: string | null
   /** Supplier code inherited from board sheet material */
@@ -187,6 +191,8 @@ export interface WorkOrder {
   sku_dimensions?: { length_mm: number; width_mm: number }
   /** Material type (PLYWOOD / MDF / HDF) */
   material_type?: MaterialType
+  /** Material selected by foreman/admin at start-cut step */
+  material_id?: string | null
   quantity: number
   status: WorkOrderStatus
   /** Optional assignee — null when no worker is assigned */
@@ -206,10 +212,10 @@ export interface CreateWOInput {
 export interface AdvanceStatusInput {
   status: WorkOrderStatus
   /**
-   * Optional: assign a board sheet when advancing PLANNED → IN_CUTTING.
-   * Backend sets issued_to_work_order_id on the sheet when provided.
+   * Optional: select material when advancing PLANNED → IN_CUTTING.
+   * Worker kiosk will later filter lots/sheets by this material.
    */
-  sheet_id?: string
+  material_id?: string
 }
 
 /** POST /api/v1/work-orders/:id/assign */

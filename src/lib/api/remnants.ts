@@ -77,6 +77,8 @@ export const storageLocationsApi = {
 export interface SheetsFilter extends PageParams {
   status?: string
   work_order_id?: string
+  material_id?: string
+  lot_id?: string
 }
 
 export const sheetsApi = {
@@ -91,6 +93,8 @@ export const sheetsApi = {
         limit: filter.limit,
         status: filter.status,
         work_order_id: filter.work_order_id,
+        material_id: filter.material_id,
+        lot_id: filter.lot_id,
       },
     }),
 }
