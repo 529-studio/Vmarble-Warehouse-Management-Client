@@ -100,14 +100,14 @@ export default function CheckpointScanPage() {
           <ArrowLeft className="size-5" />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Quét checkpoint: {checkpointInfo.label}</h1>
-          <p className="text-base text-muted-foreground">Quét QR, kiểm tra thông tin, rồi xác nhận hoàn thành.</p>
+          <h1 className="text-xl font-bold">Quét điểm kiểm tra: {checkpointInfo.label}</h1>
+          <p className="text-base text-muted-foreground">Quét mã barcode, kiểm tra thông tin, rồi xác nhận hoàn thành.</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Bước 1: Quét QR sản phẩm</CardTitle>
+          <CardTitle className="text-base">Bước 1: Quét mã barcode sản phẩm</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <ScannerView onScan={handleScan} disabled={isPending || isLoadingBarcode} />
@@ -140,7 +140,7 @@ export default function CheckpointScanPage() {
           )}
 
           <BigButton disabled={!canConfirm} onClick={handleConfirmCheckpoint}>
-            {isPending ? 'Đang xác nhận...' : 'Xác nhận hoàn thành checkpoint'}
+            {isPending ? 'Đang xác nhận...' : 'Xác nhận hoàn thành điểm kiểm tra'}
           </BigButton>
         </CardContent>
       </Card>
