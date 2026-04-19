@@ -1,0 +1,9 @@
+# Local Codex setup generated from project skills.
+# Reference structure: everything-claude-code/.codex
+
+[project]
+name = "Vmarble-Warehouse-Management-Client"
+
+[agents]
+default_instructions_file = ".codex/AGENTS.md"
+agents_dir = ".codex/agents"
