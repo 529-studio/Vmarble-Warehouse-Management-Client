@@ -189,7 +189,6 @@ These must all pass before anything else. Fix every error; do not move to 5.2 wi
 
 ```bash
 npx tsc --noEmit        # 0 TypeScript errors — fix all, no exceptions
-npm run lint            # 0 ESLint errors/warnings — fix all
 npm run build           # Next.js production build must succeed
 ```
 

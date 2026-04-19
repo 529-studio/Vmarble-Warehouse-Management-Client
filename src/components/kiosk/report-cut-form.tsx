@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useId, useCallback } from 'react'
+import { useState, useId, useCallback, useMemo, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import QRCode from 'react-qr-code'
@@ -245,6 +245,7 @@ function SuccessModal({ remnantId, onGoHome }: SuccessModalProps) {
 // sheet. It maps to the sheet_id field in RecordCutInput.
 
 interface CutFormValues {
+  lotId?: string
   boardSheetId?: string
   usedLength: string
   usedWidth: string
@@ -260,9 +261,10 @@ export function ReportCutForm() {
 
   const woId = searchParams.get('wo_id') ?? ''
   // Use `|| undefined` (not `?? undefined`) so that an empty query-string value
-  // (e.g. ?sheet_id=) is treated as absent rather than forwarded as '' to the API.
+  // is treated as absent rather than forwarded as '' to the API.
   const sheetId = searchParams.get('sheet_id') || undefined
   const remnantSourceId = searchParams.get('remnant_id') || undefined
+  const materialIdFromUrl = searchParams.get('material_id') || undefined
 
   // ── Work order context (for display + area-conservation hint) ────────────
   const { data: workOrder, isLoading: isLoadingWO } = useCuttingOrder(woId)
@@ -273,19 +275,41 @@ export function ReportCutForm() {
 
   // Fetch available sheets only when the worker needs to select one.
   // Enabled flag prevents an unnecessary request when remnant_id is already set.
+  const selectedMaterialId = materialIdFromUrl ?? workOrder?.material_id ?? undefined
+
   const {
     data: sheetsData,
     isLoading: isLoadingSheets,
-  } = useAvailableSheets({}, needsBoardSheetInput)
+  } = useAvailableSheets(
+    { material_id: selectedMaterialId, limit: 200 },
+    needsBoardSheetInput && !!selectedMaterialId,
+  )
+
+  const allSheets = useMemo(() => sheetsData?.items ?? [], [sheetsData?.items])
+  const lotOptions = useMemo(() => {
+    const byLot = new Map<string, { id: string; label: string }>()
+    for (const sheet of allSheets) {
+      if (byLot.has(sheet.lot_id)) continue
+      byLot.set(sheet.lot_id, {
+        id: sheet.lot_id,
+        label:
+          sheet.lot_batch
+            ?? sheet.supplier_code
+            ?? sheet.lot_id.slice(0, 8).toUpperCase(),
+      })
+    }
+    return Array.from(byLot.values())
+  }, [allSheets])
 
   // ── react-hook-form ───────────────────────────────────────────────────────
   const {
     control,
     handleSubmit,
-    watch,
+    setValue,
     formState: { errors },
   } = useForm<CutFormValues>({
     defaultValues: {
+      lotId: '',
       boardSheetId: '',
       usedLength: '',
       usedWidth: '',
@@ -297,6 +321,21 @@ export function ReportCutForm() {
     // from the submitted data and their validation errors are cleared.
     shouldUnregister: true,
   })
+
+  const selectedLotId = useWatch({ control, name: 'lotId' })
+  const filteredSheets = useMemo(
+    () => allSheets.filter((sheet) => !selectedLotId || sheet.lot_id === selectedLotId),
+    [allSheets, selectedLotId],
+  )
+
+  useEffect(() => {
+    setValue('boardSheetId', '')
+  }, [selectedLotId, setValue])
+
+  useEffect(() => {
+    setValue('lotId', '')
+    setValue('boardSheetId', '')
+  }, [selectedMaterialId, setValue])
 
   // ── Supplementary state (not form fields) ────────────────────────────────
   // hasRemnant is a UI toggle, not a text input, so we keep it in useState.
@@ -331,6 +370,11 @@ export function ReportCutForm() {
 
   // ── Submit handler ───────────────────────────────────────────────────────
   function onValidSubmit(data: CutFormValues) {
+    if (needsBoardSheetInput && !selectedMaterialId) {
+      setApiError('Lệnh cắt chưa có loại vật liệu. Vui lòng quay lại để chọn vật liệu trước.')
+      return
+    }
+
     setApiError(null)
 
     recordCut(
@@ -389,9 +433,11 @@ export function ReportCutForm() {
     )
   }
 
-  // Block submission while loading WO (prevents sending sku_id as empty string)
-  // or while a mutation is in flight.
-  const isDisabled = isPending || isLoadingWO
+  const missingMaterialSelection = needsBoardSheetInput && !selectedMaterialId
+
+  // Block submission while loading WO (prevents sending sku_id as empty string),
+  // while a mutation is in flight, or when material was not selected upstream.
+  const isDisabled = isPending || isLoadingWO || missingMaterialSelection
   const sourceDim = workOrder?.sku_dimensions
 
   return (
@@ -427,65 +473,130 @@ export function ReportCutForm() {
       {needsBoardSheetInput && (
         <Card>
           <CardHeader className="pb-3 pt-4">
-            <CardTitle className="text-base">Chọn tấm ván</CardTitle>
+            <CardTitle className="text-base">Chọn vật liệu cắt</CardTitle>
           </CardHeader>
-          <CardContent className="pb-4">
-            <Controller
-              name="boardSheetId"
-              control={control}
-              rules={{ required: 'Chọn tấm ván trước khi báo cáo' }}
-              render={({ field }) => (
-                <div className="space-y-1">
-                  <Label htmlFor={fid('board-sheet-id')} className="text-base">
-                    Tấm ván nguyên liệu
-                  </Label>
-                  <Select
-                    value={field.value ?? ''}
-                    onValueChange={field.onChange}
-                    disabled={isDisabled || isLoadingSheets}
-                  >
-                    <SelectTrigger
-                      id={fid('board-sheet-id')}
-                      className={cn(
-                        'h-12 text-base',
-                        errors.boardSheetId && 'border-destructive focus:ring-destructive',
+          <CardContent className="space-y-3 pb-4">
+            {!selectedMaterialId ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                Lệnh cắt chưa có loại vật liệu. Vui lòng quay lại để quản đốc chọn trước khi bắt đầu cắt.
+              </div>
+            ) : (
+              <>
+                <Controller
+                  name="lotId"
+                  control={control}
+                  rules={{ required: 'Chọn lô vật liệu' }}
+                  render={({ field }) => (
+                    <div className="space-y-1">
+                      <Label htmlFor={fid('lot-id')} className="text-base">
+                        Lô vật liệu
+                      </Label>
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={field.onChange}
+                        disabled={isDisabled || isLoadingSheets}
+                      >
+                        <SelectTrigger
+                          id={fid('lot-id')}
+                          className={cn(
+                            'h-12 text-base',
+                            errors.lotId && 'border-destructive focus:ring-destructive',
+                          )}
+                          aria-invalid={!!errors.lotId}
+                        >
+                          <SelectValue
+                            placeholder={
+                              isLoadingSheets ? 'Đang tải danh sách lô…' : 'Chọn lô vật liệu…'
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {lotOptions.length === 0 && !isLoadingSheets ? (
+                            <div className="px-3 py-4 text-center text-base text-muted-foreground">
+                              Không có lô vật liệu khả dụng
+                            </div>
+                          ) : (
+                            lotOptions.map((lot) => (
+                              <SelectItem key={lot.id} value={lot.id} className="min-h-[48px] text-base">
+                                {lot.label}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {errors.lotId && (
+                        <p
+                          id={`${fid('lot-id')}-error`}
+                          className="text-sm text-destructive"
+                          role="alert"
+                        >
+                          {errors.lotId.message}
+                        </p>
                       )}
-                      aria-invalid={!!errors.boardSheetId}
-                    >
-                      <SelectValue
-                        placeholder={
-                          isLoadingSheets ? 'Đang tải danh sách tấm ván…' : 'Chọn tấm ván…'
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(sheetsData?.items ?? []).length === 0 && !isLoadingSheets ? (
-                        <div className="px-3 py-4 text-center text-base text-muted-foreground">
-                          Không có tấm ván khả dụng
-                        </div>
-                      ) : (
-                        (sheetsData?.items ?? []).map((sheet) => (
-                          <SelectItem key={sheet.id} value={sheet.id} className="min-h-[48px] text-base">
-                            {sheet.dimensions.length_mm} × {sheet.dimensions.width_mm} mm
-                            {' — Lô '}
-                            {sheet.lot_batch ?? sheet.supplier_code ?? sheet.lot_id.slice(0, 8).toUpperCase()}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {errors.boardSheetId && (
-                    <p
-                      id={`${fid('board-sheet-id')}-error`}
-                      className="text-sm text-destructive"
-                      role="alert"
-                    >
-                      {errors.boardSheetId.message}
-                    </p>
+                    </div>
                   )}
-                </div>
-              )}
-            />
+                />
+
+                <Controller
+                  name="boardSheetId"
+                  control={control}
+                  rules={{ required: 'Chọn tấm ván trước khi báo cáo' }}
+                  render={({ field }) => (
+                    <div className="space-y-1">
+                      <Label htmlFor={fid('board-sheet-id')} className="text-base">
+                        Tấm ván trong lô
+                      </Label>
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={field.onChange}
+                        disabled={isDisabled || isLoadingSheets || !selectedLotId}
+                      >
+                        <SelectTrigger
+                          id={fid('board-sheet-id')}
+                          className={cn(
+                            'h-12 text-base',
+                            errors.boardSheetId && 'border-destructive focus:ring-destructive',
+                          )}
+                          aria-invalid={!!errors.boardSheetId}
+                        >
+                          <SelectValue
+                            placeholder={
+                              !selectedLotId
+                                ? 'Chọn lô trước'
+                                : isLoadingSheets
+                                  ? 'Đang tải danh sách tấm ván…'
+                                  : 'Chọn tấm ván…'
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredSheets.length === 0 && !isLoadingSheets ? (
+                            <div className="px-3 py-4 text-center text-base text-muted-foreground">
+                              Không có tấm ván trong lô đã chọn
+                            </div>
+                          ) : (
+                            filteredSheets.map((sheet) => (
+                              <SelectItem key={sheet.id} value={sheet.id} className="min-h-[48px] text-base">
+                                {sheet.dimensions.length_mm} × {sheet.dimensions.width_mm} mm
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {errors.boardSheetId && (
+                        <p
+                          id={`${fid('board-sheet-id')}-error`}
+                          className="text-sm text-destructive"
+                          role="alert"
+                        >
+                          {errors.boardSheetId.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                />
+              </>
+            )}
           </CardContent>
         </Card>
       )}

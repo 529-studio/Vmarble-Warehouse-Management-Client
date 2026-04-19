@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useMaterials } from '@/lib/hooks/use-materials'
 import {
   Select,
   SelectContent,
@@ -47,7 +48,6 @@ import {
 } from '@/lib/hooks/use-work-orders'
 import { usePlans } from '@/lib/hooks/use-plans'
 import { usePOs } from '@/lib/hooks/use-pos'
-import { useAvailableSheets } from '@/lib/hooks/use-remnants'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { DataPagination } from '@/components/ui/data-pagination'
 import type {
@@ -155,7 +155,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const { data: plansData } = usePlans({ status: 'APPROVED', limit: 200 })
-  const approvedPlans = plansData?.items ?? []
+  const approvedPlans = useMemo(() => plansData?.items ?? [], [plansData?.items])
 
   const { data: posDataDialog } = usePOs({ limit: 200 })
   const poMapDialog = useMemo(
@@ -168,7 +168,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
     () => approvedPlans.find((p) => p.id === planId),
     [approvedPlans, planId],
   )
-  const planItems = selectedPlan?.items ?? []
+  const planItems = useMemo(() => selectedPlan?.items ?? [], [selectedPlan?.items])
 
   // Find the selected plan item to enforce max quantity.
   const selectedPlanItem = useMemo(
@@ -317,36 +317,30 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
 // ── Advance confirm dialog ────────────────────────────────────────────────────
 
 interface AdvanceDialogProps {
-  wo: WorkOrder | null
-  onConfirm: (sheetId?: string) => void
+  wo: WorkOrder
+  onConfirm: (materialId?: string) => void
   onCancel: () => void
   isPending: boolean
 }
 
 function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProps) {
   const NONE = '__none__'
-  const [selectedSheetId, setSelectedSheetId] = useState(NONE)
+  const [selectedMaterialId, setSelectedMaterialId] = useState(wo.material_id ?? NONE)
 
-  const isPlannedToInCutting = wo?.status === 'PLANNED'
+  const isPlannedToInCutting = wo.status === 'PLANNED'
 
-  const { data: sheetsData, isLoading: isLoadingSheets } = useAvailableSheets(
-    { limit: 50 },
-    isPlannedToInCutting,
-  )
-  const availableSheets = sheetsData?.items ?? []
+  const { data: materialsData, isLoading: isLoadingMaterials } = useMaterials({ limit: 200 })
+  const materials = materialsData?.items ?? []
 
-  if (!wo) return null
   const next = NEXT_STATUS[wo.status]
   if (!next) return null
 
   function handleConfirm() {
-    const sheetId = isPlannedToInCutting && selectedSheetId !== NONE ? selectedSheetId : undefined
-    onConfirm(sheetId)
-    setSelectedSheetId(NONE)
+    const materialId = isPlannedToInCutting && selectedMaterialId !== NONE ? selectedMaterialId : undefined
+    onConfirm(materialId)
   }
 
   function handleCancel() {
-    setSelectedSheetId(NONE)
     onCancel()
   }
 
@@ -362,42 +356,43 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {/* Sheet picker — only shown for PLANNED → IN_CUTTING */}
+        {/* Material picker — only shown for PLANNED → IN_CUTTING */}
         {isPlannedToInCutting && (
           <div className="space-y-1.5 py-1">
-            <Label>Tấm ván (tuỳ chọn)</Label>
+            <Label>Loại vật liệu *</Label>
             <Select
-              value={selectedSheetId}
-              onValueChange={setSelectedSheetId}
-              disabled={isLoadingSheets}
+              value={selectedMaterialId}
+              onValueChange={setSelectedMaterialId}
+              disabled={isLoadingMaterials}
             >
               <SelectTrigger>
                 <SelectValue
                   placeholder={
-                    isLoadingSheets ? 'Đang tải tấm ván…' : 'Chọn tấm ván để phân công trước'
+                    isLoadingMaterials ? 'Đang tải vật liệu…' : 'Chọn loại vật liệu'
                   }
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE}>— Không chọn —</SelectItem>
-                {availableSheets.map((sheet) => (
-                  <SelectItem key={sheet.id} value={sheet.id}>
-                    {sheet.dimensions.length_mm} × {sheet.dimensions.width_mm} mm
-                    {' — Lô '}
-                    {sheet.lot_batch ?? sheet.supplier_code ?? sheet.lot_id.slice(0, 8).toUpperCase()}
+                <SelectItem value={NONE}>— Chọn loại vật liệu —</SelectItem>
+                {materials.map((material) => (
+                  <SelectItem key={material.id} value={material.id}>
+                    {material.name} ({material.type})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Nếu chọn, tấm ván sẽ được gán trước cho lệnh này để thợ không phải chọn lại tại kiosk.
+              Công nhân CNC sẽ chọn lô và tấm cụ thể tại kiosk theo loại vật liệu này.
             </p>
           </div>
         )}
 
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleCancel}>Hủy</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
+          <AlertDialogAction
+            onClick={handleConfirm}
+            disabled={isPending || (isPlannedToInCutting && selectedMaterialId === NONE)}
+          >
             {isPending ? 'Đang xử lý…' : 'Xác nhận'}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -429,7 +424,7 @@ function WorkOrdersContent() {
   const totalPages = data?.total_pages ?? 1
 
   const { data: plansData } = usePlans({ limit: 200 })
-  const allPlans = plansData?.items ?? []
+  const allPlans = useMemo(() => plansData?.items ?? [], [plansData?.items])
   const planById = useMemo(
     () => Object.fromEntries(allPlans.map((p) => [p.id, p])),
     [allPlans],
@@ -443,11 +438,11 @@ function WorkOrdersContent() {
 
   const { mutate: advance, isPending: advancing } = useAdvanceStatus()
 
-  function handleAdvanceConfirm(sheetId?: string) {
+  function handleAdvanceConfirm(materialId?: string) {
     if (!advanceTarget) return
     const next = NEXT_STATUS[advanceTarget.status]
     if (!next) return
-    const input: AdvanceStatusInput = { status: next, sheet_id: sheetId }
+    const input: AdvanceStatusInput = { status: next, material_id: materialId }
     advance(
       { id: advanceTarget.id, input },
       { onSettled: () => setAdvanceTarget(null) },
@@ -595,12 +590,15 @@ function WorkOrdersContent() {
 
       <CreateWODialog open={createOpen} onOpenChange={setCreateOpen} />
 
-      <AdvanceDialog
-        wo={advanceTarget}
-        onConfirm={handleAdvanceConfirm}
-        onCancel={() => setAdvanceTarget(null)}
-        isPending={advancing}
-      />
+      {advanceTarget && (
+        <AdvanceDialog
+          key={advanceTarget.id}
+          wo={advanceTarget}
+          onConfirm={handleAdvanceConfirm}
+          onCancel={() => setAdvanceTarget(null)}
+          isPending={advancing}
+        />
+      )}
     </div>
   )
 }
