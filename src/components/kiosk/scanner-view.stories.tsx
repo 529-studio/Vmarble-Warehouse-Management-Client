@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { Camera, CameraOff, Lock, ShieldAlert } from 'lucide-react'
 import { fn } from 'storybook/test'
 import { Button } from '@/components/ui/button'
@@ -20,27 +20,22 @@ const meta: Meta<typeof ScannerView> = {
 export default meta
 type Story = StoryObj<typeof ScannerView>
 
-/**
- * NOTE: Storybook runs in a browser without a real camera feed.
- * The component will auto-fall back to the manual input mode when
- * `html5-qrcode` can't access the camera — which is the expected
- * Storybook behaviour.
- */
 export const Default: Story = {
   name: 'Camera mode (falls back to manual in Storybook)',
 }
 
-/**
- * Shown when the user denies camera permission in the browser prompt.
- * Error name: NotAllowedError / PermissionDeniedError.
- * Guidance: tap the lock icon in the address bar and allow camera.
- */
+export const CameraWithControls: Story = {
+  name: 'Camera mode with low-light controls',
+  args: {
+    showControls: true,
+  },
+}
+
 export const PermissionDenied: Story = {
   name: 'Error — NotAllowedError (permission denied)',
-  render: (args) => (
+  render: () => (
     <div className="max-w-93.75 p-4">
       <ManualWithError
-        {...args}
         errorKind="not-allowed"
         title="Chưa cấp quyền camera"
         description='Trình duyệt đã từ chối quyền truy cập camera. Nhấn vào biểu tượng khóa trên thanh địa chỉ và chọn "Cho phép" rồi tải lại trang.'
@@ -49,16 +44,11 @@ export const PermissionDenied: Story = {
   ),
 }
 
-/**
- * Shown when no camera hardware is found or it is in use by another app.
- * Error name: NotFoundError / DevicesNotFoundError.
- */
 export const CameraNotFound: Story = {
   name: 'Error — NotFoundError (no camera device)',
-  render: (args) => (
+  render: () => (
     <div className="max-w-93.75 p-4">
       <ManualWithError
-        {...args}
         errorKind="not-found"
         title="Không tìm thấy camera"
         description="Thiết bị không có camera hoặc camera đang được sử dụng bởi ứng dụng khác. Kiểm tra lại phần cứng."
@@ -67,17 +57,11 @@ export const CameraNotFound: Story = {
   ),
 }
 
-/**
- * Shown when the page is served over plain HTTP (not HTTPS).
- * Browser blocks getUserMedia entirely for insecure contexts.
- * Guidance: contact admin to enable HTTPS on staging.
- */
 export const InsecureContext: Story = {
   name: 'Error — Insecure context (HTTP, not HTTPS)',
-  render: (args) => (
+  render: () => (
     <div className="max-w-93.75 p-4">
       <ManualWithError
-        {...args}
         errorKind="insecure-context"
         title="Yêu cầu kết nối HTTPS"
         description="Camera chỉ hoạt động trên kết nối bảo mật (HTTPS). Liên hệ quản trị viên để bật HTTPS cho staging."
@@ -96,11 +80,6 @@ export const ManualInputMode: Story = {
   ),
 }
 
-// ---------------------------------------------------------------------------
-// Internal helper — renders the manual-mode UI with a pre-set error banner.
-// Not exported as a story; used only by the error stories above via render().
-// ---------------------------------------------------------------------------
-
 type ErrorKind = 'not-allowed' | 'not-found' | 'insecure-context'
 
 const iconMap: Record<ErrorKind, React.ReactNode> = {
@@ -114,7 +93,6 @@ function ManualWithError({
   title,
   description,
 }: {
-  onScan: (code: string) => void
   errorKind: ErrorKind
   title: string
   description: string
@@ -128,11 +106,7 @@ function ManualWithError({
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
-      <Input
-        placeholder="Nhập mã rồi nhấn Enter..."
-        className="h-12 text-base"
-        readOnly
-      />
+      <Input placeholder="Nhập mã rồi nhấn Enter..." className="h-12 text-base" readOnly />
       <Button size="sm" variant="ghost">
         <Camera className="size-4" />
         Thử lại camera
