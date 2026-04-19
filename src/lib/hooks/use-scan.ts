@@ -1,8 +1,10 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import { barcodeApi } from '@/lib/api/barcode'
 import { mapApiErrorVi } from '@/lib/api/client'
+import { BARCODES_KEY, SCAN_EVENTS_KEY } from '@/lib/hooks/use-barcode'
+import { WORK_ORDERS_KEY } from '@/lib/hooks/use-work-orders'
 import type { ScanEvent, ScanCheckpoint } from '@/types/api'
 
 // ── Zustand scan-session store ────────────────────────────────────────────────
@@ -36,6 +38,7 @@ const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
 
 export function useRecordScan() {
   const addEntry = useScanStore((s) => s.addEntry)
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: {
@@ -51,6 +54,10 @@ export function useRecordScan() {
         scanEvent,
         barcodeShort: variables.barcodeId.slice(-8),
       })
+      queryClient.invalidateQueries({ queryKey: [SCAN_EVENTS_KEY, variables.barcodeId] })
+      queryClient.invalidateQueries({ queryKey: [BARCODES_KEY, variables.barcodeId] })
+      queryClient.invalidateQueries({ queryKey: [BARCODES_KEY] })
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
     },
 
     onError: (err: unknown) => {
