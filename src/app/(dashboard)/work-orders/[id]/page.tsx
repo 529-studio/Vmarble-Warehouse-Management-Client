@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useMemo, useState } from 'react'
 import QRCode from 'react-qr-code'
 import Link from 'next/link'
 import { ArrowLeft, ClipboardCheck, QrCode, Copy, Check, CheckCircle2, Circle, ExternalLink } from 'lucide-react'
@@ -24,10 +24,29 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useWorkOrder, useWorkOrderConsumptions } from '@/lib/hooks/use-work-orders'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  useAddWorkOrderConsumption,
+  useWorkOrder,
+  useWorkOrderConsumptions,
+} from '@/lib/hooks/use-work-orders'
 import { usePlan } from '@/lib/hooks/use-plans'
+import { useMaterials } from '@/lib/hooks/use-materials'
 import { useGenerateBarcode, useBarcodesForWorkOrder, useBarcodeScanEvents } from '@/lib/hooks/use-barcode'
-import type { WorkOrderStatus, BarcodeRecord, ScanEvent, WorkOrder, ScanCheckpoint } from '@/types/api'
+import type {
+  WorkOrderStatus,
+  BarcodeRecord,
+  ScanEvent,
+  WorkOrder,
+  ScanCheckpoint,
+  MaterialType,
+} from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -305,12 +324,58 @@ function GenerateBarcodeDialog({ wo, open, onClose }: {
 
 function WorkOrderDetail({ id }: { id: string }) {
   const [showBarcodeDialog, setShowBarcodeDialog] = useState(false)
+  const [materialId, setMaterialId] = useState('')
+  const [quantity, setQuantity] = useState('')
+  const [unit, setUnit] = useState('')
+  const [unitTouched, setUnitTouched] = useState(false)
+
   const { data: wo, isLoading: woLoading, isError: woError } = useWorkOrder(id)
   const {
     data: consumptions,
     isLoading: consumptionsLoading,
     isError: consumptionsError,
   } = useWorkOrderConsumptions(id)
+  const { data: materialsData, isLoading: materialsLoading } = useMaterials({ limit: 200 })
+  const { mutate: addConsumption, isPending: addingConsumption } = useAddWorkOrderConsumption()
+
+  const materials = useMemo(() => materialsData?.items ?? [], [materialsData?.items])
+  const selectedMaterial = useMemo(
+    () => materials.find((material) => material.id === materialId),
+    [materials, materialId],
+  )
+  const canAddConsumption = wo?.status === 'IN_PROCESSING' || wo?.status === 'COMPLETED'
+  const effectiveUnit = unitTouched ? unit : selectedMaterial?.unit ?? unit
+
+  function handleAddConsumption(e: React.FormEvent) {
+    e.preventDefault()
+    if (!wo || !selectedMaterial || !canAddConsumption || addingConsumption) return
+
+    const parsedQuantity = Number(quantity)
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) return
+
+    const trimmedUnit = effectiveUnit.trim()
+    if (!trimmedUnit) return
+
+    addConsumption(
+      {
+        workOrderId: wo.id,
+        input: {
+          material_id: selectedMaterial.id,
+          material_type: selectedMaterial.type as MaterialType,
+          quantity: parsedQuantity,
+          unit: trimmedUnit,
+        },
+      },
+      {
+        onSuccess: () => {
+          setMaterialId('')
+          setQuantity('')
+          setUnit('')
+          setUnitTouched(false)
+        },
+      },
+    )
+  }
 
   if (woLoading) {
     return (
@@ -402,6 +467,86 @@ function WorkOrderDetail({ id }: { id: string }) {
       {/* Consumptions */}
       <div>
         <h2 className="mb-3 text-base font-semibold">Vật tư tiêu thụ</h2>
+
+        <div className="mb-3 rounded-lg border p-4">
+          {!canAddConsumption ? (
+            <p className="text-sm text-muted-foreground">
+              Chỉ ghi nhận vật tư khi lệnh ở trạng thái Đang xử lý hoặc Hoàn thành.
+            </p>
+          ) : (
+            <form onSubmit={handleAddConsumption} className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="material">Vật tư *</Label>
+                  <Select value={materialId} onValueChange={setMaterialId} disabled={materialsLoading || addingConsumption}>
+                    <SelectTrigger id="material" className="h-12">
+                      <SelectValue placeholder={materialsLoading ? 'Đang tải vật tư…' : 'Chọn vật tư'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {materials.length === 0 && (
+                        <SelectItem value="__none__" disabled>
+                          Chưa có vật tư trong danh mục
+                        </SelectItem>
+                      )}
+                      {materials.map((material) => (
+                        <SelectItem key={material.id} value={material.id}>
+                          {material.name} ({material.type})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="quantity">Số lượng *</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    min={0.000001}
+                    step="any"
+                    inputMode="decimal"
+                    className="h-12"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    disabled={addingConsumption}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="unit">Đơn vị *</Label>
+                  <Input
+                    id="unit"
+                    className="h-12"
+                    value={effectiveUnit}
+                    onChange={(e) => {
+                      setUnitTouched(true)
+                      setUnit(e.target.value)
+                    }}
+                    disabled={addingConsumption}
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="h-12"
+                disabled={
+                  addingConsumption ||
+                  materialsLoading ||
+                  !materialId ||
+                  !effectiveUnit.trim() ||
+                  !quantity.trim() ||
+                  Number(quantity) <= 0
+                }
+              >
+                {addingConsumption ? 'Đang lưu…' : 'Ghi nhận vật tư'}
+              </Button>
+            </form>
+          )}
+        </div>
+
         <div className="rounded-lg border">
           {consumptionsLoading ? (
             <div className="divide-y">
@@ -416,40 +561,42 @@ function WorkOrderDetail({ id }: { id: string }) {
           ) : consumptionsError ? (
             <p className="p-4 text-sm text-destructive">Không thể tải vật tư tiêu thụ.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Loại vật tư</TableHead>
-                  <TableHead>Mã vật tư</TableHead>
-                  <TableHead className="text-right">Số lượng</TableHead>
-                  <TableHead>Đơn vị</TableHead>
-                  <TableHead>Thời gian</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!consumptions || consumptions.length === 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                      Chưa có vật tư nào được ghi nhận.
-                    </TableCell>
+                    <TableHead>Loại vật tư</TableHead>
+                    <TableHead>Mã vật tư</TableHead>
+                    <TableHead className="text-right">Số lượng</TableHead>
+                    <TableHead>Đơn vị</TableHead>
+                    <TableHead>Thời gian</TableHead>
                   </TableRow>
-                ) : (
-                  consumptions.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.material_type}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {c.material_id.slice(0, 8).toUpperCase()}
-                      </TableCell>
-                      <TableCell className="text-right">{c.quantity}</TableCell>
-                      <TableCell>{c.unit}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(c.created_at)}
+                </TableHeader>
+                <TableBody>
+                  {!consumptions || consumptions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                        Chưa có vật tư nào được ghi nhận.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    consumptions.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">{c.material_type}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {c.material_id.slice(0, 8).toUpperCase()}
+                        </TableCell>
+                        <TableCell className="text-right">{c.quantity}</TableCell>
+                        <TableCell>{c.unit}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(c.created_at)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </div>

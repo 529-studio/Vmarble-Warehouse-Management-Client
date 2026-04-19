@@ -25,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useMaterials } from '@/lib/hooks/use-materials'
+import { useSKU } from '@/lib/hooks/use-skus'
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ import {
   useWorkOrders,
   useCreateWorkOrder,
   useAdvanceStatus,
+  useWorkOrderConsumptions,
 } from '@/lib/hooks/use-work-orders'
 import { usePlans } from '@/lib/hooks/use-plans'
 import { usePOs } from '@/lib/hooks/use-pos'
@@ -328,9 +330,20 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
   const [selectedMaterialId, setSelectedMaterialId] = useState(wo.material_id ?? NONE)
 
   const isPlannedToInCutting = wo.status === 'PLANNED'
+  const isProcessingToCompleted = wo.status === 'IN_PROCESSING'
 
   const { data: materialsData, isLoading: isLoadingMaterials } = useMaterials({ limit: 200 })
   const materials = materialsData?.items ?? []
+  const { data: sku, isLoading: loadingSku } = useSKU(wo.sku_id)
+  const {
+    data: consumptions,
+    isLoading: loadingConsumptions,
+  } = useWorkOrderConsumptions(isProcessingToCompleted ? wo.id : '')
+
+  const hasMetalConsumption = (consumptions ?? []).some((c) => c.material_type === 'METAL')
+  const requiresMetal = sku?.requires_metal ?? false
+  const blockedByMissingMetal =
+    isProcessingToCompleted && requiresMetal && !hasMetalConsumption
 
   const next = NEXT_STATUS[wo.status]
   if (!next) return null
@@ -387,11 +400,23 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
           </div>
         )}
 
+        {blockedByMissingMetal && !loadingConsumptions && !loadingSku && (
+          <p className="text-sm text-destructive">
+            SKU này yêu cầu vật tư METAL. Cần ghi nhận ít nhất 1 vật tư METAL trước khi hoàn thành.
+          </p>
+        )}
+
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleCancel}>Hủy</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={isPending || (isPlannedToInCutting && selectedMaterialId === NONE)}
+            disabled={
+              isPending ||
+              loadingSku ||
+              loadingConsumptions ||
+              blockedByMissingMetal ||
+              (isPlannedToInCutting && selectedMaterialId === NONE)
+            }
           >
             {isPending ? 'Đang xử lý…' : 'Xác nhận'}
           </AlertDialogAction>

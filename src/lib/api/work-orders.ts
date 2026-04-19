@@ -5,6 +5,7 @@ import type {
   AssignWorkOrderInput,
   SuggestAssignmentResult,
   ConsumptionRecord,
+  AddConsumptionInput,
   PagedResult,
 } from '@/types/api'
 import { apiClient } from './client'
@@ -37,6 +38,10 @@ export const workOrdersApi = {
   /** GET /api/v1/work-orders/:id/consumptions */
   listConsumptions: (id: string) =>
     apiClient.get<ConsumptionRecord[]>(`/work-orders/${id}/consumptions`),
+
+  /** POST /api/v1/work-orders/:id/consumptions */
+  addConsumption: (id: string, input: AddConsumptionInput) =>
+    apiClient.post<ConsumptionRecord>(`/work-orders/${id}/consumptions`, input),
 
   /** POST /api/v1/work-orders/:id/assign */
   assign: (id: string, input: AssignWorkOrderInput) =>

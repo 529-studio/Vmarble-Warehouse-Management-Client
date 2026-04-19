@@ -24,6 +24,15 @@ export function useCreateSKU() {
   })
 }
 
+export function useSKU(skuId: string | null) {
+  return useQuery({
+    queryKey: [SKUS_KEY, skuId],
+    queryFn: () => skusApi.getById(skuId!),
+    enabled: skuId !== null,
+    staleTime: 30_000,
+  })
+}
+
 export function useSKUBOM(skuId: string | null) {
   return useQuery({
     queryKey: [SKUS_KEY, skuId, BOM_KEY],
