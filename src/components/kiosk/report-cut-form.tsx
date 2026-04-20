@@ -278,17 +278,17 @@ export function ReportCutForm() {
   const selectedMaterialId = materialIdFromUrl ?? workOrder?.material_id ?? undefined
 
   const {
-    data: sheetsData,
-    isLoading: isLoadingSheets,
+    data: lotSheetsData,
+    isLoading: isLoadingLotOptions,
   } = useAvailableSheets(
     { material_id: selectedMaterialId, limit: 200 },
     needsBoardSheetInput && !!selectedMaterialId,
   )
 
-  const allSheets = useMemo(() => sheetsData?.items ?? [], [sheetsData?.items])
+  const lotSheets = useMemo(() => lotSheetsData?.items ?? [], [lotSheetsData?.items])
   const lotOptions = useMemo(() => {
     const byLot = new Map<string, { id: string; label: string }>()
-    for (const sheet of allSheets) {
+    for (const sheet of lotSheets) {
       if (byLot.has(sheet.lot_id)) continue
       byLot.set(sheet.lot_id, {
         id: sheet.lot_id,
@@ -299,7 +299,7 @@ export function ReportCutForm() {
       })
     }
     return Array.from(byLot.values())
-  }, [allSheets])
+  }, [lotSheets])
 
   // ── react-hook-form ───────────────────────────────────────────────────────
   const {
@@ -323,10 +323,20 @@ export function ReportCutForm() {
   })
 
   const selectedLotId = useWatch({ control, name: 'lotId' })
-  const filteredSheets = useMemo(
-    () => allSheets.filter((sheet) => !selectedLotId || sheet.lot_id === selectedLotId),
-    [allSheets, selectedLotId],
+
+  const {
+    data: filteredSheetsData,
+    isLoading: isLoadingFilteredSheets,
+  } = useAvailableSheets(
+    {
+      material_id: selectedMaterialId,
+      lot_id: selectedLotId || undefined,
+      limit: 200,
+    },
+    needsBoardSheetInput && !!selectedMaterialId && !!selectedLotId,
   )
+
+  const filteredSheets = useMemo(() => filteredSheetsData?.items ?? [], [filteredSheetsData?.items])
 
   useEffect(() => {
     setValue('boardSheetId', '')
@@ -494,7 +504,7 @@ export function ReportCutForm() {
                       <Select
                         value={field.value ?? ''}
                         onValueChange={field.onChange}
-                        disabled={isDisabled || isLoadingSheets}
+                        disabled={isDisabled || isLoadingLotOptions}
                       >
                         <SelectTrigger
                           id={fid('lot-id')}
@@ -506,12 +516,12 @@ export function ReportCutForm() {
                         >
                           <SelectValue
                             placeholder={
-                              isLoadingSheets ? 'Đang tải danh sách lô…' : 'Chọn lô vật liệu…'
+                              isLoadingLotOptions ? 'Đang tải danh sách lô…' : 'Chọn lô vật liệu…'
                             }
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          {lotOptions.length === 0 && !isLoadingSheets ? (
+                          {lotOptions.length === 0 && !isLoadingLotOptions ? (
                             <div className="px-3 py-4 text-center text-base text-muted-foreground">
                               Không có lô vật liệu khả dụng
                             </div>
@@ -549,7 +559,7 @@ export function ReportCutForm() {
                       <Select
                         value={field.value ?? ''}
                         onValueChange={field.onChange}
-                        disabled={isDisabled || isLoadingSheets || !selectedLotId}
+                        disabled={isDisabled || isLoadingFilteredSheets || !selectedLotId}
                       >
                         <SelectTrigger
                           id={fid('board-sheet-id')}
@@ -563,14 +573,14 @@ export function ReportCutForm() {
                             placeholder={
                               !selectedLotId
                                 ? 'Chọn lô trước'
-                                : isLoadingSheets
+                                : isLoadingFilteredSheets
                                   ? 'Đang tải danh sách tấm ván…'
                                   : 'Chọn tấm ván…'
                             }
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          {filteredSheets.length === 0 && !isLoadingSheets ? (
+                          {filteredSheets.length === 0 && !isLoadingFilteredSheets ? (
                             <div className="px-3 py-4 text-center text-base text-muted-foreground">
                               Không có tấm ván trong lô đã chọn
                             </div>
