@@ -1,11 +1,22 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { SearchInput } from '@/components/ui/search-input'
 import { DataPagination } from '@/components/ui/data-pagination'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -21,12 +32,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useCosting } from '@/lib/hooks/use-costing'
+import { useComputeCosting, useCosting, useFinalizeCosting } from '@/lib/hooks/use-costing'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import type { CostingRecord } from '@/types/api'
 
 const fmt = (n: number) =>
   n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 
 type FinalizedFilter = 'ALL' | 'FINALIZED' | 'DRAFT'
 
@@ -36,12 +57,18 @@ const FINALIZED_LABELS: Record<FinalizedFilter, string> = {
   DRAFT: 'Nháp',
 }
 
+function getCurrentRole(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;\s*)auth_role=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 function TableSkeleton({ rows = 8 }: { rows?: number }) {
   return (
     <>
       {Array.from({ length: rows }).map((_, i) => (
         <TableRow key={i}>
-          {Array.from({ length: 7 }).map((_, j) => (
+          {Array.from({ length: 9 }).map((_, j) => (
             <TableCell key={j}>
               <Skeleton className="h-5 w-full" />
             </TableCell>
@@ -52,29 +79,139 @@ function TableSkeleton({ rows = 8 }: { rows?: number }) {
   )
 }
 
-// ── Inner component — uses useSearchParams (must be inside <Suspense>) ────────
+function AdjustmentDialog({
+  open,
+  record,
+  onClose,
+}: {
+  open: boolean
+  record: CostingRecord | null
+  onClose: () => void
+}) {
+  const [reason, setReason] = useState('')
+
+  useEffect(() => {
+    if (!open) {
+      queueMicrotask(() => setReason(''))
+    }
+  }, [open])
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!reason.trim()) return
+
+    toast.error('Backend chưa hỗ trợ API Costing Adjustment trên môi trường hiện tại.')
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Tạo điều chỉnh giá thành</DialogTitle>
+        </DialogHeader>
+
+        {!record ? null : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1 rounded-lg border bg-muted/30 p-3 text-sm">
+              <p>
+                <span className="text-muted-foreground">WO:</span>{' '}
+                <span className="font-mono">{record.work_order_id.slice(0, 8).toUpperCase()}</span>
+              </p>
+              <p>
+                <span className="text-muted-foreground">Tổng hiện tại:</span>{' '}
+                <span className="font-semibold">{fmt(record.total_cost.amount)}</span>
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="adjustment-reason">Lý do điều chỉnh</Label>
+              <Input
+                id="adjustment-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Nhập lý do bắt buộc"
+                required
+              />
+            </div>
+
+            <p className="rounded border border-dashed px-3 py-2 text-xs text-muted-foreground">
+              Lịch sử điều chỉnh sẽ hiển thị tại đây sau khi backend cung cấp API adjustments.
+            </p>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Huỷ
+              </Button>
+              <Button type="submit" disabled={!reason.trim()}>
+                Lưu điều chỉnh
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function CostingContent() {
+  const role = useMemo(() => getCurrentRole(), [])
+  const isAccountant = role === 'accountant'
+
   const { page, search, limit, setPage, setSearch } = usePageParams(10)
 
   const [inputValue, setInputValue] = useState(search)
   const debouncedSearch = useDebounce(inputValue, 400)
 
-  const [prevDebounced, setPrevDebounced] = useState(debouncedSearch)
-  if (prevDebounced !== debouncedSearch) {
-    setPrevDebounced(debouncedSearch)
+  const normalizedSearch = useMemo(
+    () => debouncedSearch.trim() || undefined,
+    [debouncedSearch],
+  )
+
+  useEffect(() => {
+    if (search === debouncedSearch) return
     setSearch(debouncedSearch)
-  }
+  }, [debouncedSearch, search, setSearch])
 
   const [finalizedFilter, setFinalizedFilter] = useState<FinalizedFilter>('ALL')
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false)
+  const [adjustmentRecord, setAdjustmentRecord] = useState<CostingRecord | null>(null)
+
+  const [computingWorkOrderId, setComputingWorkOrderId] = useState<string | null>(null)
+  const [finalizingWorkOrderId, setFinalizingWorkOrderId] = useState<string | null>(null)
 
   const { data, isLoading, isFetching, isError } = useCosting({
     page,
     limit,
-    search: debouncedSearch || undefined,
+    search: normalizedSearch,
     finalized:
       finalizedFilter === 'ALL' ? undefined : finalizedFilter === 'FINALIZED',
   })
+
+  const { mutate: computeCosting, isPending: computePending } = useComputeCosting()
+  const { mutate: finalizeCosting, isPending: finalizePending } = useFinalizeCosting()
+
+  function handleCompute(workOrderId: string) {
+    setComputingWorkOrderId(workOrderId)
+    computeCosting(workOrderId, {
+      onSettled: () => {
+        setComputingWorkOrderId((prev) => (prev === workOrderId ? null : prev))
+      },
+    })
+  }
+
+  function handleFinalize(workOrderId: string) {
+    setFinalizingWorkOrderId(workOrderId)
+    finalizeCosting(workOrderId, {
+      onSettled: () => {
+        setFinalizingWorkOrderId((prev) => (prev === workOrderId ? null : prev))
+      },
+    })
+  }
+
+  function openAdjustment(record: CostingRecord) {
+    setAdjustmentRecord(record)
+    setAdjustmentOpen(true)
+  }
 
   const isPending = isFetching && inputValue !== debouncedSearch
 
@@ -84,11 +221,22 @@ function CostingContent() {
 
   return (
     <>
-      {/* Toolbar */}
+      <AdjustmentDialog
+        open={adjustmentOpen}
+        record={adjustmentRecord}
+        onClose={() => setAdjustmentOpen(false)}
+      />
+
+      <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+        Màn hình đã hỗ trợ workflow Compute → Finalize. API Costing Adjustment chưa có trên backend dev nên tạm thời hiển thị form và validate lý do.
+      </div>
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <SearchInput
           value={inputValue}
-          onChange={(v) => { setInputValue(v) }}
+          onChange={(v) => {
+            setInputValue(v)
+          }}
           isPending={isPending}
           placeholder="Tìm theo WO ID, SKU ID…"
           containerClassName="w-full sm:max-w-sm"
@@ -131,9 +279,11 @@ function CostingContent() {
                   <TableHead>Sản phẩm</TableHead>
                   <TableHead className="text-right">CP vật liệu</TableHead>
                   <TableHead className="text-right">CP phụ trợ</TableHead>
+                  <TableHead className="text-right">CP nhân công</TableHead>
                   <TableHead className="text-right">Tổng chi phí</TableHead>
-                  <TableHead>Hoàn tất</TableHead>
+                  <TableHead>Trạng thái</TableHead>
                   <TableHead>Ngày tạo</TableHead>
+                  <TableHead className="text-right">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -141,43 +291,86 @@ function CostingContent() {
                   <TableSkeleton rows={limit} />
                 ) : records.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
                       {debouncedSearch
                         ? `Không tìm thấy kết quả cho "${debouncedSearch}"`
                         : 'Chưa có bản ghi giá thành nào.'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  records.map((r) => (
-                    <TableRow
-                      key={r.id}
-                      className={isFetching ? 'opacity-60 transition-opacity' : ''}
-                    >
-                      <TableCell className="font-mono text-xs">
-                        {r.work_order_id.slice(0, 8)}…
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {r.sku_id.slice(0, 8)}…
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {fmt(r.material_cost.amount)}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {fmt(r.auxiliary_cost.amount)}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {fmt(r.total_cost.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={r.finalized ? 'default' : 'outline'}>
-                          {r.finalized ? 'Đã chốt' : 'Nháp'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(r.created_at).toLocaleDateString('vi-VN')}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  records.map((r) => {
+                    const rowComputing = computePending && computingWorkOrderId === r.work_order_id
+                    const rowFinalizing = finalizePending && finalizingWorkOrderId === r.work_order_id
+                    const lockByFinalized = r.finalized
+
+                    return (
+                      <TableRow
+                        key={r.id}
+                        className={isFetching ? 'opacity-60 transition-opacity' : ''}
+                      >
+                        <TableCell className="font-mono text-xs">
+                          {r.work_order_id.slice(0, 8)}…
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {r.sku_id.slice(0, 8)}…
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {fmt(r.material_cost.amount)}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {fmt(r.auxiliary_cost.amount)}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {fmt(r.labor_cost.amount)}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {fmt(r.total_cost.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={r.finalized ? 'default' : 'outline'}>
+                            {r.finalized ? 'Đã chốt' : 'Nháp'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(r.created_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {!isAccountant ? (
+                            <span className="text-xs text-muted-foreground">Chỉ kế toán thao tác</span>
+                          ) : (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={lockByFinalized || rowComputing || rowFinalizing}
+                                onClick={() => handleCompute(r.work_order_id)}
+                              >
+                                {rowComputing ? 'Đang tính...' : 'Compute'}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={lockByFinalized || rowComputing || rowFinalizing}
+                                onClick={() => handleFinalize(r.work_order_id)}
+                              >
+                                {rowFinalizing ? 'Đang chốt...' : 'Finalize'}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={!r.finalized}
+                                onClick={() => openAdjustment(r)}
+                              >
+                                Điều chỉnh
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
@@ -185,7 +378,6 @@ function CostingContent() {
         </Card>
       )}
 
-      {/* Pagination */}
       {!isLoading && !isError && (
         <DataPagination
           currentPage={page}
@@ -198,8 +390,6 @@ function CostingContent() {
     </>
   )
 }
-
-// ── Page shell ────────────────────────────────────────────────────────────────
 
 export default function CostingPage() {
   return (
