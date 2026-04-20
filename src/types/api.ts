@@ -412,6 +412,45 @@ export interface BOMResponse {
   components: BOMItem[]
 }
 
+// ── Users ───────────────────────────────────────────────────────────────────
+
+export type UserRole =
+  | 'admin'
+  | 'cnc'
+  | 'planner'
+  | 'warehouse'
+  | 'accountant'
+  | 'cnc_manager'
+  | 'foreman'
+
+/** GET /api/proxy/admin/users */
+export interface User {
+  id: string
+  username: string
+  role: UserRole
+  full_name?: string
+  email?: string
+  is_active: boolean
+  created_at: string
+  updated_at?: string | null
+}
+
+/** POST /api/proxy/admin/users */
+export interface CreateUserInput {
+  username: string
+  password: string
+  role: UserRole
+  full_name?: string
+  email?: string
+}
+
+/** PUT /api/proxy/admin/users/:id */
+export interface UpdateUserInput {
+  role: UserRole
+  full_name?: string
+  email?: string
+}
+
 // ── Pagination / shared response wrappers ────────────────────────────────────
 
 /** Matches the Go backend PagedResult[T] envelope */

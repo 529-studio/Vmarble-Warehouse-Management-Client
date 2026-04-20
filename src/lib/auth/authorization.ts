@@ -22,6 +22,7 @@ export type AppResource =
   | 'remnant_list'
   | 'remnant_store'
   | 'account'
+  | 'users'
 
 export type AppAction =
   | 'read'
@@ -35,6 +36,7 @@ export type AppAction =
   | 'consume'
   | 'generate'
   | 'assign'
+  | 'toggle_active'
 
 const DASHBOARD_PATHS = [
   '/overview',
@@ -47,6 +49,7 @@ const DASHBOARD_PATHS = [
   '/work-orders',
   '/barcodes',
   '/cutting-dispatch',
+  '/users',
 ]
 
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account']
@@ -62,6 +65,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/work-orders', resource: 'work_orders' },
   { path: '/barcodes', resource: 'barcodes' },
   { path: '/cutting-dispatch', resource: 'cutting_dispatch' },
+  { path: '/users', resource: 'users' },
   { path: '/scan', resource: 'scan' },
   { path: '/cutting-orders', resource: 'cutting_orders' },
   { path: '/report-cut', resource: 'report_cut' },
@@ -94,6 +98,7 @@ function readOnly(resources: readonly AppResource[]): Partial<Record<AppResource
 const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>> = {
   admin: {
     ...readOnly(DASHBOARD_RESOURCES),
+    users: ['read', 'create', 'toggle_active'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
