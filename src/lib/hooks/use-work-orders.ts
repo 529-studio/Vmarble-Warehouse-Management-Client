@@ -1,7 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { workOrdersApi, type WorkOrdersFilter } from '@/lib/api/work-orders'
-import type { CreateWOInput, AdvanceStatusInput, AssignWorkOrderInput } from '@/types/api'
+import type {
+  CreateWOInput,
+  AdvanceStatusInput,
+  AssignWorkOrderInput,
+  AddConsumptionInput,
+} from '@/types/api'
 import { mapApiErrorVi } from '@/lib/api/client'
 
 export const WORK_ORDERS_KEY = 'work-orders'
@@ -57,6 +62,28 @@ export function useWorkOrderConsumptions(workOrderId: string) {
     queryKey: [CONSUMPTIONS_KEY, workOrderId],
     queryFn: () => workOrdersApi.listConsumptions(workOrderId),
     enabled: !!workOrderId,
+  })
+}
+
+export function useAddWorkOrderConsumption() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      workOrderId,
+      input,
+    }: {
+      workOrderId: string
+      input: AddConsumptionInput
+    }) => workOrdersApi.addConsumption(workOrderId, input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [CONSUMPTIONS_KEY, variables.workOrderId] })
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY, variables.workOrderId] })
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+      toast.success('Đã ghi nhận vật tư tiêu thụ')
+    },
+    onError: (err) => {
+      toast.error(mapApiErrorVi(err, 'Ghi nhận vật tư tiêu thụ thất bại'))
+    },
   })
 }
 

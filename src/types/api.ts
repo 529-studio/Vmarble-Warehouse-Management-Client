@@ -231,6 +231,14 @@ export interface SuggestAssignmentResult {
   in_cutting_count: number
 }
 
+/** POST /api/v1/work-orders/:id/consumptions */
+export interface AddConsumptionInput {
+  material_id: string
+  material_type: MaterialType
+  quantity: number
+  unit: string
+}
+
 /** GET /api/v1/work-orders/:id/consumptions */
 export interface ConsumptionRecord {
   id: string

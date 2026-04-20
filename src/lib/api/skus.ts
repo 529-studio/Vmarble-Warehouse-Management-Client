@@ -16,6 +16,9 @@ export const skusApi = {
   create: (input: CreateSKUInput) =>
     apiClient.post<SKU>('/skus', input),
 
+  getById: (skuId: string) =>
+    apiClient.get<SKU>(`/skus/${skuId}`),
+
   getBOM: (skuId: string) =>
     apiClient.get<BOMResponse>(`/skus/${skuId}/bom`),
 
