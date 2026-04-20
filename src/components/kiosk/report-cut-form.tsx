@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useId, useCallback, useMemo, useEffect } from 'react'
+import { useState, useId, useMemo, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import QRCode from 'react-qr-code'
-import { AlertTriangle, CheckCircle2, ChevronLeft, Copy, Check } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronLeft, Copy, Check, Printer } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/select'
 import { BigButton } from '@/components/kiosk/big-button'
 import { useCuttingOrder, useRecordCut } from '@/lib/hooks/use-cutting-orders'
+import { useGenerateBarcode, useOpenBarcodeLabelPdf } from '@/lib/hooks/use-barcode'
+import { usePlan } from '@/lib/hooks/use-plans'
 import { useAvailableSheets } from '@/lib/hooks/use-remnants'
 import { ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
@@ -160,76 +162,138 @@ function WasteToggle({ hasRemnant, onChange, disabled }: WasteToggleProps) {
 
 interface SuccessModalProps {
   remnantId: string | null | undefined
+  workOrderId: string
+  skuId: string
+  skuCode?: string
+  skuName?: string
+  skuDimensions?: { length_mm: number; width_mm: number }
+  planId: string
   onGoHome: () => void
 }
 
-function SuccessModal({ remnantId, onGoHome }: SuccessModalProps) {
+function SuccessModal({
+  remnantId,
+  workOrderId,
+  skuId,
+  skuCode,
+  skuName,
+  skuDimensions,
+  planId,
+  onGoHome,
+}: SuccessModalProps) {
   const [copied, setCopied] = useState(false)
+  const [barcodeResult, setBarcodeResult] = useState<{ id: string; labelUrl: string } | null>(null)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
 
-  const handleCopy = useCallback(() => {
+  const { data: plan } = usePlan(planId || null)
+  const { mutateAsync: generateBarcode, isPending: isGeneratingBarcode } = useGenerateBarcode()
+  const { mutateAsync: openLabelPdf, isPending: isOpeningLabelPdf } = useOpenBarcodeLabelPdf()
+
+  function handleCopy() {
     if (!remnantId) return
     navigator.clipboard.writeText(remnantId)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }, [remnantId])
+  }
+
+  const canCallLabelApi = !!plan?.po_id && !!planId && !!skuCode && !!skuName && !!skuDimensions
+
+  async function handlePrintLabel() {
+    if (barcodeResult?.labelUrl) {
+      window.open(barcodeResult.labelUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    if (!canCallLabelApi || !skuDimensions || !skuCode || !skuName || !plan?.po_id) return
+
+    const dimensions = `${skuDimensions.length_mm}x${skuDimensions.width_mm}mm`
+    const producedDate = new Date().toISOString()
+
+    try {
+      const barcode = await generateBarcode({
+        work_order_id: workOrderId,
+        sku_id: skuId,
+        po_id: plan.po_id,
+        production_plan_id: planId,
+        sku_code: skuCode,
+        sku_name: skuName,
+        dimensions,
+        produced_date: producedDate,
+      })
+
+      const labelUrl = await openLabelPdf(barcode.id)
+      setBarcodeResult({ id: barcode.id, labelUrl })
+      setPdfUrl(labelUrl)
+      window.open(labelUrl, '_blank', 'noopener,noreferrer')
+    } catch {
+      window.print()
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+    }
+  }, [pdfUrl])
+
+  const isPrinting = isGeneratingBarcode || isOpeningLabelPdf
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Ghi nhận thành công"
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-white p-8"
+      className="fixed inset-0 z-50 overflow-y-auto bg-white p-4"
     >
-      {/* Icon */}
-      <CheckCircle2 className="size-20 text-green-500" aria-hidden="true" />
+      <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-4 py-4">
+        <CheckCircle2 className="size-16 text-green-500" aria-hidden="true" />
 
-      {/* Heading */}
-      <div className="space-y-1 text-center">
-        <h2 className="text-2xl font-bold text-foreground">Ghi nhận thành công</h2>
-        <p className="text-muted-foreground">Kết quả cắt đã được lưu vào hệ thống.</p>
-      </div>
+        <div className="space-y-1 text-center">
+          <h2 className="text-2xl font-bold text-foreground">Ghi nhận thành công</h2>
+          <p className="text-base text-muted-foreground">Kết quả cắt đã được lưu.</p>
+        </div>
 
-      {/* Remnant info block */}
-      {remnantId ? (
-        <div className="w-full max-w-xs space-y-3">
-          <div className="rounded-xl border bg-muted/40 p-4 text-center">
-            <div className="mx-auto mb-3 rounded-lg bg-white p-2">
-              <QRCode value={remnantId} size={144} />
+        {remnantId ? (
+          <div className="w-full space-y-3">
+            <div className="rounded-xl border bg-muted/40 p-4 text-center">
+              <div className="mx-auto mb-3 rounded-lg bg-white p-2">
+                <QRCode value={remnantId} size={160} />
+              </div>
+              <p className="text-base text-muted-foreground">Xem trước tem (mm)</p>
+              <p className="mt-0.5 break-all font-mono text-sm font-medium">{remnantId}</p>
             </div>
-            <p className="text-base text-muted-foreground">Mã tấm lẻ</p>
-            <p className="mt-0.5 break-all font-mono text-base font-medium">
-              {remnantId}
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-base font-semibold transition-colors hover:bg-muted/50"
+            >
+              {copied ? (
+                <><Check className="size-4 text-green-600" aria-hidden="true" /> Đã sao chép mã</>
+              ) : (
+                <><Copy className="size-4" aria-hidden="true" /> Sao chép mã tem</>
+              )}
+            </button>
+
+            <BigButton type="button" onClick={handlePrintLabel} disabled={isPrinting || !canCallLabelApi}>
+              <Printer className="mr-2 size-5" aria-hidden="true" />
+              {isPrinting ? 'Đang chuẩn bị file in…' : 'In tem'}
+            </BigButton>
+
+            <p className="text-center text-xs text-muted-foreground">
+              Tem in chuẩn 50×30mm. Khi API in lỗi hệ thống sẽ dùng in trực tiếp từ màn hình QR.
             </p>
+
           </div>
+        ) : (
+          <div className="w-full rounded-xl border bg-muted/40 px-6 py-4 text-center">
+            <p className="text-sm text-muted-foreground">Không có tấm lẻ (hao hụt toàn bộ)</p>
+          </div>
+        )}
 
-          {/* Copy button */}
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-base font-semibold transition-colors hover:bg-muted/50"
-          >
-            {copied ? (
-              <><Check className="size-4 text-green-600" aria-hidden="true" /> Đã sao chép</>
-            ) : (
-              <><Copy className="size-4" aria-hidden="true" /> Sao chép mã tấm lẻ</>
-            )}
-          </button>
-
-          <p className="text-center text-xs text-muted-foreground">
-            In hoặc chụp mã QR rồi dán lên tấm lẻ để quét nhập kho.
-          </p>
+        <div className="w-full">
+          <BigButton type="button" variant="secondary" onClick={onGoHome}>Về trang chính</BigButton>
         </div>
-      ) : (
-        <div className="rounded-xl border bg-muted/40 px-6 py-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            Không có tấm lẻ (hao hụt toàn bộ)
-          </p>
-        </div>
-      )}
-
-      {/* Go home */}
-      <div className="w-full max-w-xs">
-        <BigButton onClick={onGoHome}>Về trang chính</BigButton>
       </div>
     </div>
   )
@@ -427,6 +491,12 @@ export function ReportCutForm() {
     return (
       <SuccessModal
         remnantId={successResult.remnantId}
+        workOrderId={woId}
+        skuId={workOrder?.sku_id ?? ''}
+        skuCode={workOrder?.sku_code}
+        skuName={workOrder?.sku_name}
+        skuDimensions={workOrder?.sku_dimensions}
+        planId={workOrder?.plan_id ?? ''}
         onGoHome={() => router.push('/cutting-orders')}
       />
     )
