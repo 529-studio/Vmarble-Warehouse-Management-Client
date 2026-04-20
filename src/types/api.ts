@@ -259,6 +259,7 @@ export interface CostingRecord {
   sku_id: string
   material_cost: Money
   auxiliary_cost: Money
+  labor_cost: Money
   total_cost: Money
   finalized: boolean
   created_at: string

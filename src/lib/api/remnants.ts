@@ -1,4 +1,4 @@
-import type { Remnant, BoardSheet, CostingRecord, RemnantSuggestion, StorageLocation, PagedResult, PageParams } from '@/types/api'
+import type { Remnant, BoardSheet, RemnantSuggestion, StorageLocation, PagedResult, PageParams } from '@/types/api'
 import { apiClient } from './client'
 
 // ── Remnant list filters ─────────────────────────────────────────────────────
@@ -7,10 +7,6 @@ export interface RemnantsFilter extends PageParams {
   status?: string
   min_length_mm?: number
   min_width_mm?: number
-}
-
-export interface CostingFilter extends PageParams {
-  finalized?: boolean
 }
 
 // ── Remnants API ──────────────────────────────────────────────────────────────
@@ -99,32 +95,3 @@ export const sheetsApi = {
     }),
 }
 
-// ── Costing API ──────────────────────────────────────────────────────────────
-
-export const costingApi = {
-  /**
-   * GET /api/v1/costing
-   * Returns a paged result with metadata.
-   */
-  list: (filter: CostingFilter = {}) =>
-    apiClient.get<PagedResult<CostingRecord>>('/costing', {
-      params: {
-        page: filter.page,
-        limit: filter.limit,
-        order: filter.order,
-        finalized: filter.finalized,
-      },
-    }),
-
-  /** GET /api/v1/costing/{workOrderID} */
-  getByWorkOrder: (workOrderId: string) =>
-    apiClient.get<CostingRecord>(`/costing/${workOrderId}`),
-
-  /** POST /api/v1/costing/{workOrderID}/compute */
-  compute: (workOrderId: string) =>
-    apiClient.post<CostingRecord>(`/costing/${workOrderId}/compute`),
-
-  /** POST /api/v1/costing/{workOrderID}/finalize */
-  finalize: (workOrderId: string) =>
-    apiClient.post<void>(`/costing/${workOrderId}/finalize`),
-}
