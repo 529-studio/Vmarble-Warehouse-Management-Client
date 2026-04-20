@@ -50,6 +50,7 @@ import {
 } from '@/lib/hooks/use-plans'
 import { usePOs, usePOLineItems } from '@/lib/hooks/use-pos'
 import { useSKUs } from '@/lib/hooks/use-skus'
+import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { PlanStatus, ProductionPlan, CreatePlanInput, LineItem } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -112,7 +113,7 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const { data: posData } = usePOs({ limit: 200 })
-  const pos = posData?.items ?? []
+  const pos = useMemo(() => posData?.items ?? [], [posData?.items])
 
   const { data: skusData } = useSKUs({ limit: 500 })
   const skuMap = useMemo(
@@ -376,6 +377,11 @@ function TableSkeleton() {
 // ── Main list content ─────────────────────────────────────────────────────────
 
 function PlansContent() {
+  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const canCreatePlan = can(role, 'create', 'plans')
+  const canApprovePlan = can(role, 'approve', 'plans')
+  const canCancelPlan = can(role, 'cancel', 'plans')
+
   const [statusFilter, setStatusFilter] = useState<PlanStatus | 'ALL'>('ALL')
   const [createOpen, setCreateOpen] = useState(false)
   const [approveTarget, setApproveTarget] = useState<ProductionPlan | null>(null)
@@ -440,10 +446,14 @@ function PlansContent() {
           </SelectContent>
         </Select>
 
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" />
-          Tạo kế hoạch
-        </Button>
+        {canCreatePlan ? (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            Tạo kế hoạch
+          </Button>
+        ) : (
+          <p className="text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách kế hoạch.</p>
+        )}
       </div>
 
       {/* Table */}
@@ -497,19 +507,23 @@ function PlansContent() {
                         </Button>
                         {plan.status === 'DRAFT' && (
                           <>
-                            <Button
-                              size="sm"
-                              onClick={() => setApproveTarget(plan)}
-                            >
-                              Duyệt
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => setCancelTarget(plan)}
-                            >
-                              Hủy
-                            </Button>
+                            {canApprovePlan && (
+                              <Button
+                                size="sm"
+                                onClick={() => setApproveTarget(plan)}
+                              >
+                                Duyệt
+                              </Button>
+                            )}
+                            {canCancelPlan && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setCancelTarget(plan)}
+                              >
+                                Hủy
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>
@@ -522,10 +536,10 @@ function PlansContent() {
         )}
       </div>
 
-      <CreatePlanDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {canCreatePlan && <CreatePlanDialog open={createOpen} onOpenChange={setCreateOpen} />}
 
       <ConfirmActionDialog
-        open={approveTarget !== null}
+        open={canApprovePlan && approveTarget !== null}
         title="Duyệt kế hoạch sản xuất?"
         description={`Kế hoạch cho đơn hàng "${approveTarget ? (poMap.get(approveTarget.po_id) ?? approveTarget.po_id.slice(0, 8)) : ''}" sẽ chuyển sang trạng thái Đã duyệt. Hành động này không thể hoàn tác.`}
         actionLabel="Duyệt"
@@ -535,7 +549,7 @@ function PlansContent() {
       />
 
       <ConfirmActionDialog
-        open={cancelTarget !== null}
+        open={canCancelPlan && cancelTarget !== null}
         title="Hủy kế hoạch sản xuất?"
         description={`Kế hoạch cho đơn hàng "${cancelTarget ? (poMap.get(cancelTarget.po_id) ?? cancelTarget.po_id.slice(0, 8)) : ''}" sẽ bị hủy và không thể khôi phục.`}
         actionLabel="Hủy kế hoạch"

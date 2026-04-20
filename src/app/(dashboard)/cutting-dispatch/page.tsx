@@ -38,6 +38,7 @@ import {
   useSuggestAssignment,
 } from '@/lib/hooks/use-work-orders'
 import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
+import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { WorkOrder, WorkOrderStatus } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -233,6 +234,9 @@ function AssignDialog({ wo, suggestedWorkerName, suggestedWorkerUsername, onSugg
 // ── Main content ──────────────────────────────────────────────────────────────
 
 function CuttingDispatchContent() {
+  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const canAssignWorkOrder = can(role, 'assign', 'cutting_dispatch')
+
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
   const [assignTarget, setAssignTarget] = useState<WorkOrder | null>(null)
   const [lastSuggestedUserMeta, setLastSuggestedUserMeta] = useState<{
@@ -348,7 +352,7 @@ function CuttingDispatchContent() {
                       {formatDate(wo.created_at)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {(wo.status === 'PLANNED' || wo.status === 'IN_CUTTING') && (
+                      {(wo.status === 'PLANNED' || wo.status === 'IN_CUTTING') && canAssignWorkOrder && (
                         <Button
                           size="sm"
                           variant={wo.assigned_to_name ? 'outline' : 'default'}
@@ -376,16 +380,18 @@ function CuttingDispatchContent() {
         />
       )}
 
-      <AssignDialog
-        wo={assignTarget}
-        suggestedWorkerName={suggestedWorkerName}
-        suggestedWorkerUsername={suggestedWorkerUsername}
-        onSuggestedUserMetaChange={setLastSuggestedUserMeta}
-        onClose={() => {
-          setAssignTarget(null)
-          setLastSuggestedUserMeta(null)
-        }}
-      />
+      {canAssignWorkOrder && (
+        <AssignDialog
+          wo={assignTarget}
+          suggestedWorkerName={suggestedWorkerName}
+          suggestedWorkerUsername={suggestedWorkerUsername}
+          onSuggestedUserMetaChange={setLastSuggestedUserMeta}
+          onClose={() => {
+            setAssignTarget(null)
+            setLastSuggestedUserMeta(null)
+          }}
+        />
+      )}
     </div>
   )
 }

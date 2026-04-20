@@ -35,6 +35,7 @@ import {
 import { useComputeCosting, useCosting, useFinalizeCosting } from '@/lib/hooks/use-costing'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { CostingRecord } from '@/types/api'
 
 const fmt = (n: number) =>
@@ -57,11 +58,6 @@ const FINALIZED_LABELS: Record<FinalizedFilter, string> = {
   DRAFT: 'Nháp',
 }
 
-function getCurrentRole(): string | null {
-  if (typeof document === 'undefined') return null
-  const match = document.cookie.match(/(?:^|;\s*)auth_role=([^;]+)/)
-  return match ? decodeURIComponent(match[1]) : null
-}
 
 function TableSkeleton({ rows = 8 }: { rows?: number }) {
   return (
@@ -154,8 +150,11 @@ function AdjustmentDialog({
 }
 
 function CostingContent() {
-  const role = useMemo(() => getCurrentRole(), [])
-  const isAccountant = role === 'accountant'
+  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const canComputeCosting = can(role, 'compute', 'costing')
+  const canFinalizeCosting = can(role, 'finalize', 'costing')
+  const canAdjustCosting = can(role, 'adjust', 'costing')
+  const canWriteCosting = canComputeCosting || canFinalizeCosting || canAdjustCosting
 
   const { page, search, limit, setPage, setSearch } = usePageParams(10)
 
@@ -335,15 +334,20 @@ function CostingContent() {
                           {formatDate(r.created_at)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {!isAccountant ? (
-                            <span className="text-xs text-muted-foreground">Chỉ kế toán thao tác</span>
+                          {!canWriteCosting ? (
+                            <span className="text-xs text-muted-foreground">Bạn chỉ có quyền xem bảng giá thành.</span>
                           ) : (
                             <div className="flex justify-end gap-2">
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                disabled={lockByFinalized || rowComputing || rowFinalizing}
+                                disabled={
+                                  !canComputeCosting
+                                  || lockByFinalized
+                                  || rowComputing
+                                  || rowFinalizing
+                                }
                                 onClick={() => handleCompute(r.work_order_id)}
                               >
                                 {rowComputing ? 'Đang tính...' : 'Compute'}
@@ -351,7 +355,12 @@ function CostingContent() {
                               <Button
                                 type="button"
                                 size="sm"
-                                disabled={lockByFinalized || rowComputing || rowFinalizing}
+                                disabled={
+                                  !canFinalizeCosting
+                                  || lockByFinalized
+                                  || rowComputing
+                                  || rowFinalizing
+                                }
                                 onClick={() => handleFinalize(r.work_order_id)}
                               >
                                 {rowFinalizing ? 'Đang chốt...' : 'Finalize'}
@@ -360,7 +369,7 @@ function CostingContent() {
                                 type="button"
                                 size="sm"
                                 variant="secondary"
-                                disabled={!r.finalized}
+                                disabled={!canAdjustCosting || !r.finalized}
                                 onClick={() => openAdjustment(r)}
                               >
                                 Điều chỉnh

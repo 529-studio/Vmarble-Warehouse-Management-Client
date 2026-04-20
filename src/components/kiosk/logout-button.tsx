@@ -6,6 +6,7 @@ import { LogOut, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { logout } from '@/lib/hooks/use-auth'
+import { getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
@@ -18,11 +19,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 function useCurrentRole(): string | null {
-  return useMemo(() => {
-    if (typeof document === 'undefined') return null
-    const match = document.cookie.match(/(?:^|;\s*)auth_role=([^;]+)/)
-    return match ? decodeURIComponent(match[1]) : null
-  }, [])
+  return useMemo(() => getCurrentRoleFromCookie(), [])
 }
 
 export function KioskLogoutButton() {

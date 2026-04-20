@@ -39,6 +39,7 @@ import {
 import { usePlan } from '@/lib/hooks/use-plans'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useGenerateBarcode, useBarcodesForWorkOrder, useBarcodeScanEvents } from '@/lib/hooks/use-barcode'
+import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type {
   WorkOrderStatus,
   BarcodeRecord,
@@ -323,6 +324,10 @@ function GenerateBarcodeDialog({ wo, open, onClose }: {
 // ── Detail content ────────────────────────────────────────────────────────────
 
 function WorkOrderDetail({ id }: { id: string }) {
+  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const canGenerateBarcode = can(role, 'generate', 'work_orders')
+  const canConsume = can(role, 'consume', 'work_orders')
+
   const [showBarcodeDialog, setShowBarcodeDialog] = useState(false)
   const [materialId, setMaterialId] = useState('')
   const [quantity, setQuantity] = useState('')
@@ -343,7 +348,7 @@ function WorkOrderDetail({ id }: { id: string }) {
     () => materials.find((material) => material.id === materialId),
     [materials, materialId],
   )
-  const canAddConsumption = wo?.status === 'IN_PROCESSING' || wo?.status === 'COMPLETED'
+  const canAddConsumption = canConsume && (wo?.status === 'IN_PROCESSING' || wo?.status === 'COMPLETED')
   const effectiveUnit = unitTouched ? unit : selectedMaterial?.unit ?? unit
 
   function handleAddConsumption(e: React.FormEvent) {
@@ -403,11 +408,13 @@ function WorkOrderDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-8">
-      <GenerateBarcodeDialog
-        wo={wo}
-        open={showBarcodeDialog}
-        onClose={() => setShowBarcodeDialog(false)}
-      />
+      {canGenerateBarcode && (
+        <GenerateBarcodeDialog
+          wo={wo}
+          open={showBarcodeDialog}
+          onClose={() => setShowBarcodeDialog(false)}
+        />
+      )}
 
       {/* Header card */}
       <div className="rounded-lg border p-6">
@@ -419,14 +426,16 @@ function WorkOrderDetail({ id }: { id: string }) {
             <p className="font-mono text-lg font-bold">{shortId(wo.id)}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowBarcodeDialog(true)}
-            >
-              <QrCode className="size-4" />
-              Tạo barcode
-            </Button>
+            {canGenerateBarcode && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowBarcodeDialog(true)}
+              >
+                <QrCode className="size-4" />
+                Tạo barcode
+              </Button>
+            )}
             <Badge variant="outline" className={STATUS_CLASS[wo.status]}>
               {STATUS_LABEL[wo.status]}
             </Badge>
@@ -469,7 +478,9 @@ function WorkOrderDetail({ id }: { id: string }) {
         <h2 className="mb-3 text-base font-semibold">Vật tư tiêu thụ</h2>
 
         <div className="mb-3 rounded-lg border p-4">
-          {!canAddConsumption ? (
+          {!canConsume ? (
+            <p className="text-sm text-muted-foreground">Bạn chỉ có quyền xem vật tư tiêu thụ.</p>
+          ) : !canAddConsumption ? (
             <p className="text-sm text-muted-foreground">
               Chỉ ghi nhận vật tư khi lệnh ở trạng thái Đang xử lý hoặc Hoàn thành.
             </p>

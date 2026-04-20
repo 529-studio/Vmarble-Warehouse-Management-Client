@@ -4,22 +4,25 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Scissors, ClipboardList, Package, User, QrCode } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 
 // cnc is the only kiosk role — all items are visible to every kiosk user.
 const NAV_ITEMS = [
-  { href: '/cutting-orders', label: 'Lệnh cắt',    icon: Scissors },
-  { href: '/report-cut',     label: 'Báo cáo',      icon: ClipboardList },
-  { href: '/scan',           label: 'Quét mã',      icon: QrCode },
-  { href: '/remnant-store',  label: 'Tấm lẻ',      icon: Package },
-  { href: '/account',        label: 'Tài khoản',    icon: User },
+  { href: '/cutting-orders', label: 'Lệnh cắt', icon: Scissors, resource: 'cutting_orders' },
+  { href: '/report-cut', label: 'Báo cáo', icon: ClipboardList, resource: 'report_cut' },
+  { href: '/scan', label: 'Quét mã', icon: QrCode, resource: 'scan' },
+  { href: '/remnant-store', label: 'Tấm lẻ', icon: Package, resource: 'remnant_store' },
+  { href: '/account', label: 'Tài khoản', icon: User, resource: 'account' },
 ] as const
 
 export function BottomNav() {
   const pathname = usePathname()
+  const role = getCurrentRoleFromCookie()
+  const navItems = NAV_ITEMS.filter((item) => can(role, 'read', item.resource))
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 flex h-20 items-stretch justify-around border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+      {navItems.map(({ href, label, icon: Icon }) => {
         const active =
           pathname === href ||
           pathname.startsWith(href + '/') ||
