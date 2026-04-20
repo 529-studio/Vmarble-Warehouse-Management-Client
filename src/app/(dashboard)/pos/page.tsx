@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Trash2, ShoppingCart } from 'lucide-react'
@@ -30,6 +30,7 @@ import { mapApiErrorVi } from '@/lib/api/client'
 import { usePOs, useCreatePO } from '@/lib/hooks/use-pos'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { CreatePOInput, CreateLineItemInput, SKU } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -352,6 +353,9 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
 // ── PO list content ───────────────────────────────────────────────────────────
 
 function POsContent() {
+  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const canCreatePO = can(role, 'create', 'pos')
+
   const { page, limit, setPage } = usePageParams(10)
   const [createOpen, setCreateOpen] = useState(false)
   const router = useRouter()
@@ -365,10 +369,14 @@ function POsContent() {
   return (
     <>
       <div className="flex items-center">
-        <Button className="ml-auto" onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" />
-          Tạo đơn hàng
-        </Button>
+        {canCreatePO ? (
+          <Button className="ml-auto" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            Tạo đơn hàng
+          </Button>
+        ) : (
+          <p className="ml-auto text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách đơn hàng.</p>
+        )}
       </div>
 
       {isError ? (
@@ -397,7 +405,7 @@ function POsContent() {
                 ) : pos.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-40 text-center text-muted-foreground">
-                      Chưa có đơn hàng nào. Nhấn "Tạo đơn hàng" để bắt đầu.
+                      Chưa có đơn hàng nào. Nhấn &quot;Tạo đơn hàng&quot; để bắt đầu.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -439,7 +447,7 @@ function POsContent() {
         />
       )}
 
-      <CreatePODialog open={createOpen} onOpenChange={setCreateOpen} />
+      {canCreatePO && <CreatePODialog open={createOpen} onOpenChange={setCreateOpen} />}
     </>
   )
 }

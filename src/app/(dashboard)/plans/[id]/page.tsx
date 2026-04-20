@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ArrowLeft, ClipboardList } from 'lucide-react'
@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { usePlan, useApprovePlan, useCancelPlan } from '@/lib/hooks/use-plans'
 import { useSKUs } from '@/lib/hooks/use-skus'
+import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { PlanStatus } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -68,6 +69,10 @@ export default function PlanDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
+  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const canApprovePlan = can(role, 'approve', 'plans')
+  const canCancelPlan = can(role, 'cancel', 'plans')
+
   const { data: plan, isLoading, isError } = usePlan(id)
 
   // Load SKUs to resolve code + name for plan items.
@@ -160,12 +165,14 @@ export default function PlanDetailPage({
       </Card>
 
       {/* Action buttons — only for DRAFT */}
-      {plan?.status === 'DRAFT' && (
+      {plan?.status === 'DRAFT' && (canApprovePlan || canCancelPlan) && (
         <div className="flex gap-3">
-          <Button onClick={() => setApproveOpen(true)}>Duyệt kế hoạch</Button>
-          <Button variant="destructive" onClick={() => setCancelOpen(true)}>
-            Hủy kế hoạch
-          </Button>
+          {canApprovePlan && <Button onClick={() => setApproveOpen(true)}>Duyệt kế hoạch</Button>}
+          {canCancelPlan && (
+            <Button variant="destructive" onClick={() => setCancelOpen(true)}>
+              Hủy kế hoạch
+            </Button>
+          )}
         </div>
       )}
 
@@ -222,7 +229,7 @@ export default function PlanDetailPage({
       </Card>
 
       {/* Approve confirm */}
-      <AlertDialog open={approveOpen}>
+      <AlertDialog open={canApprovePlan && approveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Duyệt kế hoạch sản xuất?</AlertDialogTitle>
@@ -240,7 +247,7 @@ export default function PlanDetailPage({
       </AlertDialog>
 
       {/* Cancel confirm */}
-      <AlertDialog open={cancelOpen}>
+      <AlertDialog open={canCancelPlan && cancelOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hủy kế hoạch sản xuất?</AlertDialogTitle>

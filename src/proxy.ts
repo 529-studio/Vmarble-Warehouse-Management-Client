@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  DASHBOARD_ROLES,
-  KIOSK_ROLES,
   getDefaultRouteForRole,
+  getResourceForPath,
+  can,
   isDashboardPath,
   isKioskPath,
 } from '@/lib/auth/authorization'
@@ -39,10 +39,10 @@ export function proxy(request: NextRequest) {
       return response
     }
 
+    const resource = getResourceForPath(pathname)
     if (
-      (isDashboardPath(pathname) &&
-        !DASHBOARD_ROLES.includes(role as (typeof DASHBOARD_ROLES)[number])) ||
-      (isKioskPath(pathname) && !KIOSK_ROLES.includes(role as (typeof KIOSK_ROLES)[number]))
+      (isDashboardPath(pathname) || isKioskPath(pathname))
+      && (!resource || !can(role, 'read', resource))
     ) {
       return NextResponse.redirect(new URL(getDefaultRouteForRole(role), request.url))
     }

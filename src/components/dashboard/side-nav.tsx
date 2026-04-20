@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -9,35 +9,24 @@ import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { logout } from '@/lib/hooks/use-auth'
+import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 
 // Full management nav — visible to admin, accountant, planner, warehouse, cnc_manager
 const MANAGEMENT_NAV = [
-  { href: '/overview',          label: 'Tổng quan',       icon: LayoutDashboard },
-  { href: '/pos',               label: 'Đơn hàng',        icon: ShoppingCart },
-  { href: '/plans',             label: 'Kế hoạch SX',     icon: ClipboardList },
-  { href: '/work-orders',       label: 'Lệnh sản xuất',   icon: ClipboardCheck },
-  { href: '/cutting-dispatch',  label: 'Điều phối cắt',   icon: Scissors },
-  { href: '/remnants',          label: 'Kho tấm lẻ',      icon: Package },
-  { href: '/costing',           label: 'Giá thành',       icon: DollarSign },
-  { href: '/materials',         label: 'Nguyên liệu',     icon: Layers },
-  { href: '/skus',              label: 'Sản phẩm',        icon: Boxes },
-] as const
-
-// CNC Manager nav — cutting dispatch + work orders
-const CNC_MANAGER_NAV = [
-  { href: '/cutting-dispatch', label: 'Điều phối cắt', icon: Scissors },
-  { href: '/work-orders',      label: 'Lệnh sản xuất', icon: ClipboardCheck },
-] as const
-
-// Foreman nav — shop-floor supervisor: only work orders are relevant
-const FOREMAN_NAV = [
-  { href: '/work-orders',  label: 'Lệnh sản xuất', icon: ClipboardCheck },
+  { href: '/overview', label: 'Tổng quan', icon: LayoutDashboard, resource: 'overview' },
+  { href: '/pos', label: 'Đơn hàng', icon: ShoppingCart, resource: 'pos' },
+  { href: '/plans', label: 'Kế hoạch SX', icon: ClipboardList, resource: 'plans' },
+  { href: '/work-orders', label: 'Lệnh sản xuất', icon: ClipboardCheck, resource: 'work_orders' },
+  { href: '/cutting-dispatch', label: 'Điều phối cắt', icon: Scissors, resource: 'cutting_dispatch' },
+  { href: '/remnants', label: 'Kho tấm lẻ', icon: Package, resource: 'remnants' },
+  { href: '/costing', label: 'Giá thành', icon: DollarSign, resource: 'costing' },
+  { href: '/materials', label: 'Nguyên liệu', icon: Layers, resource: 'materials' },
+  { href: '/skus', label: 'Sản phẩm', icon: Boxes, resource: 'skus' },
 ] as const
 
 function navItemsForRole(role: string | null) {
-  if (role === 'foreman') return FOREMAN_NAV
-  if (role === 'cnc_manager') return CNC_MANAGER_NAV
-  return MANAGEMENT_NAV
+  if (!role) return []
+  return MANAGEMENT_NAV.filter((item) => can(role, 'read', item.resource))
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -51,12 +40,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 function useCurrentRole(): string | null {
-  const [role, setRole] = useState<string | null>(null)
-  useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)auth_role=([^;]+)/)
-    setRole(match ? decodeURIComponent(match[1]) : null)
-  }, [])
-  return role
+  return useMemo(() => getCurrentRoleFromCookie(), [])
 }
 
 export function SideNav() {

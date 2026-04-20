@@ -52,6 +52,7 @@ import { usePlans } from '@/lib/hooks/use-plans'
 import { usePOs } from '@/lib/hooks/use-pos'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { DataPagination } from '@/components/ui/data-pagination'
+import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type {
   WorkOrderStatus,
   WorkOrder,
@@ -429,6 +430,10 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
 // ── Main list ─────────────────────────────────────────────────────────────────
 
 function WorkOrdersContent() {
+  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const canCreateWorkOrder = can(role, 'create', 'work_orders')
+  const canAdvanceWorkOrder = can(role, 'advance', 'work_orders')
+
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
   const [planFilter, setPlanFilter] = useState<string>('ALL')
   const [createOpen, setCreateOpen] = useState(false)
@@ -514,10 +519,14 @@ function WorkOrdersContent() {
           </Select>
         </div>
 
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" />
-          Tạo lệnh
-        </Button>
+        {canCreateWorkOrder ? (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            Tạo lệnh
+          </Button>
+        ) : (
+          <p className="text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách lệnh sản xuất.</p>
+        )}
       </div>
 
       {/* Table */}
@@ -583,7 +592,7 @@ function WorkOrdersContent() {
                           <Button variant="outline" size="sm" asChild>
                             <Link href={`/work-orders/${wo.id}`}>Chi tiết</Link>
                           </Button>
-                          {canAdvance && (
+                          {canAdvance && canAdvanceWorkOrder && (
                             <Button
                               size="sm"
                               variant={wo.status === 'PLANNED' ? 'default' : 'outline'}
@@ -613,9 +622,9 @@ function WorkOrdersContent() {
         />
       )}
 
-      <CreateWODialog open={createOpen} onOpenChange={setCreateOpen} />
+      {canCreateWorkOrder && <CreateWODialog open={createOpen} onOpenChange={setCreateOpen} />}
 
-      {advanceTarget && (
+      {canAdvanceWorkOrder && advanceTarget && (
         <AdvanceDialog
           key={advanceTarget.id}
           wo={advanceTarget}
