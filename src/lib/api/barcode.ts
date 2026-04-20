@@ -1,5 +1,13 @@
+import { normalizeAuthToken } from '@/lib/auth/token'
 import type { BarcodeRecord, ScanEvent, ScanCheckpoint, GenerateBarcodeInput } from '@/types/api'
-import { apiClient } from './client'
+import { ApiClientError, apiClient } from './client'
+
+function buildApiUrl(path: string) {
+  const base =
+    typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1'
+  return new URL(`${baseUrl}${path}`, base).toString()
+}
 
 export const barcodeApi = {
   generate: (input: GenerateBarcodeInput) =>
@@ -25,4 +33,28 @@ export const barcodeApi = {
       checkpoint: input.checkpoint,
       scanned_by: input.scannedBy,
     }),
+
+  getLabelPdfBlob: async (barcodeId: string) => {
+    const token =
+      typeof window !== 'undefined'
+        ? normalizeAuthToken(localStorage.getItem('auth_token'))
+        : null
+
+    const response = await fetch(buildApiUrl(`/barcodes/${barcodeId}/label`), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/pdf',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      const code: string = body?.code ?? 'UNKNOWN'
+      const message: string = body?.message ?? body?.error ?? `HTTP ${response.status}`
+      throw new ApiClientError(response.status, code, message, body?.details)
+    }
+
+    return response.blob()
+  },
 }

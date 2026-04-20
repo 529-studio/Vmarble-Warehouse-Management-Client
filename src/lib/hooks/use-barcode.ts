@@ -47,3 +47,15 @@ export function useGenerateBarcode(opts?: { onSuccess?: (bc: BarcodeRecord) => v
     },
   })
 }
+
+export function useOpenBarcodeLabelPdf() {
+  return useMutation({
+    mutationFn: async (barcodeId: string) => {
+      const blob = await barcodeApi.getLabelPdfBlob(barcodeId)
+      return URL.createObjectURL(blob)
+    },
+    onError: (err: unknown) => {
+      toast.error(mapApiErrorVi(err, 'Mở file in tem thất bại'))
+    },
+  })
+}
