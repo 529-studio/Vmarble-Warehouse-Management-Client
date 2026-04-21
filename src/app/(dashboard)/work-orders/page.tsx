@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { ClipboardCheck, Plus } from 'lucide-react'
+import { ClipboardCheck, MapPin, Package, Plus, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useSKU } from '@/lib/hooks/use-skus'
+import { useSuggestRemnants } from '@/lib/hooks/use-remnants'
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -58,6 +60,8 @@ import type {
   WorkOrder,
   CreateWOInput,
   AdvanceStatusInput,
+  RemnantSuggestion,
+  RemnantStatus,
 } from '@/types/api'
 
 // ── Status helpers ────────────────────────────────────────────────────────────
@@ -144,7 +148,154 @@ function TableSkeleton() {
   )
 }
 
-// ── Create WO Dialog ──────────────────────────────────────────────────────────
+// ── Remnant suggestion panel ──────────────────────────────────────────────────
+
+function ageDaysFromIso(iso: string | undefined): number | null {
+  if (!iso) return null
+  const created = new Date(iso)
+  if (isNaN(created.getTime())) return null
+  return Math.floor((new Date().getTime() - created.getTime()) / 86_400_000)
+}
+
+const REMNANT_STATUS_LABEL: Record<RemnantStatus, string> = {
+  AVAILABLE: 'Có sẵn',
+  ALLOCATED: 'Đã phân bổ',
+  CONSUMED: 'Đã dùng',
+  WASTE: 'Hao hụt',
+}
+
+const REMNANT_STATUS_CLASS: Record<RemnantStatus, string> = {
+  AVAILABLE: 'bg-green-100 text-green-800 border-green-200',
+  ALLOCATED: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  CONSUMED: 'bg-gray-100 text-gray-600 border-gray-200',
+  WASTE: 'bg-red-100 text-red-700 border-red-200',
+}
+
+interface RemnantSuggestionPanelProps {
+  skuId: string
+}
+
+function RemnantSuggestionPanel({ skuId }: RemnantSuggestionPanelProps) {
+  const [dismissed, setDismissed] = useState(false)
+  const [showSkipForm, setShowSkipForm] = useState(false)
+  const [skipReason, setSkipReason] = useState('')
+
+  const { data: sku } = useSKU(skuId || null)
+  const { data: suggestions, isLoading } = useSuggestRemnants(skuId, sku?.dimensions, 3)
+  const items: RemnantSuggestion[] = suggestions ?? []
+
+  function handleSkip() {
+    // Log skip decision for audit trail — no backend endpoint yet
+    console.info('[BR-K05] Remnant suggestion skipped', {
+      skuId,
+      reason: skipReason.trim() || '(không ghi lý do)',
+    })
+    setDismissed(true)
+  }
+
+  if (dismissed || !skuId) return null
+
+  if (isLoading) {
+    return (
+      <div className="rounded-lg border bg-muted/30 p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <Package className="size-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">Đang tìm tấm lẻ phù hợp…</span>
+        </div>
+        <div className="space-y-2">
+          {[1, 2].map((i) => <Skeleton key={i} className="h-14 w-full rounded-md" />)}
+        </div>
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-dashed bg-muted/20 px-3 py-2.5">
+        <Package className="size-4 shrink-0 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Không tìm thấy tấm lẻ phù hợp — sẽ dùng tấm nguyên.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-lg border bg-muted/20 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Package className="size-4 text-primary" />
+          <span className="text-sm font-medium">Gợi ý tấm lẻ ({items.length})</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowSkipForm(true)}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted"
+        >
+          <X className="size-3" />
+          Bỏ qua
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {items.map((s) => {
+          const status = (s.remnant.status as RemnantStatus) ?? 'AVAILABLE'
+          const ageDays = ageDaysFromIso(s.remnant.created_at)
+          return (
+            <div
+              key={s.remnant.id}
+              className="flex items-start justify-between gap-3 rounded-md border bg-white px-3 py-2 text-sm"
+            >
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">#{s.rank}</span>
+                  <span className="font-medium">
+                    {s.remnant.dimensions.length_mm} × {s.remnant.dimensions.width_mm} mm
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={REMNANT_STATUS_CLASS[status] ?? 'bg-gray-100 text-gray-600'}
+                  >
+                    {REMNANT_STATUS_LABEL[status] ?? status}
+                  </Badge>
+                  {ageDays !== null && (
+                    <span className="text-xs text-muted-foreground">{ageDays} ngày</span>
+                  )}
+                  {s.location && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <MapPin className="size-3" />
+                      {s.location.label}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {showSkipForm ? (
+        <div className="mt-3 space-y-2 border-t pt-3">
+          <Label className="text-xs text-muted-foreground">Lý do bỏ qua (tùy chọn)</Label>
+          <Textarea
+            placeholder="Ví dụ: Tấm lẻ không đạt chất lượng yêu cầu…"
+            value={skipReason}
+            onChange={(e) => setSkipReason(e.target.value)}
+            className="min-h-[60px] resize-none text-sm"
+          />
+          <div className="flex gap-2">
+            <Button size="sm" variant="destructive" onClick={handleSkip}>
+              Xác nhận bỏ qua
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowSkipForm(false)}>
+              Hủy
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 interface CreateWODialogProps {
   open: boolean
@@ -230,7 +381,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Tạo lệnh sản xuất mới</DialogTitle>
         </DialogHeader>
@@ -286,6 +437,9 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
             </Select>
             {errors.sku_id && <p className="text-xs text-destructive">{errors.sku_id}</p>}
           </div>
+
+          {/* Remnant suggestions — shown when a SKU is selected (BR-K05) */}
+          {skuId && <RemnantSuggestionPanel skuId={skuId} />}
 
           <div className="space-y-1">
             <Label htmlFor="wo-quantity">
