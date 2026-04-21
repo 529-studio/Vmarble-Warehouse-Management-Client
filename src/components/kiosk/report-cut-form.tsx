@@ -19,7 +19,7 @@ import { BigButton } from '@/components/kiosk/big-button'
 import { useCuttingOrder, useRecordCut } from '@/lib/hooks/use-cutting-orders'
 import { useGenerateBarcode, useOpenBarcodeLabelPdf } from '@/lib/hooks/use-barcode'
 import { usePlan } from '@/lib/hooks/use-plans'
-import { useAvailableSheets } from '@/lib/hooks/use-remnants'
+import { useAvailableSheets, useRemnant } from '@/lib/hooks/use-remnants'
 import { ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
@@ -427,20 +427,41 @@ export function ReportCutForm() {
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
 
-  // ── Client-side area-conservation warning (non-blocking) ────────────────
-  // watch() re-runs on every keystroke; we derive the warning from live values.
+  // ── Client-side area-conservation pre-check (BR-K03 blocking) ───────────
+  // Computes used+remnant area against the actual source (sheet/remnant).
+  // Intentionally skips validation when source dimensions are unknown
+  // (e.g. URL-provided sheet_id with no local data) — backend guards that case.
   const watchedUsedLength = useWatch({ control, name: 'usedLength' })
   const watchedUsedWidth = useWatch({ control, name: 'usedWidth' })
-  const sourceL = workOrder?.sku_dimensions?.length_mm
-  const sourceW = workOrder?.sku_dimensions?.width_mm
-  const uLNum = parseFloat(watchedUsedLength)
-  const uWNum = parseFloat(watchedUsedWidth)
-  const areaWarning =
-    !!sourceL &&
-    !!sourceW &&
-    !isNaN(uLNum) &&
-    !isNaN(uWNum) &&
-    uLNum * uWNum > sourceL * sourceW
+  const watchedRemnantLength = useWatch({ control, name: 'remnantLength' })
+  const watchedRemnantWidth = useWatch({ control, name: 'remnantWidth' })
+  const watchedBoardSheetId = useWatch({ control, name: 'boardSheetId' })
+
+  const { data: sourceRemnant } = useRemnant(remnantSourceId ?? '')
+
+  const sourceDimensions = useMemo(() => {
+    if (remnantSourceId && sourceRemnant) return sourceRemnant.dimensions
+    if (needsBoardSheetInput && watchedBoardSheetId) {
+      return filteredSheets.find((s) => s.id === watchedBoardSheetId)?.dimensions
+    }
+    return undefined
+  }, [remnantSourceId, sourceRemnant, needsBoardSheetInput, watchedBoardSheetId, filteredSheets])
+
+  const areaConservationError = useMemo(() => {
+    if (!sourceDimensions) return null
+    const uL = parseFloat(watchedUsedLength)
+    const uW = parseFloat(watchedUsedWidth)
+    if (isNaN(uL) || isNaN(uW) || uL <= 0 || uW <= 0) return null
+
+    const rL = parseFloat(watchedRemnantLength ?? '')
+    const rW = parseFloat(watchedRemnantWidth ?? '')
+    const remnantArea = hasRemnant && !isNaN(rL) && !isNaN(rW) && rL > 0 && rW > 0 ? rL * rW : 0
+
+    const sourceArea = sourceDimensions.length_mm * sourceDimensions.width_mm
+    if (uL * uW + remnantArea <= sourceArea) return null
+
+    return `Diện tích vượt quá tấm nguồn (${sourceDimensions.length_mm}×${sourceDimensions.width_mm}mm). Giảm kích thước đã dùng hoặc tấm lẻ.`
+  }, [sourceDimensions, watchedUsedLength, watchedUsedWidth, hasRemnant, watchedRemnantLength, watchedRemnantWidth])
 
   // ── Submit handler ───────────────────────────────────────────────────────
   function onValidSubmit(data: CutFormValues) {
@@ -517,7 +538,7 @@ export function ReportCutForm() {
 
   // Block submission while loading WO (prevents sending sku_id as empty string),
   // while a mutation is in flight, or when material was not selected upstream.
-  const isDisabled = isPending || isLoadingWO || missingMaterialSelection
+  const isDisabled = isPending || isLoadingWO || missingMaterialSelection || !!areaConservationError
   const sourceDim = workOrder?.sku_dimensions
 
   return (
@@ -731,23 +752,6 @@ export function ReportCutForm() {
               )}
             />
           </div>
-
-          {/* Area-conservation warning — inline, non-blocking */}
-          {areaWarning && (
-            <div
-              role="alert"
-              className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"
-            >
-              <AlertTriangle
-                className="mt-0.5 size-4 shrink-0 text-amber-500"
-                aria-hidden="true"
-              />
-              <span className="text-sm">
-                Diện tích vượt quá tấm nguồn. Server sẽ kiểm tra lại — bạn vẫn
-                có thể tiếp tục gửi.
-              </span>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -824,6 +828,17 @@ export function ReportCutForm() {
           className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
           {apiError}
+        </div>
+      )}
+
+      {/* ── Area-conservation error — blocks submit (BR-K03) ── */}
+      {areaConservationError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3"
+        >
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden="true" />
+          <span className="text-sm text-destructive">{areaConservationError}</span>
         </div>
       )}
 
