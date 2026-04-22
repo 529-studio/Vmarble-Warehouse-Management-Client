@@ -1,5 +1,7 @@
 # docker-compose.fe.staging.yml
-# Double Binding: localhost & VPN (same pattern as BE)
+# Double Binding: localhost + VPN interface.
+# Set STAGING_VPN_IP and BACKEND_URL in .env.fe.staging to expose over VPN.
+# Defaults to 127.0.0.1 (localhost-only) when STAGING_VPN_IP is not set.
 
 services:
   frontend:
@@ -7,15 +9,15 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
-      - "10.8.0.1:3000:3000"
+      - "${STAGING_VPN_IP:-127.0.0.1}:3000:3000"
     logging:
       driver: "journald"
       options:
         tag: "vwms-staging-frontend"
     environment:
       # Next.js server-side proxy: forwards /api/proxy/* → BE
-      # Next.js container reaches BE via VPN IP (same server)
-      BACKEND_URL: ${BACKEND_URL:-http://10.8.0.1:8080}
+      # Set BACKEND_URL to the BE address reachable from this container (e.g. VPN IP or service name)
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
       NODE_ENV: production
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
