@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useBarcode } from '@/lib/hooks/use-barcode'
-import { useRecordScan, useScanStore } from '@/lib/hooks/use-scan'
+import { useRecordScan, useScanStore, getDeviceId, getDeviceName } from '@/lib/hooks/use-scan'
 import { CHECKPOINT_LABEL, getCheckpointBySlug } from '@/lib/checkpoints'
 
 function formatTime(iso: string) {
@@ -49,7 +49,7 @@ export default function CheckpointScanPage() {
 
   const historyForCheckpoint = useMemo(() => {
     if (!checkpointInfo) return []
-    return history.filter((entry) => entry.scanEvent.checkpoint === checkpointInfo.checkpoint)
+    return history.filter((entry) => entry.scanResult.checkpoint === checkpointInfo.checkpoint)
   }, [history, checkpointInfo])
 
   if (!checkpointInfo) {
@@ -78,7 +78,8 @@ export default function CheckpointScanPage() {
       {
         barcodeId: barcode.id,
         checkpoint: checkpointInfo.checkpoint,
-        scannedBy: 'worker',
+        deviceId: getDeviceId(),
+        deviceName: getDeviceName(),
       },
       {
         onSuccess: () => {
@@ -152,9 +153,9 @@ export default function CheckpointScanPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {historyForCheckpoint.map((entry, i) => (
-              <div key={`${entry.scanEvent.id}-${i}`} className="flex items-center justify-between rounded-lg border px-3 py-2">
+              <div key={`${entry.scanResult.id}-${i}`} className="flex items-center justify-between rounded-lg border px-3 py-2">
                 <span className="font-mono text-sm">{entry.barcodeShort}</span>
-                <span className="text-sm text-muted-foreground">{formatTime(entry.scanEvent.scanned_at)}</span>
+                <span className="text-sm text-muted-foreground">{formatTime(entry.scanResult.scanned_at)}</span>
               </div>
             ))}
           </CardContent>

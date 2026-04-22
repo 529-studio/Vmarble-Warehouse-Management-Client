@@ -355,6 +355,15 @@ export interface ScanEvent {
   checkpoint: ScanCheckpoint
   scanned_by: string
   scanned_at: string
+  /** Optional metadata — omitempty in Go, may be absent in older records */
+  device_id?: string
+  device_name?: string
+  shift?: string
+}
+
+/** Enriched response from POST /api/proxy/barcodes/:id/scans — mirrors backend barcode.ScanResult */
+export interface ScanResult extends ScanEvent {
+  scanned_by_name: string
 }
 
 // ── Dashboard (computed client-side from real API data) ──────────────────────

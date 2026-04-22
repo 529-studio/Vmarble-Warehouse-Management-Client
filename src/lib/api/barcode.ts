@@ -1,5 +1,5 @@
 import { normalizeAuthToken } from '@/lib/auth/token'
-import type { BarcodeRecord, ScanEvent, ScanCheckpoint, GenerateBarcodeInput } from '@/types/api'
+import type { BarcodeRecord, ScanEvent, ScanResult, ScanCheckpoint, GenerateBarcodeInput } from '@/types/api'
 import { ApiClientError, apiClient } from './client'
 
 function buildApiUrl(path: string) {
@@ -23,15 +23,22 @@ export const barcodeApi = {
   listScans: (barcodeId: string) =>
     apiClient.get<ScanEvent[]>(`/barcodes/${barcodeId}/scans`),
 
-  /** POST /api/proxy/barcodes/:id/scans */
+  /** POST /api/proxy/barcodes/:id/scans
+   * scanned_by UUID is extracted server-side from the JWT — do not send it.
+   * Optional device_id, device_name, shift are forwarded for audit metadata.
+   */
   recordScan: (input: {
     barcodeId: string
     checkpoint: ScanCheckpoint
-    scannedBy: string
+    deviceId?: string
+    deviceName?: string
+    shift?: string
   }) =>
-    apiClient.post<ScanEvent>(`/barcodes/${input.barcodeId}/scans`, {
+    apiClient.post<ScanResult>(`/barcodes/${input.barcodeId}/scans`, {
       checkpoint: input.checkpoint,
-      scanned_by: input.scannedBy,
+      ...(input.deviceId ? { device_id: input.deviceId } : {}),
+      ...(input.deviceName ? { device_name: input.deviceName } : {}),
+      ...(input.shift ? { shift: input.shift } : {}),
     }),
 
   getLabelPdfBlob: async (barcodeId: string) => {
@@ -58,3 +65,4 @@ export const barcodeApi = {
     return response.blob()
   },
 }
+
