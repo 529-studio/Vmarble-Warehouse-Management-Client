@@ -145,6 +145,12 @@ function CheckpointTimeline({ events }: { events: ScanEvent[] }) {
                   <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                     <p>{formatDateTime(event.scanned_at)}</p>
                     <p>Quét bởi: <span className="font-medium text-foreground">{event.scanned_by}</span></p>
+                    {event.device_name && (
+                      <p>Thiết bị: <span className="font-medium text-foreground">{event.device_name}</span></p>
+                    )}
+                    {event.shift && (
+                      <p>Ca: <span className="font-medium text-foreground">{event.shift}</span></p>
+                    )}
                   </div>
                 ) : (
                   <p className="mt-1 text-xs text-muted-foreground">Chưa quét</p>
