@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { CheckCircle2, Package, MapPin, RotateCcw } from 'lucide-react'
 import { mapApiErrorVi } from '@/lib/api/client'
@@ -9,7 +9,6 @@ import { ScannerView } from '@/components/kiosk/scanner-view'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { useRemnant, useStockRemnant, useStorageLocations } from '@/lib/hooks/use-remnants'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -67,106 +66,100 @@ function SuccessOverlay({ remnantShort, locationLabel, onReset }: SuccessOverlay
   )
 }
 
-// ── Shelf code manual input ───────────────────────────────────────────────────
-// QR generation for shelf locations is deferred — workers enter the code by hand.
+// ── Location QR payload normalizer ───────────────────────────────────────────
+// Shelf QR codes may be plain barcodes or JSON objects with various key names.
+// Tries JSON.parse first; extracts barcode/code/id/barcode_id fields, then
+// falls back to treating the raw input as the barcode string.
 
-function ShelfCodeInput({ onConfirm }: { onConfirm: (code: string) => void }) {
-  const [value, setValue] = useState('')
-
-  function handleConfirm() {
-    const trimmed = value.trim()
-    if (!trimmed) return
-    onConfirm(trimmed)
+function normalizeLocationBarcode(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed) as Record<string, unknown>
+      const candidate =
+        parsed.barcode ?? parsed.code ?? parsed.id ?? parsed.barcode_id ?? parsed.barcodeId
+      return typeof candidate === 'string' ? candidate.trim() : trimmed
+    } catch {
+      return trimmed
+    }
   }
-
-  return (
-    <div className="space-y-3">
-      <Input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') handleConfirm()
-        }}
-        placeholder="Nhập mã kệ rồi nhấn Xác nhận..."
-        className="h-12 text-base"
-        autoFocus
-      />
-      <Button
-        className="h-12 w-full text-base"
-        onClick={handleConfirm}
-        disabled={!value.trim()}
-      >
-        Xác nhận mã kệ
-      </Button>
-    </div>
-  )
+  return trimmed
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function RemnantStoreClient() {
-  const [step, setStep] = useState<Step>('scan_remnant')
-  const [remnantId, setRemnantId] = useState('')
+  // scannedRemnantId drives the fetch query; step is derived from query outcome.
+  const [scannedRemnantId, setScannedRemnantId] = useState('')
   const [locationBarcode, setLocationBarcode] = useState('')
   const [locationLabel, setLocationLabel] = useState('')
+  const [isDone, setIsDone] = useState(false)
 
   // Fetch remnant info after scanning — enabled only when id is set
-  const { data: remnant, isError: remnantNotFound, isFetching: fetchingRemnant } = useRemnant(remnantId)
+  const { data: remnant, isError: remnantNotFound, isFetching: fetchingRemnant, isSuccess: remnantFound } = useRemnant(scannedRemnantId)
 
   const { mutate: stockRemnant, isPending: isStocking } = useStockRemnant()
 
   // Preload location data so we can resolve barcode → human-readable label
   const { data: locationsMap } = useStorageLocations()
 
-  // Stable ref — avoids re-triggering effect when handler identity changes
-  const prevRemnantIdRef = useRef('')
+  // Derive step from state — no setStep calls needed, no effects for state transitions.
+  const step: Step = isDone
+    ? 'done'
+    : remnantFound && remnant
+    ? 'scan_shelf'
+    : 'scan_remnant'
 
-  // When remnant fetch resolves after scanning, advance step or show error
+  // Show error toast when a scan fails — pure side effect, no setState here.
   useEffect(() => {
-    if (!remnantId || remnantId === prevRemnantIdRef.current) return
-    if (fetchingRemnant) return
-    if (remnantNotFound || !remnant) {
+    if (!scannedRemnantId || fetchingRemnant) return
+    if (remnantNotFound) {
       toast.error('Không tìm thấy tấm lẻ — kiểm tra lại mã QR')
-      setRemnantId('')
-      return
     }
-    prevRemnantIdRef.current = remnantId
-    setStep('scan_shelf')
-  }, [remnantId, remnant, remnantNotFound, fetchingRemnant])
+  }, [scannedRemnantId, remnantNotFound, fetchingRemnant])
 
   function handleRemnantScan(code: string) {
     if (step !== 'scan_remnant' || fetchingRemnant) return
-    // Accept both full UUID and short 8-char codes for manual fallback
     const trimmed = code.trim()
     if (!trimmed) return
-    setRemnantId(trimmed)
+    setScannedRemnantId(trimmed)
   }
 
   function handleShelfScan(code: string) {
     if (step !== 'scan_shelf') return
-    const trimmed = code.trim()
-    if (!trimmed) return
-    setLocationBarcode(trimmed)
-    // Resolve human-readable label from the location catalogue.
-    // Falls back to the raw code if locations haven't loaded or the barcode
-    // doesn't match any known location (server will validate on confirm).
-    const match = locationsMap
-      ? Array.from(locationsMap.values()).find((loc) => loc.barcode === trimmed)
-      : undefined
-    setLocationLabel(match?.label ?? trimmed)
+    const barcode = normalizeLocationBarcode(code)
+    if (!barcode) return
+
+    // When locations catalogue is loaded, validate before accepting.
+    // If the map is still loading (undefined), allow through — server will guard.
+    if (locationsMap && locationsMap.size > 0) {
+      const match = Array.from(locationsMap.values()).find((loc) => loc.barcode === barcode)
+      if (!match) {
+        toast.error(`Mã vị trí "${barcode}" không hợp lệ — thử quét lại`)
+        return
+      }
+      setLocationBarcode(barcode)
+      setLocationLabel(match.label)
+      return
+    }
+
+    // Locations not yet loaded — allow through; server validates on stockRemnant
+    setLocationBarcode(barcode)
+    setLocationLabel(barcode)
   }
 
   function handleConfirm() {
-    if (!remnantId || !locationBarcode || isStocking) return
+    if (!scannedRemnantId || !locationBarcode || isStocking) return
     stockRemnant(
-      { remnantId, locationBarcode },
+      { remnantId: scannedRemnantId, locationBarcode },
       {
         onSuccess: () => {
-          setStep('done')
+          setIsDone(true)
         },
         onError: (err: unknown) => {
           toast.error(mapApiErrorVi(err, 'Nhập kho thất bại'))
-          // Reset shelf scan so worker can try again with a different shelf
+          // Reset shelf scan so worker can retry with a different shelf
           setLocationBarcode('')
           setLocationLabel('')
         },
@@ -174,22 +167,26 @@ export function RemnantStoreClient() {
     )
   }
 
-  function handleReset() {
-    setStep('scan_remnant')
-    setRemnantId('')
+  function handleShelfRescan() {
     setLocationBarcode('')
     setLocationLabel('')
-    prevRemnantIdRef.current = ''
+  }
+
+  function handleReset() {
+    setScannedRemnantId('')
+    setLocationBarcode('')
+    setLocationLabel('')
+    setIsDone(false)
   }
 
   if (step === 'done') {
-    const shortId = remnantId.slice(0, 8).toUpperCase()
+    const shortId = scannedRemnantId.slice(0, 8).toUpperCase()
     return <SuccessOverlay remnantShort={shortId} locationLabel={locationLabel} onReset={handleReset} />
   }
 
   const remnantShort = remnant
     ? remnant.id.slice(0, 8).toUpperCase()
-    : remnantId.slice(0, 8).toUpperCase()
+    : scannedRemnantId.slice(0, 8).toUpperCase()
 
   return (
     <div className="space-y-4">
@@ -244,12 +241,12 @@ export function RemnantStoreClient() {
         </CardContent>
       </Card>
 
-      {/* Step 2 — enter shelf code manually */}
+      {/* Step 2 — scan shelf QR */}
       <Card className={step !== 'scan_shelf' ? 'opacity-60' : undefined}>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="size-4" />
-            Bước 2 — Nhập mã kệ
+            Bước 2 — Quét mã QR vị trí kho
             {locationBarcode && (
               <Badge variant="secondary" className="ml-auto text-xs">
                 {locationLabel}
@@ -258,14 +255,31 @@ export function RemnantStoreClient() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Scanner — mounted only when on this step and no barcode captured yet */}
           {step === 'scan_shelf' && !locationBarcode && (
-            <ShelfCodeInput onConfirm={handleShelfScan} />
+            <ScannerView onScan={handleShelfScan} disabled={false} />
           )}
 
+          {/* Confirmed location info + rescan */}
           {locationBarcode && step === 'scan_shelf' && (
-            <p className="text-sm text-muted-foreground">
-              Đã nhập kệ <span className="font-semibold">{locationLabel}</span>. Nhấn xác nhận để lưu.
-            </p>
+            <div className="space-y-3">
+              <div className="rounded-lg bg-green-50 p-3 text-sm">
+                <p className="font-medium text-green-800">
+                  <MapPin className="mr-1 inline size-3.5" />
+                  {locationLabel}
+                </p>
+                {locationLabel !== locationBarcode && (
+                  <p className="mt-0.5 font-mono text-xs text-green-600">{locationBarcode}</p>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                className="h-12 w-full text-base"
+                onClick={handleShelfRescan}
+              >
+                Quét lại vị trí khác
+              </Button>
+            </div>
           )}
 
           {step !== 'scan_shelf' && !locationBarcode && (
@@ -277,7 +291,7 @@ export function RemnantStoreClient() {
       {/* Confirm button */}
       <BigButton
         onClick={handleConfirm}
-        disabled={!remnantId || !locationBarcode || isStocking || step !== 'scan_shelf'}
+        disabled={!scannedRemnantId || !locationBarcode || isStocking || step !== 'scan_shelf'}
       >
         {isStocking ? 'Đang lưu…' : 'Xác nhận nhập kho'}
       </BigButton>
