@@ -11,7 +11,9 @@
     "build-storybook": "storybook build",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "test:unit": "vitest run --project unit",
+    "test:unit:watch": "vitest --project unit"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.4",
@@ -45,19 +47,25 @@
     "@storybook/addon-vitest": "^10.3.3",
     "@storybook/nextjs-vite": "^10.3.3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.1",
     "@vitest/browser-playwright": "^4.1.1",
     "@vitest/coverage-v8": "^4.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "eslint-plugin-storybook": "^10.3.3",
+    "jsdom": "^29.0.2",
     "playwright": "^1.58.2",
     "storybook": "^10.3.3",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^8.0.2",
+    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.1"
   },
   "eslintConfig": {

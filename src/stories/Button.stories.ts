@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
-import { fn } from 'storybook/test';
+import { fn, expect, userEvent, within } from 'storybook/test';
 
 import { Button } from './Button';
 
@@ -31,11 +31,21 @@ export const Primary: Story = {
     primary: true,
     label: 'Button',
   },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole('button');
+    await userEvent.click(button);
+    await expect(args.onClick).toHaveBeenCalled();
+  },
 };
 
 export const Secondary: Story = {
   args: {
     label: 'Button',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('button')).toBeInTheDocument();
   },
 };
 

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
-import { fn } from 'storybook/test';
+import { fn, expect, userEvent, within } from 'storybook/test';
 
 import { Header } from './Header';
 
@@ -29,6 +29,19 @@ export const LoggedIn: Story = {
       name: 'Jane Doe',
     },
   },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const logoutBtn = canvas.getByRole('button', { name: /log out/i });
+    await userEvent.click(logoutBtn);
+    await expect(args.onLogout).toHaveBeenCalled();
+  },
 };
 
-export const LoggedOut: Story = {};
+export const LoggedOut: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const loginBtn = canvas.getByRole('button', { name: /log in/i });
+    await userEvent.click(loginBtn);
+    await expect(args.onLogin).toHaveBeenCalled();
+  },
+};
