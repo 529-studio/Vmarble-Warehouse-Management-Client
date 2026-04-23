@@ -383,7 +383,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Tạo lệnh sản xuất mới</DialogTitle>
+          <DialogTitle>Tạo lệnh cắt mới</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -516,7 +516,7 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
     <AlertDialog open>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Chuyển trạng thái lệnh sản xuất?</AlertDialogTitle>
+          <AlertDialogTitle>Chuyển trạng thái lệnh cắt?</AlertDialogTitle>
           <AlertDialogDescription>
             Lệnh <span className="font-medium">{shortId(wo.id)}</span> sẽ chuyển từ{' '}
             <span className="font-medium">{STATUS_LABEL[wo.status]}</span> sang{' '}
@@ -527,7 +527,7 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
         {/* Material picker — only shown for PLANNED → IN_CUTTING */}
         {isPlannedToInCutting && (
           <div className="space-y-1.5 py-1">
-            <Label>Loại vật liệu *</Label>
+            <Label>Loại nguyên liệu *</Label>
             <Select
               value={selectedMaterialId}
               onValueChange={setSelectedMaterialId}
@@ -536,12 +536,12 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
               <SelectTrigger>
                 <SelectValue
                   placeholder={
-                    isLoadingMaterials ? 'Đang tải vật liệu…' : 'Chọn loại vật liệu'
+                    isLoadingMaterials ? 'Đang tải nguyên liệu…' : 'Chọn loại nguyên liệu'
                   }
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE}>— Chọn loại vật liệu —</SelectItem>
+                <SelectItem value={NONE}>— Chọn loại nguyên liệu —</SelectItem>
                 {materials.map((material) => (
                   <SelectItem key={material.id} value={material.id}>
                     {material.name} ({material.type})
@@ -550,7 +550,7 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Công nhân CNC sẽ chọn lô và tấm cụ thể tại kiosk theo loại vật liệu này.
+              Công nhân CNC sẽ chọn lô và tấm cụ thể tại kiosk theo loại nguyên liệu này.
             </p>
           </div>
         )}
@@ -679,23 +679,23 @@ function WorkOrdersContent() {
             Tạo lệnh
           </Button>
         ) : (
-          <p className="text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách lệnh sản xuất.</p>
+          <p className="text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách lệnh cắt.</p>
         )}
       </div>
 
       {/* Table */}
       <div className={`rounded-lg border transition-opacity ${isFetching && !isLoading ? 'opacity-60' : ''}`}>
         <div className="border-b px-4 py-3 text-sm font-medium text-muted-foreground">
-          {isLoading ? 'Đang tải…' : `Tất cả lệnh sản xuất (${totalItems})`}
+          {isLoading ? 'Đang tải…' : `Tất cả lệnh cắt (${totalItems})`}
         </div>
 
         {isError ? (
-          <p className="p-4 text-sm text-destructive">Không thể tải danh sách lệnh sản xuất.</p>
+          <p className="p-4 text-sm text-destructive">Không thể tải danh sách lệnh cắt.</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mã Lệnh SX</TableHead>
+                <TableHead>Mã Lệnh Cắt</TableHead>
                 <TableHead>Sản phẩm</TableHead>
                 <TableHead>Kế hoạch</TableHead>
                 <TableHead>Trạng thái</TableHead>
@@ -710,7 +710,7 @@ function WorkOrdersContent() {
               ) : workOrders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                    Chưa có lệnh sản xuất nào.
+                    Chưa có lệnh cắt nào.
                   </TableCell>
                 </TableRow>
               ) : (

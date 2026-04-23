@@ -39,7 +39,7 @@ const API_ERROR_VI: Record<string, string> = {
     'Dữ liệu nhập không hợp lệ. Kiểm tra lại các trường.',
   // domain.ErrNotFound
   ERR_NOT_FOUND:
-    'Không tìm thấy lệnh cắt hoặc tấm nguyên liệu.',
+    'Không tìm thấy lệnh cắt hoặc tấm nguyên.',
 }
 
 function mapApiError(err: unknown): string {
@@ -641,11 +641,11 @@ export function ReportCutForm() {
                 <Controller
                   name="boardSheetId"
                   control={control}
-                  rules={{ required: 'Chọn tấm ván trước khi báo cáo' }}
+                  rules={{ required: 'Chọn tấm nguyên trước khi báo cáo' }}
                   render={({ field }) => (
                     <div className="space-y-1">
                       <Label htmlFor={fid('board-sheet-id')} className="text-base">
-                        Tấm ván trong lô
+                        Tấm nguyên trong lô
                       </Label>
                       <Select
                         value={field.value ?? ''}
@@ -665,15 +665,15 @@ export function ReportCutForm() {
                               !selectedLotId
                                 ? 'Chọn lô trước'
                                 : isLoadingFilteredSheets
-                                  ? 'Đang tải danh sách tấm ván…'
-                                  : 'Chọn tấm ván…'
+                                  ? 'Đang tải danh sách tấm nguyên…'
+                                  : 'Chọn tấm nguyên…'
                             }
                           />
                         </SelectTrigger>
                         <SelectContent>
                           {filteredSheets.length === 0 && !isLoadingFilteredSheets ? (
                             <div className="px-3 py-4 text-center text-base text-muted-foreground">
-                              Không có tấm ván trong lô đã chọn
+                              Không có tấm nguyên trong lô đã chọn
                             </div>
                           ) : (
                             filteredSheets.map((sheet) => (

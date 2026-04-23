@@ -298,11 +298,11 @@ function CuttingDispatchContent() {
       {/* Table */}
       <div className={`rounded-lg border transition-opacity ${isFetching && !isLoading ? 'opacity-60' : ''}`}>
         <div className="border-b px-4 py-3 text-sm font-medium text-muted-foreground">
-          {isLoading ? 'Đang tải…' : `Tất cả lệnh sản xuất (${totalItems})`}
+          {isLoading ? 'Đang tải…' : `Tất cả lệnh cắt (${totalItems})`}
         </div>
 
         {isError ? (
-          <p className="p-4 text-sm text-destructive">Không thể tải danh sách lệnh sản xuất.</p>
+          <p className="p-4 text-sm text-destructive">Không thể tải danh sách lệnh cắt.</p>
         ) : (
           <Table>
             <TableHeader>
@@ -321,7 +321,7 @@ function CuttingDispatchContent() {
               ) : workOrders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                    Không có lệnh sản xuất nào.
+                    Không có lệnh cắt nào.
                   </TableCell>
                 </TableRow>
               ) : (

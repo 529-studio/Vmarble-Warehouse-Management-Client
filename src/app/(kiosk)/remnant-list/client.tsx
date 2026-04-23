@@ -71,7 +71,7 @@ function RemnantCard({ remnant: r, location }: RemnantCardProps) {
           {location ? (
             <span className="font-medium">{location.label}</span>
           ) : (
-            <span className="text-muted-foreground italic">Chưa xếp kệ</span>
+            <span className="text-muted-foreground italic">Chưa có vị trí kho</span>
           )}
         </div>
         <span className={`text-xs ${isOld ? 'font-medium text-amber-600' : 'text-muted-foreground'}`}>

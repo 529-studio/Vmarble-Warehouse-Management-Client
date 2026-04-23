@@ -129,7 +129,7 @@ function RemnantsContent() {
                 <TableHead>ID</TableHead>
                 <TableHead>Kích thước (mm)</TableHead>
                 <TableHead>Nguồn gốc</TableHead>
-                <TableHead>Phân bổ cho WO</TableHead>
+                <TableHead>Phân bổ cho lệnh cắt</TableHead>
                 <TableHead>Ngày tạo</TableHead>
                 <TableHead>Trạng thái</TableHead>
               </TableRow>
@@ -157,9 +157,9 @@ function RemnantsContent() {
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {r.parent_board_id
-                        ? `Board: ${r.parent_board_id.slice(0, 6)}…`
+                        ? `Tấm nguyên: ${r.parent_board_id.slice(0, 6)}…`
                         : r.parent_remnant_id
-                          ? `Remnant: ${r.parent_remnant_id.slice(0, 6)}…`
+                          ? `Tấm lẻ: ${r.parent_remnant_id.slice(0, 6)}…`
                           : '—'}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
