@@ -5,7 +5,7 @@ const eslintConfig = [
   ...nextCoreWebVitals,
   ...storybook.configs['flat/recommended'],
   {
-    ignores: ['storybook-static/**'],
+    ignores: ['storybook-static/**', 'e2e/**', 'playwright.config.ts'],
   },
 ]
 
