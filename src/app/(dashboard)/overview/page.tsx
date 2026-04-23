@@ -1,156 +1,303 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { Layers, TrendingDown, Clock, BarChart2 } from 'lucide-react'
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
+import { Layers, TrendingUp, Scissors, DollarSign, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { AlertBanner } from '@/components/dashboard/alert-banner'
 import { Skeleton } from '@/components/ui/skeleton'
-import { dashboardApi } from '@/lib/api/dashboard'
-import type { Remnant, WorkOrder, CostingRecord } from '@/types/api'
+import { useDashboardOverview } from '@/lib/hooks/use-dashboard'
+import type { RecentCutItem, RecentWorkOrderItem, RecentCostingFinalizationItem } from '@/types/api'
 
-function computeStats(remnants: Remnant[], _workOrders: WorkOrder[], _costing: CostingRecord[]) {
-  const available = remnants.filter((r) => r.status === 'AVAILABLE')
-  const totalCount = available.length
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  const totalAreaMm2 = available.reduce(
-    (sum, r) => sum + r.dimensions.length_mm * r.dimensions.width_mm,
-    0,
-  )
-  const totalAreaM2 = totalAreaMm2 / 1_000_000
-
-  const now = Date.now()
-  const avgAgeDays =
-    available.length > 0
-      ? available.reduce((sum, r) => {
-          const days = (now - new Date(r.created_at).getTime()) / 86_400_000
-          return sum + days
-        }, 0) / available.length
-      : 0
-
-  const allocated = remnants.filter((r) => r.status === 'ALLOCATED').length
-  const utilizationPct =
-    totalCount + allocated > 0
-      ? Math.round((allocated / (totalCount + allocated)) * 100)
-      : 0
-
-  const overflowStatus: 'RED' | 'YELLOW' | 'GREEN' =
-    utilizationPct >= 90 ? 'RED' : utilizationPct >= 70 ? 'YELLOW' : 'GREEN'
-
-  return { totalCount, totalAreaM2, avgAgeDays, utilizationPct, overflowStatus }
+function shortId(id: string) {
+  return id.slice(0, 8).toUpperCase()
 }
 
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function formatVND(amount: number) {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
+}
+
+const PIE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2']
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function OverviewSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-40" />
+      <Skeleton className="h-12 w-full rounded-xl" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-64 rounded-xl" />
+        ))}
+      </div>
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
+  )
+}
+
+// ── Recent activity sub-components ───────────────────────────────────────────
+
+function RecentCuts({ items }: { items: RecentCutItem[] }) {
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">Chưa có lệnh cắt nào.</p>
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => (
+        <li key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+          <div className="flex items-center gap-2">
+            <Scissors className="size-4 shrink-0 text-muted-foreground" />
+            <span className="font-medium">{item.sku_code}</span>
+            <span className="font-mono text-xs text-muted-foreground">{shortId(item.work_order_id)}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">{formatDateTime(item.created_at)}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function RecentWorkOrders({ items }: { items: RecentWorkOrderItem[] }) {
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">Chưa có lệnh cắt hoàn thành.</p>
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => (
+        <li key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="size-4 shrink-0 text-green-500" />
+            <span className="font-medium">{item.sku_code}</span>
+            <span className="font-mono text-xs text-muted-foreground">{shortId(item.id)}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">{formatDateTime(item.created_at)}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function RecentCosting({ items }: { items: RecentCostingFinalizationItem[] }) {
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">Chưa có costing nào.</p>
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => (
+        <li key={item.work_order_id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+          <div className="flex items-center gap-2">
+            <DollarSign className="size-4 shrink-0 text-muted-foreground" />
+            <span className="font-medium">{item.sku_code}</span>
+          </div>
+          <div className="text-right">
+            <p className="font-medium">{formatVND(item.total_cost)}</p>
+            <p className="text-xs text-muted-foreground">{formatDateTime(item.created_at)}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function OverviewPage() {
-  const remnantsQ = useQuery({
-    queryKey: ['dashboard-remnants'],
-    queryFn: dashboardApi.getRemnants,
-    staleTime: 30_000,
-  })
-  const workOrdersQ = useQuery({
-    queryKey: ['dashboard-work-orders'],
-    queryFn: dashboardApi.getWorkOrders,
-    staleTime: 30_000,
-  })
-  const costingQ = useQuery({
-    queryKey: ['dashboard-costing'],
-    queryFn: dashboardApi.getCostingRecords,
-    staleTime: 30_000,
-  })
+  const { data, isLoading, isError, refetch } = useDashboardOverview()
 
-  const isLoading = remnantsQ.isLoading || workOrdersQ.isLoading
+  if (isLoading) return <OverviewSkeleton />
 
-  if (isLoading) {
+  if (isError || !data) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-16 w-full" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
-          ))}
-        </div>
+      <div className="flex flex-col items-center gap-4 py-20">
+        <AlertTriangle className="size-8 text-destructive" />
+        <p className="text-sm text-destructive">Không thể tải dữ liệu tổng quan. Vui lòng thử lại.</p>
+        <button
+          onClick={() => refetch()}
+          className="rounded-lg border px-4 py-2 text-sm hover:bg-muted"
+        >
+          Thử lại
+        </button>
       </div>
     )
   }
 
-  const remnants = remnantsQ.data ?? []
-  const workOrders = workOrdersQ.data ?? []
-  const costing = costingQ.data ?? []
-  const stats = computeStats(remnants, workOrders, costing)
+  const { kpi, charts, recent_activity } = data
+  const utilizationPct = Math.round(kpi.utilization_pct)
+  const alertStatus: 'RED' | 'YELLOW' | 'GREEN' =
+    utilizationPct >= 90 ? 'RED' : utilizationPct >= 70 ? 'YELLOW' : 'GREEN'
+
+  const trendData = (charts.remnant_trend_7d ?? []).map((p) => ({
+    ...p,
+    date: formatDate(p.date),
+  }))
+
+  const pieData = (charts.cost_allocation ?? []).map((p) => ({
+    name: p.sku_code,
+    value: p.cost,
+  }))
+
+  const barData = (charts.material_usage ?? []).map((p) => ({
+    ...p,
+    date: formatDate(p.date),
+  }))
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <h1 className="text-2xl font-bold">Tổng quan</h1>
 
       <AlertBanner
-        status={stats.overflowStatus}
-        utilizationPct={stats.utilizationPct}
+        status={alertStatus}
+        utilizationPct={utilizationPct}
         message={
-          stats.overflowStatus === 'RED'
+          alertStatus === 'RED'
             ? 'Kho tấm lẻ quá tải — tạm ngừng xuất tấm nguyên'
-            : stats.overflowStatus === 'YELLOW'
+            : alertStatus === 'YELLOW'
               ? 'Kho tấm lẻ sắp đầy — cân nhắc xuất bớt'
               : 'Kho tấm lẻ trong giới hạn bình thường'
         }
       />
 
+      {/* KPI cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Tổng tấm lẻ"
-          value={stats.totalCount.toString()}
-          description="tấm đang có sẵn"
+          value={kpi.remnants.total.toString()}
+          description={`${kpi.remnants.available} khả dụng · ${kpi.remnants.allocated} phân bổ`}
           icon={Layers}
         />
         <StatCard
-          title="Tổng diện tích"
-          value={`${stats.totalAreaM2.toFixed(1)} m²`}
-          description="tấm lẻ khả dụng"
-          icon={BarChart2}
+          title="Tỷ lệ sử dụng kho"
+          value={`${utilizationPct}%`}
+          description="diện tích tấm lẻ / tấm nguyên"
+          icon={TrendingUp}
+          trend={utilizationPct >= 90 ? 'down' : utilizationPct >= 70 ? 'neutral' : 'up'}
         />
         <StatCard
-          title="Tuổi trung bình"
-          value={`${stats.avgAgeDays.toFixed(1)} ngày`}
-          description="thời gian lưu kho TB"
-          icon={Clock}
+          title="Lệnh cắt đang chạy"
+          value={kpi.active_work_orders.toString()}
+          description="trạng thái IN_CUTTING / IN_PROCESSING"
+          icon={Scissors}
         />
         <StatCard
-          title="Tỷ lệ phân bổ"
-          value={`${stats.utilizationPct}%`}
-          description="đang được phân bổ"
-          icon={TrendingDown}
-          trend={stats.utilizationPct >= 90 ? 'down' : stats.utilizationPct >= 70 ? 'neutral' : 'up'}
+          title="Chờ tính giá thành"
+          value={kpi.pending_costing.toString()}
+          description={kpi.pending_costing > 0 ? 'Cần finalize costing' : 'Đã cập nhật đầy đủ'}
+          icon={DollarSign}
+          trend={kpi.pending_costing > 0 ? 'down' : 'up'}
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border bg-card p-6 shadow-sm">
-          <p className="mb-4 text-sm font-medium text-muted-foreground">
-            Hiệu suất cắt theo tuần
-          </p>
-          <div className="flex h-48 items-center justify-center text-muted-foreground text-sm">
-            [Chart — Recharts sẽ được tích hợp tại đây]
-          </div>
+      {/* Charts */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Remnant trend line chart */}
+        <div className="col-span-2 rounded-xl border bg-card p-5 shadow-sm">
+          <p className="mb-4 text-sm font-semibold">Xu hướng tấm lẻ 7 ngày</p>
+          {trendData.length === 0 ? (
+            <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">Chưa có dữ liệu</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="available" stroke="#2563eb" name="Khả dụng" dot={false} />
+                <Line type="monotone" dataKey="allocated" stroke="#16a34a" name="Phân bổ" dot={false} />
+                <Line type="monotone" dataKey="waste" stroke="#dc2626" name="Hao hụt" dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
-        <div className="rounded-xl border bg-card p-6 shadow-sm">
-          <p className="mb-4 text-sm font-medium text-muted-foreground">
-            Tấm lẻ theo trạng thái
-          </p>
-          <div className="flex h-48 items-center justify-center">
-            {remnants.length > 0 ? (
-              <ul className="space-y-2 text-left">
-                {(['AVAILABLE', 'ALLOCATED', 'CONSUMED', 'WASTE'] as const).map((s) => {
-                  const count = remnants.filter((r) => r.status === s).length
-                  return count > 0 ? (
-                    <li key={s} className="flex gap-3 text-sm">
-                      <span className="font-mono text-muted-foreground w-24">{s}</span>
-                      <span className="font-bold">{count}</span>
-                    </li>
-                  ) : null
-                })}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">Không có dữ liệu</p>
-            )}
+
+        {/* Cost allocation pie chart */}
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <p className="mb-4 text-sm font-semibold">Chi phí theo SKU (top 5)</p>
+          {pieData.length === 0 ? (
+            <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">Chưa có dữ liệu</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name }) => name}>
+                  {pieData.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number) => formatVND(v)} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Material usage stacked bar */}
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <p className="mb-4 text-sm font-semibold">Sử dụng nguyên liệu 7 ngày</p>
+        {barData.length === 0 ? (
+          <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">Chưa có dữ liệu</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={barData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="PLYWOOD" stackId="a" fill="#2563eb" name="Gỗ ép" />
+              <Bar dataKey="METAL" stackId="a" fill="#dc2626" name="Kim loại" />
+              <Bar dataKey="ACCESSORY" stackId="a" fill="#d97706" name="Phụ kiện" />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Recent activity */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <Clock className="size-4 text-muted-foreground" />
+            <p className="text-sm font-semibold">Lần cắt gần nhất</p>
           </div>
+          <RecentCuts items={recent_activity.recent_cuts ?? []} />
+        </div>
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <CheckCircle2 className="size-4 text-muted-foreground" />
+            <p className="text-sm font-semibold">Lệnh cắt hoàn thành</p>
+          </div>
+          <RecentWorkOrders items={recent_activity.completed_work_orders ?? []} />
+        </div>
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <DollarSign className="size-4 text-muted-foreground" />
+            <p className="text-sm font-semibold">Tính giá thành gần đây</p>
+          </div>
+          <RecentCosting items={recent_activity.costing_finalizations ?? []} />
         </div>
       </div>
     </div>

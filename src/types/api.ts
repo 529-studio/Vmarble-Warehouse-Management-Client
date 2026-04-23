@@ -366,7 +366,84 @@ export interface ScanResult extends ScanEvent {
   scanned_by_name: string
 }
 
-// ── Dashboard (computed client-side from real API data) ──────────────────────
+// ── Dashboard — GET /api/v1/dashboard/overview (mirrors Go dashboard.iface.go) ─
+
+export interface RemnantKPIOutput {
+  total: number
+  available: number
+  allocated: number
+  consumed: number
+  waste: number
+}
+
+export interface KPIOutput {
+  remnants: RemnantKPIOutput
+  utilization_pct: number
+  active_work_orders: number
+  pending_costing: number
+}
+
+export interface RemnantTrendPoint {
+  date: string
+  available: number
+  allocated: number
+  waste: number
+}
+
+export interface CostAllocationItem {
+  sku_code: string
+  /** Stored as int64 in Go (VND cents or whole VND — display as-is) */
+  cost: number
+}
+
+export interface MaterialUsagePoint {
+  date: string
+  PLYWOOD: number
+  METAL: number
+  ACCESSORY: number
+}
+
+export interface ChartsOutput {
+  remnant_trend_7d: RemnantTrendPoint[]
+  cost_allocation: CostAllocationItem[]
+  material_usage: MaterialUsagePoint[]
+}
+
+export interface RecentCutItem {
+  id: string
+  work_order_id: string
+  sku_id: string
+  sku_code: string
+  created_at: string
+}
+
+export interface RecentWorkOrderItem {
+  id: string
+  sku_code: string
+  status: string
+  created_at: string
+}
+
+export interface RecentCostingFinalizationItem {
+  work_order_id: string
+  sku_code: string
+  total_cost: number
+  created_at: string
+}
+
+export interface RecentActivityOutput {
+  recent_cuts: RecentCutItem[]
+  completed_work_orders: RecentWorkOrderItem[]
+  costing_finalizations: RecentCostingFinalizationItem[]
+}
+
+export interface OverviewOutput {
+  kpi: KPIOutput
+  charts: ChartsOutput
+  recent_activity: RecentActivityOutput
+}
+
+// ── Dashboard (legacy — kept for type compatibility) ─────────────────────────
 
 export interface RemnantSummary {
   totalCount: number
