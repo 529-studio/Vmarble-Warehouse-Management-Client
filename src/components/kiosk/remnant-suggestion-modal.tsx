@@ -28,7 +28,7 @@ function fitScoreBg(score: number): string {
 
 // ── SuggestionCard ────────────────────────────────────────────────────────────
 
-interface SuggestionCardProps {
+export interface SuggestionCardProps {
   suggestion: RemnantSuggestion
   requiredDimensions: { length_mm: number; width_mm: number }
   /** True when THIS card's remnant is being allocated. */
@@ -38,7 +38,7 @@ interface SuggestionCardProps {
   onSelect: () => void
 }
 
-function SuggestionCard({ suggestion, requiredDimensions, isAllocating, isAnyAllocating, onSelect }: SuggestionCardProps) {
+export function SuggestionCard({ suggestion, requiredDimensions, isAllocating, isAnyAllocating, onSelect }: SuggestionCardProps) {
   const { remnant, location } = suggestion
   const { length_mm, width_mm } = remnant.dimensions
 
