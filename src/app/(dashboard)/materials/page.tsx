@@ -114,7 +114,7 @@ function CreateMaterialDialog({ open, onOpenChange }: CreateDialogProps) {
           setErrors({})
         },
         onError: (err) => {
-          toast.error(mapApiErrorVi(err, 'Tạo vật liệu thất bại, thử lại'))
+          toast.error(mapApiErrorVi(err, 'Tạo nguyên liệu thất bại, thử lại'))
         },
       },
     )
