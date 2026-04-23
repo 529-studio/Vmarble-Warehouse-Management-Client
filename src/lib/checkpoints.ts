@@ -34,9 +34,20 @@ export const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
   SHIPPED: 'Xuất kho',
 }
 
+/** Slug order mirrors the production flow. */
+const SLUG_ORDER: CheckpointSlug[] = ['cnc', 'processing', 'shipping']
+
 export function getCheckpointBySlug(slug: string): (typeof CHECKPOINT_ROUTES)[CheckpointSlug] | null {
   if (slug in CHECKPOINT_ROUTES) {
     return CHECKPOINT_ROUTES[slug as CheckpointSlug]
   }
   return null
 }
+
+/** Returns the next checkpoint slug in the production flow, or null if this is the last. */
+export function getNextCheckpointSlug(slug: string): CheckpointSlug | null {
+  const idx = SLUG_ORDER.indexOf(slug as CheckpointSlug)
+  if (idx === -1 || idx === SLUG_ORDER.length - 1) return null
+  return SLUG_ORDER[idx + 1]
+}
+

@@ -85,6 +85,9 @@ export function useRecordScan() {
     }) => barcodeApi.recordScan(input),
 
     onSuccess: (scanResult, variables) => {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(200)
+      }
       const label = CHECKPOINT_LABEL[variables.checkpoint]
       toast.success(`Đã quét: ${variables.barcodeId.slice(-8)} tại ${label}`)
       addEntry({
