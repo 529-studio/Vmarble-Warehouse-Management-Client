@@ -235,7 +235,7 @@ export function RemnantListClient() {
     min_length_mm: serverDims.minLength || undefined,
     min_width_mm: serverDims.minWidth || undefined,
     sort_by: 'created_at',
-    order: 'desc',
+    order: 'asc',
     limit: PAGE_SIZE,
   })
 
@@ -252,9 +252,7 @@ export function RemnantListClient() {
     [allItems],
   )
 
-  // Client-side filters: search + quality grade, then sort newest first.
-  // Client-side sort is the source of truth — server sort_by param is a hint
-  // only; backend may not honour it for all fields.
+  // Client-side filters: search + quality grade, then sort oldest first (FIFO).
   const filtered = useMemo(() => {
     const q = filters.search.toLowerCase()
     return allItems
@@ -269,7 +267,7 @@ export function RemnantListClient() {
           `${r.dimensions.width_mm}`.includes(q)
         )
       })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
   }, [allItems, filters.search, filters.quality])
 
   const hasActiveFilter =
