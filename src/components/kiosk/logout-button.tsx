@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { LogOut, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -18,8 +18,16 @@ const ROLE_LABELS: Record<string, string> = {
   cnc_manager: 'QL CNC',
 }
 
+// useSyncExternalStore is the React-idiomatic way to read a browser-only value
+// (document.cookie) without causing a hydration mismatch.
+// getServerSnapshot returns null so SSR and initial client render agree;
+// getSnapshot reads the actual cookie after hydration completes.
 function useCurrentRole(): string | null {
-  return useMemo(() => getCurrentRoleFromCookie(), [])
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
 }
 
 export function KioskLogoutButton() {
