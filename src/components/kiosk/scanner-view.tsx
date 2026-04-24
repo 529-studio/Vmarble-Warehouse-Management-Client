@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import type { Html5Qrcode } from 'html5-qrcode'
-import { Camera, CameraOff, Keyboard, Lock, ShieldAlert } from 'lucide-react'
+import { ArrowRight, Camera, CameraOff, Keyboard, Lock, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -338,11 +338,26 @@ export function ScannerView({ onScan, className, disabled = false, showControls 
                   setManualInput('')
                 }
               }}
-              placeholder="Nhập mã rồi nhấn Enter..."
+              placeholder="Nhập mã..."
               className="h-12 text-base"
               disabled={disabled}
               autoFocus
             />
+            <Button
+              type="button"
+              size="default"
+              className="h-12 shrink-0 px-4"
+              disabled={disabled || !manualInput.trim()}
+              onClick={() => {
+                const normalized = normalizeDecodedText(manualInput)
+                if (!normalized) return
+                onScan(normalized)
+                setManualInput('')
+              }}
+              aria-label="Xác nhận mã"
+            >
+              <ArrowRight className="size-5" />
+            </Button>
           </div>
           <Button
             size="default"
