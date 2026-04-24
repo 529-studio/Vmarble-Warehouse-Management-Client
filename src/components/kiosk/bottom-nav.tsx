@@ -1,10 +1,19 @@
 'use client'
 
+import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Scissors, ClipboardList, Package, User, QrCode } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+
+function useCurrentRole(): string | null {
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
+}
 
 // cnc is the only kiosk role — all items are visible to every kiosk user.
 const NAV_ITEMS = [
@@ -17,7 +26,7 @@ const NAV_ITEMS = [
 
 export function BottomNav() {
   const pathname = usePathname()
-  const role = getCurrentRoleFromCookie()
+  const role = useCurrentRole()
   const navItems = NAV_ITEMS.filter((item) => can(role, 'read', item.resource))
 
   return (
