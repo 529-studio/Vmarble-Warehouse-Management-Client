@@ -99,6 +99,11 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
   admin: {
     ...readOnly(DASHBOARD_RESOURCES),
     users: ['read', 'create', 'toggle_active'],
+    pos: ['read', 'create'],
+    plans: ['read', 'create', 'approve', 'cancel'],
+    work_orders: ['read', 'create', 'advance', 'assign', 'consume', 'generate'],
+    cutting_dispatch: ['read', 'assign'],
+    costing: ['read', 'compute', 'finalize', 'adjust'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
