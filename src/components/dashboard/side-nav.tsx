@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo } from 'react'
+import { useSyncExternalStore } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -41,7 +41,11 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 function useCurrentRole(): string | null {
-  return useMemo(() => getCurrentRoleFromCookie(), [])
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
 }
 
 export function SideNav() {
