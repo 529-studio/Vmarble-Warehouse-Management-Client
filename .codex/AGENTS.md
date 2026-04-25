@@ -21,14 +21,14 @@ Treat these as workflow triggers, not casual text:
 When one of these appears, invoke the `start-next-task` skill and execute the workflow below.
 
 ## Automation workflow (for "làm task tiếp theo")
-1) **Fetch highest-priority open issue** unless the user already supplied an issue or board item:
+1) **Fetch highest-priority open frontend issue** unless the user already supplied an issue or board item:
 ```bash
-gh issue list --repo giangdq202/Vmarble-Warehouse-Management-Service   --assignee @me --state open --json number,title,labels   | jq 'sort_by(.labels[].name) | .[0]'
+gh issue list --repo giangdq202/Vmarble-Warehouse-Management-Client   --assignee @me --state open --json number,title,labels   | jq 'sort_by(.labels[].name) | .[0]'
 ```
 
 2) **Read issue requirements + DoD**:
 ```bash
-gh issue view <number> --repo giangdq202/Vmarble-Warehouse-Management-Service
+gh issue view <number> --repo giangdq202/Vmarble-Warehouse-Management-Client
 ```
 
 3) **Business audit gate**:

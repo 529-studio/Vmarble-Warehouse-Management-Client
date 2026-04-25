@@ -16,7 +16,7 @@ Focus on translating business rules into concrete UI tasks and user stories.
 
 ## Next-task triage workflow
 
-Use this flow when the user says "Làm task tiếp theo", "task tiếp theo", "Start next task", or asks to pick the next GitHub Projects Kanban item.
+Use this flow when the user says "Làm task tiếp theo", "task tiếp theo", "Start next task", or asks to pick the next GitHub Projects Kanban item. In this frontend repo, only select issues from `giangdq202/Vmarble-Warehouse-Management-Client` unless the user explicitly overrides that scope.
 
 ### 1. Select the issue
 If the user already supplied an issue number or a board item, use it directly.
@@ -24,7 +24,7 @@ If the user already supplied an issue number or a board item, use it directly.
 Otherwise fetch the highest-priority open issue assigned to the current user:
 
 ```bash
-gh issue list --repo giangdq202/Vmarble-Warehouse-Management-Service   --assignee @me --state open --json number,title,labels   | jq 'sort_by(.labels[].name) | .[0]'
+gh issue list --repo giangdq202/Vmarble-Warehouse-Management-Client   --assignee @me --state open --json number,title,labels   | jq 'sort_by(.labels[].name) | .[0]'
 ```
 
 ### 2. Produce a triage summary
@@ -41,7 +41,7 @@ After selecting the issue, pass control to:
 - `senior-workflow` for requirements-first implementation through self-QA and PR
 - `integration-architect` if the issue changes backend contracts
 
-The chosen issue becomes the single execution anchor for the rest of the automation flow. Do not re-triage unless new user input changes scope.
+The chosen issue becomes the single execution anchor for the rest of the automation flow. In this repo, keep that anchor within the frontend issue tracker unless new user input explicitly changes scope. Do not re-triage unless new user input changes scope.
 
 ## FE issue drafting workflow
 

@@ -6,7 +6,7 @@ description: >
 
 # Start Next Task Automation
 
-Run this workflow whenever the user asks to continue with the next task instead of naming a specific implementation target.
+Run this workflow whenever the user asks to continue with the next task instead of naming a specific implementation target. In this repository, the default scope is frontend issues only.
 
 ## Goal
 
@@ -22,14 +22,14 @@ Turn a vague "next task" request into a disciplined execution flow:
 
 ### 1. Fetch the highest-priority open issue
 
-Use the `product-manager` skill to identify the next issue to work on.
+Use the `product-manager` skill to identify the next frontend issue to work on in `giangdq202/Vmarble-Warehouse-Management-Client`.
 
 If the user already picked a GitHub Projects Kanban card or gave an issue number, skip the fetch step and use that issue directly.
 
 Otherwise run:
 
 ```bash
-gh issue list --repo giangdq202/Vmarble-Warehouse-Management-Service   --assignee @me --state open --json number,title,labels   | jq 'sort_by(.labels[].name) | .[0]'
+gh issue list --repo giangdq202/Vmarble-Warehouse-Management-Client   --assignee @me --state open --json number,title,labels   | jq 'sort_by(.labels[].name) | .[0]'
 ```
 
 ### 2. Analyze the requirement
@@ -37,7 +37,7 @@ gh issue list --repo giangdq202/Vmarble-Warehouse-Management-Service   --assigne
 Read the complete issue body before planning implementation:
 
 ```bash
-gh issue view <number> --repo giangdq202/Vmarble-Warehouse-Management-Service
+gh issue view <number> --repo giangdq202/Vmarble-Warehouse-Management-Client
 ```
 
 Extract at least:

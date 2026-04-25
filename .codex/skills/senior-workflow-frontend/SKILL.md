@@ -306,12 +306,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - `dev` → `main` requires 1 approval
 
 ### PR body template
-Include the issue number/link, touched BR-* rules, and any contract-sync notes when relevant.
+Include the issue number/link, touched BR-* rules, and any contract-sync notes when relevant. If this work comes from an issue-driven flow, explicitly add a closing line such as `Closes #123`, `Fixes #123`, or `Resolves #123` for the exact issue being delivered. Do not leave the closing issue number implicit.
 
 ```markdown
 ## Summary
 - What was changed and why
 - Route group affected: (kiosk) / (dashboard) / shared
+- Closes #<issue-number>
 
 ## Technical notes
 - New API types added: yes/no — list them
