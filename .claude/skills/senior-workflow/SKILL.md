@@ -1,19 +1,31 @@
 ---
 name: senior-workflow
 description: >
-  Use when starting ANY non-trivial issue or feature on the Next.js frontend —
+  Use when starting any non-trivial issue or feature on the Next.js frontend —
   covers the full Senior Engineer workflow: requirements clarification →
   technical design → task breakdown → implement + test → self-QA → PR.
-  ALWAYS trigger this skill when the user says "implement", "add feature",
-  "build page", "add component", "create hook", "fix", "fix bug", "find root cause" or pastes a GitHub issue/ticket.
-  Do NOT skip phases — especially Phase 5 (Self-QA) which is the most commonly
-  forgotten step before submitting code.
+  Always trigger this skill when the user says "implement", "add feature",
+  "build page", "add component", "create hook", "fix", "fix bug",
+  "find root cause", pastes a GitHub issue/ticket, or enters the
+  "Làm task tiếp theo" / "Start next task" automation flow after issue
+  selection. Start at Phase 1 and never jump straight to coding.
 ---
 
 # Senior Engineer Workflow — Next.js Frontend
 
-Run these 6 phases **in order**. Mark each one done before moving to the next.
+Run these 6 phases in order. Mark each one done before moving to the next.
+Never skip Phase 1 during the next-task automation flow.
 Never skip Phase 5 — it is the gate before PR.
+
+---
+
+## Automation handoff rule
+
+When this skill is invoked from `start-next-task`:
+1. Start from the selected issue body and DoD.
+2. Incorporate the `business-auditor` findings before design.
+3. If contract changes are present, schedule `integration-architect` checks before finalizing implementation.
+4. Begin at **Phase 1 — Requirements Clarification**. Do not open files for coding first.
 
 ---
 
@@ -21,12 +33,13 @@ Never skip Phase 5 — it is the gate before PR.
 
 Before writing a single line of code, understand the *why*.
 
-**Questions to answer (ask the user if unclear):**
+**Questions to answer (ask the user if still unclear after reading the issue):**
 - Who uses this screen — worker on mobile kiosk or manager on desktop dashboard?
   - Kiosk → `(kiosk)` route group, Vietnamese labels, touch targets ≥ 48px
   - Dashboard → `(dashboard)` route group, desktop/responsive grid
 - What is the exact Definition of Done?
   - Screen renders? Or also: loading state, error state, empty state, edge cases?
+- Which `BR-*` rules from the business audit constrain the behavior?
 - Adversarial edge cases to surface:
   - "What if the API returns an empty array?"
   - "What if the user taps the button twice before the mutation resolves?"
@@ -34,7 +47,7 @@ Before writing a single line of code, understand the *why*.
   - "Is the response a `PagedResult<T>` or a plain `T[]`?" ← common type mismatch bug
 - Is there a Sprint issue number? (for commit/PR tagging)
 
-**Output of this phase:** a short bullet list: *Who / DoD / Edge cases identified*
+**Output of this phase:** a short bullet list: *Who / DoD / BR-* constraints / Edge cases identified*
 
 ---
 
@@ -64,6 +77,7 @@ Key questions:
   - Forgetting this causes `TypeError: x.filter is not a function` at runtime
 - What are the exact field names? (Go uses `snake_case`, must match exactly in `src/types/api.ts`)
 - Are there nullable fields (`*string` in Go → `string | null` or `string | undefined` in TS)?
+- Did `integration-architect` need to review any contract changes?
 
 ### State & data flow
 - Server state (from API) → TanStack Query `useQuery` / `useMutation`
@@ -188,11 +202,9 @@ npm run lint           # 0 ESLint warnings/errors
 npm run build          # next build succeeds — ALWAYS run this last
 ```
 
-**Rule: `npm run build` is MANDATORY after every implement/fix task.** TypeScript errors
-caught by `tsc --noEmit` may differ from the build-time checker Turbopack uses.
-Only a passing `npm run build` is the true gate.
+**Rule: `npm run build` is mandatory after every implement/fix task.** TypeScript errors caught by `tsc --noEmit` may differ from the build-time checker. Only a passing `npm run build` is the true gate.
 
-If `tsc --noEmit` finds errors → fix all of them, no exceptions.
+If `tsc --noEmit` finds errors, fix all of them.
 
 ---
 
@@ -209,40 +221,3 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 ```
 
 Where `area` is: `kiosk`, `dashboard`, `api`, `hooks`, `types`, or the feature name.
-
-Example:
-```
-[kiosk] feat: add pull-to-refresh on cutting orders page
-
-- Attach touch listeners at document level (not child div)
-- Read window.scrollY for scroll position check
-- Default threshold: 72px with rubber-band damping
-
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
-```
-
-### Branch rules
-- Feature branch from `dev`: `git checkout -b feat/area-brief-description dev`
-- Never push directly to `main` or `dev`
-- PR: feature → `dev` (approval optional)
-- `dev` → `main` requires 1 approval
-
-### PR body template
-```markdown
-## Summary
-- What was changed and why
-- Route group affected: (kiosk) / (dashboard) / shared
-
-## Technical notes
-- New API types added: yes/no
-- New query keys: list them
-- Breaking changes: yes/no
-
-## Test plan
-- [ ] `npx tsc --noEmit` — 0 errors
-- [ ] `npm run lint` — clean
-- [ ] `npm run build` — succeeds
-- [ ] Tested at 375px width (mobile kiosk) if applicable
-- [ ] Loading / error / empty states all render correctly
-- [ ] Tested manually: describe scenario
-```
