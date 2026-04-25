@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { Camera, CameraOff, Lock, ShieldAlert } from 'lucide-react'
+import { ArrowRight, Camera, CameraOff, Lock, ShieldAlert } from 'lucide-react'
 import { fn } from 'storybook/test'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -106,7 +106,12 @@ function ManualWithError({
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
-      <Input placeholder="Nhập mã rồi nhấn Enter..." className="h-12 text-base" readOnly />
+      <div className="flex gap-2">
+        <Input placeholder="Nhập mã rồi bấm nút →" className="h-12 flex-1 text-base" readOnly />
+        <Button type="button" size="default" className="h-12 shrink-0 px-4" aria-label="Xác nhận mã">
+          <ArrowRight className="size-5" />
+        </Button>
+      </div>
       <Button size="sm" variant="ghost">
         <Camera className="size-4" />
         Thử lại camera
