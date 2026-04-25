@@ -1,7 +1,7 @@
 ---
 name: start-next-task
 description: >
-  Use when the user says "Làm task tiếp theo", "task tiếp theo", "Start next task", asks Codex to pick the next issue, or wants Codex to continue from a GitHub Projects Kanban item. Orchestrate the automation workflow in order: fetch the highest-priority open issue from giangdq202/Vmarble-Warehouse-Management-Service via the product-manager workflow, read the full issue and Definition of Done, run a business-auditor pass against docs/backend-business-logic-vi.md to identify every touched BR-* rule and block if any rule is unclear, then hand off to senior-workflow starting at Phase 1, and invoke integration-architect whenever the task adds or changes an endpoint, a DTO mirrored from iface.go, or a deps.go interface.
+  Use when the user says "Làm task tiếp theo", "task tiếp theo", "Start next task", asks Codex to pick the next issue, wants Codex to continue from a GitHub Projects Kanban item, or wants Codex to take a selected issue from intake all the way to branch/commit/PR. Orchestrate the automation workflow in order: fetch or accept the chosen issue, read the full issue and Definition of Done, run a business-auditor pass against docs/backend-business-logic-vi.md to identify every touched BR-* rule and block if any rule is unclear, then hand off to senior-workflow starting at Phase 1, invoke integration-architect whenever the task adds or changes an endpoint, a DTO mirrored from iface.go, or a deps.go interface, and continue through self-QA into the standard branch/commit/PR flow when implementation is done.
 ---
 
 # Start Next Task Automation
@@ -16,6 +16,7 @@ Turn a vague "next task" request into a disciplined execution flow:
 3. Audit business-rule impact before coding.
 4. Start implementation from requirements clarification, not from code.
 5. Enforce frontend-backend contract checks when integration changes are involved.
+6. After self-QA passes, finish delivery with branch/commit/PR instead of stopping at "code complete".
 
 ## Workflow
 
@@ -84,9 +85,19 @@ Confirm:
 - Query hooks and invalidation still align with the contract
 - Any frontend type updates remain synchronized with backend expectations before merge
 
+### 6. Finish delivery after implementation
+
+Do not stop once the code is written. If the user asked to implement/continue an issue end-to-end, continue into the delivery workflow after Phase 5 self-QA passes:
+
+- Create a feature/chore branch from `dev` if work is not already on a non-protected branch
+- Commit all intended changes with a clear `[area]` commit message tied to the issue
+- Open a PR to `dev` with summary, technical notes, test evidence, and the issue reference
+- If validation fails, approvals are blocked, or required issue details are still unclear, stop and surface the blocker instead of opening the PR
+
 ## Execution notes
 
 - Prefer the issue number from the board or issue list as the single source of truth.
 - Treat issue title alone as insufficient; always read the full issue body.
 - If `gh` access is unavailable, report the blockage and ask the user for the issue number or issue text.
-- When this workflow finishes analysis, continue naturally into implementation using the triggered skills instead of restating the whole process again.
+- When this workflow starts from a concrete issue number/URL/board card, treat that issue as the execution anchor from intake through PR unless the user explicitly changes scope.
+- When this workflow finishes analysis, continue naturally into implementation, self-QA, and PR preparation using the triggered skills instead of restating the whole process again.

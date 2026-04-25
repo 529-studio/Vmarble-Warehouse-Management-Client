@@ -29,7 +29,7 @@ After adding, import from `@/components/ui/<component>`.
 | Style | `new-york` |
 | Base color | `neutral` |
 | CSS variables | `true` (oklch color space) |
-| Icon library | `lucide-react` |
+| Icon library | `lucide` in `components.json` (generates imports from `lucide-react`) |
 | Alias | `@/components/ui` |
 | Utils | `@/lib/utils` (exports `cn`) |
 

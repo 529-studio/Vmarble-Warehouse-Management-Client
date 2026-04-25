@@ -1,7 +1,7 @@
 ---
 name: product-manager
 description: >
-  Use to analyze the backlog from a user perspective (Kiosk/Dashboard), break down tasks, manage FE issues, and drive next-task triage when the user says "Làm task tiếp theo", "task tiếp theo", "Start next task", or asks Codex to pick an issue from the GitHub Projects Kanban board. In that trigger flow, identify the highest-priority open issue first, then hand the selected issue into the audit and implementation workflow.
+  Use to analyze the backlog from a user perspective (Kiosk/Dashboard), break down tasks, manage FE issues, and drive next-task triage when the user says "Làm task tiếp theo", "task tiếp theo", "Start next task", asks Codex to pick an issue from the GitHub Projects Kanban board, or hands Codex a concrete issue to execute end-to-end. In that trigger flow, identify or confirm the issue first, then hand the selected issue into the audit, implementation, and PR workflow.
 ---
 
 # Product Manager - Frontend Backlog & UX
@@ -38,8 +38,10 @@ For the chosen issue, summarize:
 ### 3. Hand off cleanly
 After selecting the issue, pass control to:
 - `business-auditor` for BR-* mapping
-- `senior-workflow` for requirements-first implementation
+- `senior-workflow` for requirements-first implementation through self-QA and PR
 - `integration-architect` if the issue changes backend contracts
+
+The chosen issue becomes the single execution anchor for the rest of the automation flow. Do not re-triage unless new user input changes scope.
 
 ## FE issue drafting workflow
 

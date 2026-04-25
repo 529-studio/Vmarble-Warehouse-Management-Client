@@ -102,7 +102,7 @@ export const myDomainApi = {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { myDomainApi, type MyEntityFilter } from '@/lib/api/my-domain'
 import type { ApiClientError } from '@/lib/api/client'
-import type { MyEntity } from '@/types/api'
+import type { CreateMyEntityInput, MyEntity } from '@/types/api'
 
 // ── Query key constants ───────────────────────────────────────────────────────
 // Keep keys as constants — prevents typos and helps with invalidation
