@@ -326,6 +326,7 @@ export function ScannerView({ onScan, className, disabled = false, showControls 
               Nhập mã thủ công (camera không khả dụng)
             </p>
           )}
+          {/* Keep a dedicated arrow CTA next to manual input so kiosk workers do not need the mobile keyboard Enter key. */}
           <div className="flex gap-2">
             <Input
               value={manualInput}
