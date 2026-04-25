@@ -6,9 +6,9 @@ description: >
   technical design → task breakdown → implement + test → self-QA → PR.
   Always trigger this skill when the user says "implement", "add feature",
   "build page", "add component", "create hook", "fix", "fix bug",
-  "find root cause", pastes a GitHub issue/ticket, or enters the
+  "find root cause", pastes a GitHub issue/ticket/URL, asks Codex to continue a selected issue from intake to PR, or enters the
   "Làm task tiếp theo" / "Start next task" automation flow after issue
-  selection. Start at Phase 1 and never jump straight to coding.
+  selection. Start at Phase 1 and never jump straight to coding or stop before the PR phase unless blocked.
 ---
 
 # Senior Engineer Workflow — Next.js Frontend
@@ -19,13 +19,14 @@ Never skip Phase 5 — it is the gate before PR.
 
 ---
 
-## Automation handoff rule
+## Issue-driven automation rule
 
-When this skill is invoked from `start-next-task`:
+When this skill is invoked from `start-next-task`, or when the user directly provides an issue/ticket/URL and asks Codex to implement it:
 1. Start from the selected issue body and DoD.
 2. Incorporate the `business-auditor` findings before design.
 3. If contract changes are present, schedule `integration-architect` checks before finalizing implementation.
 4. Begin at **Phase 1 — Requirements Clarification**. Do not open files for coding first.
+5. Continue through Phases 1 → 6 in one flow unless a blocker, failed validation, or missing approval forces a stop.
 
 ---
 
@@ -142,7 +143,7 @@ supplier_code: string | null
 ```typescript
 // Read hook — always guard undefined
 const { data, isLoading, error } = useMyEntities(filter)
-const items = data ?? []   // never data.filter() without ?? []
+const items = data?.items ?? []   // never data?.items!.filter(...) without ?? []
 
 // Mutation — always invalidate on success
 useMutation({
@@ -173,7 +174,7 @@ if (items.length === 0) return <EmptyState />   // empty state
 This phase is the gate before PR. Run through **all** of these.
 
 ### Type mismatch checklist (most common bugs)
-- [ ] API returns `PagedResult<T>` but code treats it as `T[]`? → add `.then(res => res.items)`
+- [ ] API returns `PagedResult<T>` but code treats it as `T[]`? → unwrap with `data?.items ?? []` (or return `items` from a specialized hook)
 - [ ] Used `data!.items` without null guard? → change to `data?.items ?? []`
 - [ ] `useRef<HTMLDivElement>(null)` typed as `RefObject<HTMLDivElement>`? → must be `RefObject<HTMLDivElement | null>` in React 19
 - [ ] Hook file has `'use client'` at top unnecessarily? → remove if no browser APIs used
@@ -184,7 +185,7 @@ This phase is the gate before PR. Run through **all** of these.
 - [ ] `any` type anywhere? → replace with `unknown` + narrowing or proper type
 - [ ] `fetch()` called directly instead of `apiClient`? → replace
 - [ ] Same type declared in two places? → consolidate to `src/types/api.ts`
-- [ ] Query key as bare string `"remnants"`? → use exported constant `REMNANT_KEY`
+- [ ] Query key as bare string `"remnants"`? → use the exported domain constant (for example `REMNANTS_KEY`)
 - [ ] Missing `enabled: !!id` on query that depends on a param?
 
 ### Silly bug checklist

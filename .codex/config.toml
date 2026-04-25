@@ -39,3 +39,7 @@ web_search = "cached"
 approval_policy = "never"
 sandbox_mode = "workspace-write"
 web_search = "live"
+[mcp_servers.github]
+  command = "npx"
+  args = ["-y", "@modelcontextprotocol/server-github"]
+  startup_timeout_sec = 30

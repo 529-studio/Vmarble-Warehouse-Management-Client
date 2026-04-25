@@ -6,7 +6,7 @@ description: >
   technical design → task breakdown → implement → self-QA → PR.
   ALWAYS trigger this skill when the user says "implement", "add feature",
   "build page", "add component", "create hook", "fix", "fix bug", "find root cause",
-  "plan and implement", or pastes a GitHub issue/ticket number.
+  "plan and implement", pastes a GitHub issue/ticket number or URL, or asks Codex to take a selected issue all the way from intake to PR.
   Do NOT skip phases — Phase 5 (Self-QA) is the gate before PR and the phase
   most commonly skipped; skipping it is the #1 source of rework.
 ---
@@ -15,6 +15,12 @@ description: >
 
 Run these 6 phases **in order**. Mark each one done before moving to the next.
 Phase 5 is mandatory — do not open a PR without completing it.
+
+---
+
+## Issue-driven automation rule
+
+When the user provides a concrete issue/ticket/URL or this skill is reached from the next-task automation flow, treat that issue as the single source of truth and run Phases 1 → 6 continuously. Do not stop at implementation if the user expectation is end-to-end delivery; continue into commit/PR preparation after self-QA unless blocked.
 
 ---
 
@@ -293,12 +299,15 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 ### Branch rules
+- If this started from an issue-driven automation flow and you are still on `dev`, create the feature/chore branch from `dev` before the final commit/PR step.
 - Feature branch from `dev`: `git checkout -b feat/area-brief-description dev`
 - Never push directly to `main` or `dev`
 - PR: feature → `dev` (approval optional)
 - `dev` → `main` requires 1 approval
 
 ### PR body template
+Include the issue number/link, touched BR-* rules, and any contract-sync notes when relevant.
+
 ```markdown
 ## Summary
 - What was changed and why

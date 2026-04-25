@@ -11,7 +11,7 @@ All API DTOs are in **`src/types/api.ts`**. Import them everywhere:
 
 ```typescript
 // ✅ Correct
-import type { Remnant, WorkOrder, PaginatedResponse } from '@/types/api'
+import type { PagedResult, Remnant, WorkOrder } from '@/types/api'
 
 // ❌ Wrong — re-declaring inline creates divergence with the backend
 interface Remnant { id: string; ... }
@@ -60,15 +60,16 @@ Always specify the generic types for full type inference and better error handli
 
 ```typescript
 import { useQuery, useMutation } from '@tanstack/react-query'
-import type { Remnant, PaginatedResponse } from '@/types/api'
 import type { ApiClientError } from '@/lib/api/client'
+import { remnantsApi } from '@/lib/api/remnants'
+import type { PagedResult, Remnant } from '@/types/api'
 
 // useQuery<TData, TError>
-const { data } = useQuery<PaginatedResponse<Remnant>, ApiClientError>({
+const { data } = useQuery<PagedResult<Remnant>, ApiClientError>({
   queryKey: ['remnants'],
   queryFn: () => remnantsApi.list(),
 })
-// data is typed as PaginatedResponse<Remnant> | undefined
+// data is typed as PagedResult<Remnant> | undefined
 
 // useMutation<TData, TError, TVariables>
 const mutation = useMutation<Remnant, ApiClientError, { id: string; locationId: string }>({
@@ -87,8 +88,8 @@ The project uses `"strict": true`. Always handle nullable values:
 const { data } = useRemnants()
 
 // ✅ Optional chaining
-const count = data?.total ?? 0
-const items = data?.data ?? []
+const count = data?.total_items ?? 0
+const items = data?.items ?? []
 
 // ✅ Early return in JSX
 if (!data) return <Skeleton />
