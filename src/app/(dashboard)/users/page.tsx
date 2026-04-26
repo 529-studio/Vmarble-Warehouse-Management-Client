@@ -17,16 +17,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {
@@ -364,36 +355,18 @@ function UsersContent() {
 
       <CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} />
 
-      <AlertDialog
+      <ConfirmModal
         open={toggleDialog.open}
-        onOpenChange={(open) => !open && setToggleDialog({ open: false, user: null })}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {toggleDialog.user?.is_active ? 'Khóa tài khoản?' : 'Mở khóa tài khoản?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {toggleDialog.user?.is_active
-                ? `Bạn có chắc chắn muốn khóa tài khoản "${toggleDialog.user.username}"? Người dùng này sẽ không thể đăng nhập vào hệ thống.`
-                : `Bạn có chắc chắn muốn mở khóa tài khoản "${toggleDialog.user?.username}"?`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isToggling}>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleToggleStatus()
-              }}
-              className={toggleDialog.user?.is_active ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'bg-emerald-600 text-white hover:bg-emerald-700'}
-              disabled={isToggling}
-            >
-              {isToggling ? 'Đang xử lý…' : 'Xác nhận'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={toggleDialog.user?.is_active ? 'Khóa tài khoản?' : 'Mở khóa tài khoản?'}
+        description={toggleDialog.user?.is_active
+          ? `Bạn có chắc chắn muốn khóa tài khoản "${toggleDialog.user.username}"? Người dùng này sẽ không thể đăng nhập vào hệ thống.`
+          : `Bạn có chắc chắn muốn mở khóa tài khoản "${toggleDialog.user?.username}"?`}
+        confirmLabel="Xác nhận"
+        confirmVariant={toggleDialog.user?.is_active ? 'destructive' : 'default'}
+        isPending={isToggling}
+        onConfirm={handleToggleStatus}
+        onCancel={() => setToggleDialog({ open: false, user: null })}
+      />
     </>
   )
 }
