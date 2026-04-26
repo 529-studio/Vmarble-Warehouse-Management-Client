@@ -1,9 +1,12 @@
 import { apiClient } from './client'
-import { User, CreateUserInput, UpdateUserInput } from '@/types/api'
+import { User, CreateUserInput, UpdateUserInput, UserListParams, PagedResult } from '@/types/api'
 
 export const usersApi = {
-  /** List all users (admin only) */
-  list: () => apiClient.get<User[]>('/admin/users'),
+  /** List users with filters and pagination (admin only) */
+  list: (params?: UserListParams) =>
+    apiClient.get<PagedResult<User>>('/admin/users', { 
+      params: params as Record<string, string | number | boolean | undefined> 
+    }),
 
   /** Create a new user (admin only) */
   create: (data: CreateUserInput) => apiClient.post<User>('/admin/users', data),

@@ -1,16 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usersApi } from '@/lib/api/users'
-import type { CreateUserInput, UpdateUserInput } from '@/types/api'
+import type { CreateUserInput, UpdateUserInput, UserListParams } from '@/types/api'
 
 export const USERS_KEY = 'users'
 
-export function useUsers() {
+export function useUsers(params?: UserListParams) {
   return useQuery({
-    queryKey: [USERS_KEY],
-    queryFn: () => usersApi.list(),
+    queryKey: [USERS_KEY, params],
+    queryFn: () => usersApi.list(params),
     staleTime: 30_000,
-    // Backend authn.Service returns a slice []UserDetail, so no need to unwrap .items
-    // unless it gets paginated in the future.
   })
 }
 

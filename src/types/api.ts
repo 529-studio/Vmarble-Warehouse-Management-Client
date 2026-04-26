@@ -565,6 +565,11 @@ export interface PageParams {
   order?: 'asc' | 'desc'
 }
 
+export interface UserListParams extends PageParams {
+  role?: string // comma-separated
+  is_active?: boolean
+}
+
 export interface ApiError {
   code: string
   message: string
