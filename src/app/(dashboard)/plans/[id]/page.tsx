@@ -17,16 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { usePlan, useApprovePlan, useCancelPlan } from '@/lib/hooks/use-plans'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
@@ -229,44 +220,30 @@ export default function PlanDetailPage({
       </Card>
 
       {/* Approve confirm */}
-      <AlertDialog open={canApprovePlan && approveOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Duyệt kế hoạch sản xuất?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Kế hoạch sẽ chuyển sang trạng thái <strong>Đã duyệt</strong>. Hành động này không thể hoàn tác.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setApproveOpen(false)}>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={handleApprove} disabled={approving}>
-              {approving ? 'Đang duyệt…' : 'Duyệt'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmModal
+        open={canApprovePlan && approveOpen}
+        title="Duyệt kế hoạch sản xuất?"
+        description="Kế hoạch sẽ chuyển sang trạng thái Đã duyệt. Hành động này không thể hoàn tác."
+        confirmLabel="Duyệt"
+        pendingLabel="Đang duyệt…"
+        isPending={approving}
+        onConfirm={handleApprove}
+        onCancel={() => setApproveOpen(false)}
+      />
 
       {/* Cancel confirm */}
-      <AlertDialog open={canCancelPlan && cancelOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hủy kế hoạch sản xuất?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Kế hoạch sẽ bị hủy và không thể khôi phục.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setCancelOpen(false)}>Không</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCancel}
-              disabled={canceling}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {canceling ? 'Đang hủy…' : 'Hủy kế hoạch'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmModal
+        open={canCancelPlan && cancelOpen}
+        title="Hủy kế hoạch sản xuất?"
+        description="Kế hoạch sẽ bị hủy và không thể khôi phục."
+        confirmLabel="Hủy kế hoạch"
+        cancelLabel="Không"
+        confirmVariant="destructive"
+        pendingLabel="Đang hủy…"
+        isPending={canceling}
+        onConfirm={handleCancel}
+        onCancel={() => setCancelOpen(false)}
+      />
     </div>
   )
 }

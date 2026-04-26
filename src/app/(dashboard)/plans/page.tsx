@@ -14,16 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -307,55 +298,6 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
   )
 }
 
-// ── Confirm action dialog ─────────────────────────────────────────────────────
-
-interface ConfirmActionDialogProps {
-  open: boolean
-  title: string
-  description: string
-  actionLabel: string
-  actionVariant?: 'default' | 'destructive'
-  isPending: boolean
-  onConfirm: () => void
-  onCancel: () => void
-}
-
-function ConfirmActionDialog({
-  open,
-  title,
-  description,
-  actionLabel,
-  actionVariant = 'default',
-  isPending,
-  onConfirm,
-  onCancel,
-}: ConfirmActionDialogProps) {
-  return (
-    <AlertDialog open={open}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Hủy</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            disabled={isPending}
-            className={
-              actionVariant === 'destructive'
-                ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                : ''
-            }
-          >
-            {isPending ? 'Đang xử lý…' : actionLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
-}
-
 // ── Table skeleton ────────────────────────────────────────────────────────────
 
 function TableSkeleton() {
@@ -538,22 +480,22 @@ function PlansContent() {
 
       {canCreatePlan && <CreatePlanDialog open={createOpen} onOpenChange={setCreateOpen} />}
 
-      <ConfirmActionDialog
+      <ConfirmModal
         open={canApprovePlan && approveTarget !== null}
         title="Duyệt kế hoạch sản xuất?"
         description={`Kế hoạch cho đơn hàng "${approveTarget ? (poMap.get(approveTarget.po_id) ?? approveTarget.po_id.slice(0, 8)) : ''}" sẽ chuyển sang trạng thái Đã duyệt. Hành động này không thể hoàn tác.`}
-        actionLabel="Duyệt"
+        confirmLabel="Duyệt"
         isPending={approving}
         onConfirm={handleApprove}
         onCancel={() => setApproveTarget(null)}
       />
 
-      <ConfirmActionDialog
+      <ConfirmModal
         open={canCancelPlan && cancelTarget !== null}
         title="Hủy kế hoạch sản xuất?"
         description={`Kế hoạch cho đơn hàng "${cancelTarget ? (poMap.get(cancelTarget.po_id) ?? cancelTarget.po_id.slice(0, 8)) : ''}" sẽ bị hủy và không thể khôi phục.`}
-        actionLabel="Hủy kế hoạch"
-        actionVariant="destructive"
+        confirmLabel="Hủy kế hoạch"
+        confirmVariant="destructive"
         isPending={canceling}
         onConfirm={handleCancel}
         onCancel={() => setCancelTarget(null)}
