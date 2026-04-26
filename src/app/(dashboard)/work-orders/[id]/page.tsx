@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useMemo, useState } from 'react'
+import { use, useMemo, useSyncExternalStore, useState } from 'react'
 import QRCode from 'react-qr-code'
 import Link from 'next/link'
 import { ArrowLeft, ClipboardCheck, QrCode, Copy, Check, CheckCircle2, Circle, ExternalLink } from 'lucide-react'
@@ -49,7 +49,16 @@ import type {
   MaterialType,
 } from '@/types/api'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers
+
+function useCurrentRole() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
+}
+
 
 const STATUS_LABEL: Record<WorkOrderStatus, string> = {
   PLANNED: 'Kế hoạch',
@@ -324,7 +333,7 @@ function GenerateBarcodeDialog({ wo, open, onClose }: {
 // ── Detail content ────────────────────────────────────────────────────────────
 
 function WorkOrderDetail({ id }: { id: string }) {
-  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const role = useCurrentRole()
   const canGenerateBarcode = can(role, 'generate', 'work_orders')
   const canConsume = can(role, 'consume', 'work_orders')
 
@@ -464,7 +473,7 @@ function WorkOrderDetail({ id }: { id: string }) {
           )}
           <Field
             label="Phân công"
-            value={wo.assigned_to_name ?? '—'}
+            value={wo.assigned_to ? shortId(wo.assigned_to) : '—'}
           />
           <Field label="Ngày tạo" value={formatDate(wo.created_at)} />
         </div>

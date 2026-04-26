@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useMemo, useState } from 'react'
+import { use, useMemo, useSyncExternalStore, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ArrowLeft, ClipboardList } from 'lucide-react'
@@ -32,7 +32,16 @@ import { useSKUs } from '@/lib/hooks/use-skus'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { PlanStatus } from '@/types/api'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers
+
+function useCurrentRole() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
+}
+
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('vi-VN', {
@@ -69,7 +78,7 @@ export default function PlanDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
-  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const role = useCurrentRole()
   const canApprovePlan = can(role, 'approve', 'plans')
   const canCancelPlan = can(role, 'cancel', 'plans')
 

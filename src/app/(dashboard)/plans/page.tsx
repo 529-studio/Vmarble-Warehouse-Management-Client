@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ClipboardList, Plus } from 'lucide-react'
@@ -53,7 +53,16 @@ import { useSKUs } from '@/lib/hooks/use-skus'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { PlanStatus, ProductionPlan, CreatePlanInput, LineItem } from '@/types/api'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers
+
+function useCurrentRole() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
+}
+
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('vi-VN', {
@@ -377,7 +386,7 @@ function TableSkeleton() {
 // ── Main list content ─────────────────────────────────────────────────────────
 
 function PlansContent() {
-  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const role = useCurrentRole()
   const canCreatePlan = can(role, 'create', 'plans')
   const canApprovePlan = can(role, 'approve', 'plans')
   const canCancelPlan = can(role, 'cancel', 'plans')

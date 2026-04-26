@@ -11,12 +11,12 @@ const baseOrder: WorkOrder = {
   sku_code: 'PLY-1200×600',
   sku_name: 'Mặt bàn gỗ ép 1200×600',
   sku_dimensions: { length_mm: 1200, width_mm: 600 },
-  material_type: 'PLYWOOD',
-  material_id: 'mat-001',
   quantity: 5,
   status: 'IN_CUTTING',
-  assigned_to_id: null,
-  assigned_to_name: null,
+  assigned_to: null,
+  assigned_at: null,
+  estimated_hours: null,
+  machine_slot_id: null,
   created_at: '2025-01-01T00:00:00Z',
 }
 
@@ -33,10 +33,6 @@ describe('CuttingOrderCard', () => {
     expect(screen.getByText('SL: 5')).toBeInTheDocument()
   })
 
-  it('renders material badge for PLYWOOD', () => {
-    render(<CuttingOrderCard order={baseOrder} onStartCutting={vi.fn()} />)
-    expect(screen.getByText('Ván gỗ')).toBeInTheDocument()
-  })
 
   it('falls back to truncated sku_id when sku_code is absent', () => {
     const order = { ...baseOrder, sku_code: undefined }
@@ -50,11 +46,6 @@ describe('CuttingOrderCard', () => {
     expect(screen.getByText('Chưa có tên SKU')).toBeInTheDocument()
   })
 
-  it('does not render material badge when material_type is absent', () => {
-    const order = { ...baseOrder, material_type: undefined }
-    render(<CuttingOrderCard order={order} onStartCutting={vi.fn()} />)
-    expect(screen.queryByText('Ván gỗ')).not.toBeInTheDocument()
-  })
 
   it('fires onStartCutting with the order when button is clicked', async () => {
     const user = userEvent.setup()

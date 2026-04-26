@@ -189,15 +189,13 @@ export interface WorkOrder {
   sku_name?: string
   /** Required cut dimensions from the SKU — JSON key matches backend sku_dimensions */
   sku_dimensions?: { length_mm: number; width_mm: number }
-  /** Material type (PLYWOOD / MDF / HDF) */
-  material_type?: MaterialType
-  /** Material selected by foreman/admin at start-cut step */
-  material_id?: string | null
   quantity: number
   status: WorkOrderStatus
   /** Optional assignee — null when no worker is assigned */
-  assigned_to_id?: string | null
-  assigned_to_name?: string | null
+  assigned_to?: string | null
+  assigned_at?: string | null
+  estimated_hours?: number | null
+  machine_slot_id?: string | null
   created_at: string
 }
 

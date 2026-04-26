@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useMemo, useSyncExternalStore, useState } from 'react'
 import { toast } from 'sonner'
 import { Scissors, UserCheck, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -41,7 +41,16 @@ import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { WorkOrder, WorkOrderStatus } from '@/types/api'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers
+
+function useCurrentRole() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
+}
+
 
 const STATUS_LABEL: Record<WorkOrderStatus, string> = {
   PLANNED: 'Kế hoạch',
@@ -234,7 +243,7 @@ function AssignDialog({ wo, suggestedWorkerName, suggestedWorkerUsername, onSugg
 // ── Main content ──────────────────────────────────────────────────────────────
 
 function CuttingDispatchContent() {
-  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const role = useCurrentRole()
   const canAssignWorkOrder = can(role, 'assign', 'cutting_dispatch')
 
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
@@ -258,17 +267,8 @@ function CuttingDispatchContent() {
   const totalItems = data?.total_items ?? 0
   const totalPages = data?.total_pages ?? 1
 
-  const workerNameById = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const wo of workOrders) {
-      if (!wo.assigned_to_id || !wo.assigned_to_name) continue
-      map.set(wo.assigned_to_id, wo.assigned_to_name)
-    }
-    return map
-  }, [workOrders])
-
   const suggestedWorkerName = lastSuggestedUserMeta
-    ? lastSuggestedUserMeta.fullName ?? workerNameById.get(lastSuggestedUserMeta.userId) ?? null
+    ? lastSuggestedUserMeta.fullName ?? null
     : null
 
   const suggestedWorkerUsername = lastSuggestedUserMeta?.username ?? null
@@ -339,10 +339,10 @@ function CuttingDispatchContent() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {wo.assigned_to_name ? (
+                      {wo.assigned_to ? (
                         <span className="flex items-center gap-1.5">
                           <UserCheck className="size-3.5 text-green-500 shrink-0" />
-                          {wo.assigned_to_name}
+                          {shortId(wo.assigned_to)}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">Chưa phân công</span>
@@ -355,10 +355,10 @@ function CuttingDispatchContent() {
                       {(wo.status === 'PLANNED' || wo.status === 'IN_CUTTING') && canAssignWorkOrder && (
                         <Button
                           size="sm"
-                          variant={wo.assigned_to_name ? 'outline' : 'default'}
+                          variant={wo.assigned_to ? 'outline' : 'default'}
                           onClick={() => setAssignTarget(wo)}
                         >
-                          {wo.assigned_to_name ? 'Đổi phân công' : 'Phân công'}
+                          {wo.assigned_to ? 'Đổi phân công' : 'Phân công'}
                         </Button>
                       )}
                     </TableCell>

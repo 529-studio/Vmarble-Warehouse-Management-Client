@@ -1,28 +1,7 @@
 'use client'
 
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { WorkOrder, MaterialType } from '@/types/api'
-
-// ── Material badge ────────────────────────────────────────────────────────────
-
-const MATERIAL_LABEL: Record<string, string> = {
-  PLYWOOD: 'Ván gỗ',
-  MDF: 'MDF',
-  HDF: 'HDF',
-}
-
-function materialLabel(type: MaterialType | undefined): string {
-  if (!type) return ''
-  return MATERIAL_LABEL[type] ?? type
-}
-
-function materialBadgeClass(type: MaterialType | undefined): string {
-  if (type === 'PLYWOOD') return 'bg-amber-100 text-amber-800 border-amber-200'
-  if (type === 'MDF') return 'bg-sky-100 text-sky-800 border-sky-200'
-  if (type === 'HDF') return 'bg-violet-100 text-violet-800 border-violet-200'
-  return 'bg-muted text-muted-foreground'
-}
+import type { WorkOrder } from '@/types/api'
 
 // ── CuttingOrderCard ──────────────────────────────────────────────────────────
 
@@ -43,7 +22,6 @@ export function CuttingOrderCard({ order, className, onStartCutting }: CuttingOr
   const skuDisplay = order.sku_code ?? `${order.sku_id.slice(0, 8)}\u2026`
   const skuName = order.sku_name ?? 'Chưa có tên SKU'
   const hasDim = !!order.sku_dimensions
-  const hasMaterial = !!order.material_type
 
   return (
     <article
@@ -79,17 +57,6 @@ export function CuttingOrderCard({ order, className, onStartCutting }: CuttingOr
           </div>
         </div>
 
-        {/* Right: material badge */}
-        {hasMaterial && (
-          <Badge
-            className={cn(
-              'shrink-0 self-start text-xs',
-              materialBadgeClass(order.material_type),
-            )}
-          >
-            {materialLabel(order.material_type)}
-          </Badge>
-        )}
       </div>
 
       {/* Action button — full-width strip, min-h 48px */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useMemo, useSyncExternalStore, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Trash2, ShoppingCart } from 'lucide-react'
@@ -33,7 +33,16 @@ import { usePageParams } from '@/lib/hooks/use-page-params'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { CreatePOInput, CreateLineItemInput, SKU } from '@/types/api'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers
+
+function useCurrentRole() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
+}
+
 
 function TableSkeleton({ rows = 8, cols = 5 }: { rows?: number; cols?: number }) {
   return (
@@ -353,7 +362,7 @@ function CreatePODialog({ open, onOpenChange }: CreatePODialogProps) {
 // ── PO list content ───────────────────────────────────────────────────────────
 
 function POsContent() {
-  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const role = useCurrentRole()
   const canCreatePO = can(role, 'create', 'pos')
 
   const { page, limit, setPage } = usePageParams(10)

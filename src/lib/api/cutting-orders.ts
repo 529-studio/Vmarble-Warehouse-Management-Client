@@ -4,6 +4,9 @@ import { apiClient } from './client'
 export interface WorkOrdersFilter {
   status?: string
   plan_id?: string
+  date?: string
+  from?: string
+  to?: string
   page?: number
   pageSize?: number
 }

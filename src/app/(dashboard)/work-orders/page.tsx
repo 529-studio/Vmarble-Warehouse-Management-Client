@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useMemo } from 'react'
+import { Suspense, useState, useMemo, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { ClipboardCheck, MapPin, Package, Plus, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -128,6 +128,14 @@ function formatDate(iso: string) {
     month: '2-digit',
     year: 'numeric',
   })
+}
+
+function useCurrentRole() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
 }
 
 // ── Table skeleton ────────────────────────────────────────────────────────────
@@ -482,7 +490,7 @@ interface AdvanceDialogProps {
 
 function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProps) {
   const NONE = '__none__'
-  const [selectedMaterialId, setSelectedMaterialId] = useState(wo.material_id ?? NONE)
+  const [selectedMaterialId, setSelectedMaterialId] = useState(NONE)
 
   const isPlannedToInCutting = wo.status === 'PLANNED'
   const isProcessingToCompleted = wo.status === 'IN_PROCESSING'
@@ -584,7 +592,7 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
 // ── Main list ─────────────────────────────────────────────────────────────────
 
 function WorkOrdersContent() {
-  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const role = useCurrentRole()
   const canCreateWorkOrder = can(role, 'create', 'work_orders')
   const canAdvanceWorkOrder = can(role, 'advance', 'work_orders')
 
@@ -736,7 +744,7 @@ function WorkOrdersContent() {
                         <StatusBadge status={wo.status} />
                       </TableCell>
                       <TableCell className="text-sm">
-                        {wo.assigned_to_name ?? <span className="text-muted-foreground">—</span>}
+                        {wo.assigned_to ? shortId(wo.assigned_to) : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(wo.created_at)}
