@@ -339,7 +339,7 @@ export function ReportCutForm() {
 
   // Fetch available sheets only when the worker needs to select one.
   // Enabled flag prevents an unnecessary request when remnant_id is already set.
-  const selectedMaterialId = materialIdFromUrl ?? workOrder?.material_id ?? undefined
+  const selectedMaterialId = materialIdFromUrl
 
   const {
     data: lotSheetsData,

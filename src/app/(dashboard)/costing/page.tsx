@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useSyncExternalStore, useState } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -56,6 +56,14 @@ const FINALIZED_LABELS: Record<FinalizedFilter, string> = {
   ALL: 'Tất cả',
   FINALIZED: 'Đã chốt',
   DRAFT: 'Nháp',
+}
+
+function useCurrentRole() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => getCurrentRoleFromCookie(),
+    () => null,
+  )
 }
 
 
@@ -150,7 +158,7 @@ function AdjustmentDialog({
 }
 
 function CostingContent() {
-  const role = useMemo(() => getCurrentRoleFromCookie(), [])
+  const role = useCurrentRole()
   const canComputeCosting = can(role, 'compute', 'costing')
   const canFinalizeCosting = can(role, 'finalize', 'costing')
   const canAdjustCosting = can(role, 'adjust', 'costing')

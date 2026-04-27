@@ -183,9 +183,7 @@ export function RemnantSuggestionModal({
       { remnantId, workOrderId: workOrder.id },
       {
         onSuccess: () => {
-          const q = workOrder.material_id
-            ? `?wo_id=${workOrder.id}&remnant_id=${remnantId}&material_id=${workOrder.material_id}`
-            : `?wo_id=${workOrder.id}&remnant_id=${remnantId}`
+          const q = `?wo_id=${workOrder.id}&remnant_id=${remnantId}`
           router.push(`/report-cut${q}`)
           onClose()
         },
@@ -201,10 +199,7 @@ export function RemnantSuggestionModal({
 
   function handleSkip() {
     if (!workOrder) return
-    const q = workOrder.material_id
-      ? `?wo_id=${workOrder.id}&material_id=${workOrder.material_id}`
-      : `?wo_id=${workOrder.id}`
-    router.push(`/report-cut${q}`)
+    router.push(`/report-cut?wo_id=${workOrder.id}`)
     onClose()
   }
 

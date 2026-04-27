@@ -1,5 +1,6 @@
 'use client'
 
+
 import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, Search, X } from 'lucide-react'
@@ -131,22 +132,6 @@ function formatDate(iso: string) {
     month: '2-digit',
     year: 'numeric',
   })
-}
-
-function formatPlanOptionLabel(plan: { id: string; code?: string; po_code?: string; deadline?: string; status?: string }) {
-  const code = plan.code?.trim() || `KH-${shortId(plan.id)}`
-  const parts = [code]
-  if (plan.po_code?.trim()) parts.push(`PO ${plan.po_code}`)
-  if (plan.deadline) {
-    const deadline = new Date(plan.deadline).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
-    parts.push(`HH ${deadline}`)
-  }
-  if (plan.status) parts.push(plan.status)
-  return parts.join(' · ')
 }
 
 function useCurrentRole() {
@@ -509,7 +494,7 @@ interface AdvanceDialogProps {
 
 function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProps) {
   const NONE = '__none__'
-  const [selectedMaterialId, setSelectedMaterialId] = useState(wo.material_id ?? NONE)
+  const [selectedMaterialId, setSelectedMaterialId] = useState(NONE)
 
   const isPlannedToInCutting = wo.status === 'PLANNED'
   const isProcessingToCompleted = wo.status === 'IN_PROCESSING'
@@ -910,7 +895,7 @@ function WorkOrdersContent() {
                         <StatusBadge status={wo.status} />
                       </TableCell>
                       <TableCell className="text-sm">
-                        {wo.assigned_to_name ?? <span className="text-muted-foreground">—</span>}
+                        {wo.assigned_to ? shortId(wo.assigned_to) : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(wo.created_at)}
