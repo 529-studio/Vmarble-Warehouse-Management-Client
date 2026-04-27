@@ -1,7 +1,7 @@
 'use client'
 
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { useSyncExternalStore } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -49,9 +49,15 @@ function useCurrentRole(): string | null {
 }
 
 export function SideNav() {
+  const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const role = useCurrentRole()
+
+  // Set mounted to true after initial render
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -72,7 +78,7 @@ export function SideNav() {
 
       {/* Nav links */}
       <nav className="flex flex-col gap-1 p-3">
-        {navItemsForRole(role).map(({ href, label, icon: Icon }) => {
+        {mounted && navItemsForRole(role).map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href)
           return (
             <Link
@@ -94,7 +100,7 @@ export function SideNav() {
 
       <div className="mt-auto space-y-1 p-3">
         {/* Identity chip */}
-        {role && (
+        {mounted && role && (
           <div className="flex items-center gap-2 rounded-lg px-3 py-2">
             <UserCircle className="size-5 shrink-0 text-sidebar-foreground/60" aria-hidden="true" />
             <div className="min-w-0 flex-1">
