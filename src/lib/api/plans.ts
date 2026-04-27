@@ -3,8 +3,11 @@ import type { ProductionPlan, CreatePlanInput, PlanStatus, PagedResult } from '@
 
 export interface PlanFilter {
   status?: PlanStatus
+  search?: string
   page?: number
   limit?: number
+  sort_by?: 'created_at' | 'deadline'
+  order?: 'asc' | 'desc'
 }
 
 export const plansApi = {

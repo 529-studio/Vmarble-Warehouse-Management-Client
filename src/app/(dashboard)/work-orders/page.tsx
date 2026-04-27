@@ -1,8 +1,9 @@
 'use client'
 
-import { Suspense, useState, useMemo, useSyncExternalStore } from 'react'
+
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { ClipboardCheck, MapPin, Package, Plus, X } from 'lucide-react'
+import { Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, Search, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,6 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Label } from '@/components/ui/label'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useSKU } from '@/lib/hooks/use-skus'
@@ -54,6 +56,8 @@ import { usePlans } from '@/lib/hooks/use-plans'
 import { usePOs } from '@/lib/hooks/use-pos'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { DataPagination } from '@/components/ui/data-pagination'
+import { cn } from '@/lib/utils'
+import { useDebounce } from '@/lib/hooks/use-debounce'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type {
   WorkOrderStatus,
@@ -591,17 +595,151 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
 
 // ── Main list ─────────────────────────────────────────────────────────────────
 
+
+interface PlanFilterComboboxProps {
+  value: string
+  selectedPlan: { id: string; code?: string; po_code?: string; deadline?: string; status?: string } | null
+  options: Array<{ id: string; code?: string; po_code?: string; deadline?: string; status?: string }>
+  searchValue: string
+  onSearchChange: (value: string) => void
+  isLoading: boolean
+  onChange: (value: string) => void
+}
+
+function PlanFilterCombobox({
+  value,
+  selectedPlan,
+  options,
+  searchValue,
+  onSearchChange,
+  isLoading,
+  onChange,
+}: PlanFilterComboboxProps) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handlePointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [open])
+
+  const selectedLabel = value === 'ALL'
+    ? 'Tất cả kế hoạch'
+    : selectedPlan
+      ? formatPlanOptionLabel(selectedPlan)
+      : `Kế hoạch ${shortId(value)}`
+
+  return (
+    <div ref={rootRef} className="relative w-72">
+      <button
+        type="button"
+        role="combobox"
+        aria-expanded={open}
+        aria-label="Lọc theo kế hoạch"
+        onClick={() => setOpen((prev) => !prev)}
+        className={cn(
+          'flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs',
+          'outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
+        )}
+      >
+        <span className="truncate text-left">{selectedLabel}</span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+0.5rem)] z-30 w-full rounded-md border bg-popover p-2 shadow-md">
+          <SearchInput
+            autoFocus
+            value={searchValue}
+            onChange={onSearchChange}
+            isPending={isLoading}
+            placeholder="Tìm mã KH hoặc mã PO..."
+            className="h-9"
+          />
+
+          <div className="mt-2 max-h-72 overflow-y-auto rounded-md border">
+            <button
+              type="button"
+              onClick={() => {
+                onChange('ALL')
+                setOpen(false)
+              }}
+              className={cn(
+                'flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent',
+                value === 'ALL' && 'bg-accent/60',
+              )}
+            >
+              <Check className={cn('size-4 shrink-0', value === 'ALL' ? 'opacity-100' : 'opacity-0')} />
+              <span className="truncate">Tất cả kế hoạch</span>
+            </button>
+
+            {isLoading ? (
+              <div className="flex items-center gap-2 px-3 py-6 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Đang tìm kế hoạch...
+              </div>
+            ) : options.length === 0 ? (
+              <div className="px-3 py-6 text-sm text-muted-foreground">
+                Không tìm thấy kế hoạch phù hợp.
+              </div>
+            ) : (
+              options.map((plan) => {
+                const selected = plan.id === value
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(plan.id)
+                      setOpen(false)
+                    }}
+                    className={cn(
+                      'flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-accent',
+                      selected && 'bg-accent/60',
+                    )}
+                  >
+                    <Check className={cn('mt-0.5 size-4 shrink-0', selected ? 'opacity-100' : 'opacity-0')} />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{plan.code || `KH-${shortId(plan.id)}`}</p>
+                      <p className="truncate text-xs text-muted-foreground">{formatPlanOptionLabel(plan)}</p>
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function WorkOrdersContent() {
   const role = useCurrentRole()
   const canCreateWorkOrder = can(role, 'create', 'work_orders')
   const canAdvanceWorkOrder = can(role, 'advance', 'work_orders')
 
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
-  const [planFilter, setPlanFilter] = useState<string>('ALL')
+  const [planSearch, setPlanSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [advanceTarget, setAdvanceTarget] = useState<WorkOrder | null>(null)
 
-  const { page, limit, setPage } = usePageParams(15)
+  const { page, limit, getParam, setPage, setParam } = usePageParams(15)
+  const planFilter = getParam('plan_id') ?? 'ALL'
+  const debouncedPlanSearch = useDebounce(planSearch, 300)
 
   const filter = {
     ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
@@ -615,11 +753,28 @@ function WorkOrdersContent() {
   const totalItems = data?.total_items ?? 0
   const totalPages = data?.total_pages ?? 1
 
-  const { data: plansData } = usePlans({ limit: 200 })
-  const allPlans = useMemo(() => plansData?.items ?? [], [plansData?.items])
+  const { data: plansData, isFetching: isFetchingPlans } = usePlans({
+    status: 'APPROVED',
+    search: debouncedPlanSearch.trim() || undefined,
+    limit: 20,
+    sort_by: 'deadline',
+    order: 'asc',
+  })
+  const visiblePlans = useMemo(() => plansData?.items ?? [], [plansData?.items])
+  const { data: selectedPlanData } = usePlans({
+    status: 'APPROVED',
+    search: planFilter !== 'ALL' ? planFilter : undefined,
+    limit: 20,
+  })
+  const selectedPlan = useMemo(
+    () => (planFilter === 'ALL' ? null : (selectedPlanData?.items ?? []).find((p) => p.id === planFilter) ?? null),
+    [planFilter, selectedPlanData?.items],
+  )
   const planById = useMemo(
-    () => Object.fromEntries(allPlans.map((p) => [p.id, p])),
-    [allPlans],
+    () => Object.fromEntries(
+      [...visiblePlans, ...(selectedPlan ? [selectedPlan] : [])].map((p) => [p.id, p]),
+    ),
+    [visiblePlans, selectedPlan],
   )
 
   const { data: posData } = usePOs({ limit: 200 })
@@ -663,22 +818,18 @@ function WorkOrdersContent() {
             </SelectContent>
           </Select>
 
-          <Select
+          <PlanFilterCombobox
             value={planFilter}
-            onValueChange={(v) => { setPlanFilter(v); setPage(1) }}
-          >
-            <SelectTrigger className="w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Tất cả kế hoạch</SelectItem>
-              {allPlans.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {planLabel(p, poMap.get(p.po_id))}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            selectedPlan={selectedPlan}
+            options={visiblePlans}
+            searchValue={planSearch}
+            onSearchChange={setPlanSearch}
+            isLoading={isFetchingPlans}
+            onChange={(v) => {
+              setParam('plan_id', v === 'ALL' ? undefined : v)
+              setPage(1)
+            }}
+          />
         </div>
 
         {canCreateWorkOrder ? (
