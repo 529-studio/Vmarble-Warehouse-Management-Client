@@ -7,12 +7,15 @@ export interface PageParamsState {
   page: number
   search: string
   limit: number
+  getParam: (key: string) => string | null
   /** Update the page number (resets to 1 when search changes) */
   setPage: (page: number) => void
   /** Update the search term and reset to page 1 */
   setSearch: (search: string) => void
   /** Update the page size and reset to page 1 */
   setLimit: (limit: number) => void
+  /** Update any query-string value; pass empty/undefined to remove. */
+  setParam: (key: string, value?: string) => void
 }
 
 /**
@@ -61,5 +64,15 @@ export function usePageParams(defaultLimit = 10): PageParamsState {
     [push],
   )
 
-  return { page, search, limit, setPage, setSearch, setLimit }
+  const getParam = useCallback(
+    (key: string) => searchParams.get(key),
+    [searchParams],
+  )
+
+  const setParam = useCallback(
+    (key: string, value?: string) => push({ [key]: value, page: '1' }),
+    [push],
+  )
+
+  return { page, search, limit, getParam, setPage, setSearch, setLimit, setParam }
 }
