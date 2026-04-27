@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, UserX, UserCheck, ShieldCheck, Filter, X, Search, Check } from 'lucide-react'
+import { Plus, UserX, UserCheck, ShieldCheck, Filter, X, Search, Check, HelpCircle, Tag } from 'lucide-react'
 import { mapApiErrorVi } from '@/lib/api/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -39,6 +39,7 @@ import { DataPagination } from '@/components/ui/data-pagination'
 import { useUsers, useCreateUser, useToggleUserStatus } from '@/lib/hooks/use-users'
 import type { User, CreateUserInput, UserRole, UserListParams } from '@/types/api'
 import { cn } from '@/lib/utils'
+import { getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -225,8 +226,10 @@ function UserFilters({ params, onChange }: { params: UserListParams; onChange: (
   const [inputValue, setInputValue] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [prefixDropdownOpen, setPrefixDropdownOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const prefixDropdownRef = useRef<HTMLDivElement>(null)
 
   const roles = useMemo(() => params.role?.split(',').filter(Boolean) || [], [params.role])
 
@@ -309,6 +312,9 @@ function UserFilters({ params, onChange }: { params: UserListParams; onChange: (
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false)
       }
+      if (prefixDropdownRef.current && !prefixDropdownRef.current.contains(e.target as Node)) {
+        setPrefixDropdownOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -316,74 +322,144 @@ function UserFilters({ params, onChange }: { params: UserListParams; onChange: (
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full" ref={containerRef}>
-      <div className="relative flex-1 group">
-        <div className={cn(
-          "flex min-h-9 w-full flex-wrap gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-        )}>
-          <Search className="size-4 text-muted-foreground mr-1 self-center" />
-          
-          {roles.map((r) => (
-            <Badge key={r} variant="secondary" className="gap-1 pr-1 font-normal h-6 bg-blue-50 text-blue-700 border-blue-200">
-              role:{r}
-              <button 
-                onClick={() => {
-                  const nextRoles = roles.filter(role => role !== r)
-                  onChange({ ...params, role: nextRoles.length > 0 ? nextRoles.join(',') : undefined, page: 1 })
-                }} 
-                className="rounded-full hover:bg-blue-200/50 p-0.5"
-              >
-                <X className="size-3" />
-              </button>
-            </Badge>
-          ))}
+      <div className="flex-1 flex gap-2 items-center">
+        <div className="relative w-full max-w-2xl group">
+          <div className={cn(
+            "flex min-h-9 w-full flex-wrap gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+          )}>
+            <Search className="size-4 text-muted-foreground mr-1 self-center" />
 
-          {params.is_active !== undefined && (
-            <Badge variant="secondary" className="gap-1 pr-1 font-normal h-6 bg-emerald-50 text-emerald-700 border-emerald-200">
-              status:{params.is_active ? 'active' : 'inactive'}
-              <button onClick={() => onChange({ ...params, is_active: undefined, page: 1 })} className="rounded-full hover:bg-emerald-200/50 p-0.5">
-                <X className="size-3" />
-              </button>
-            </Badge>
+            {roles.map((r) => (
+              <Badge key={r} variant="secondary" className="gap-1 pr-1 font-normal h-6 bg-blue-50 text-blue-700 border-blue-200">
+                role:{r}
+                <button
+                  onClick={() => {
+                    const nextRoles = roles.filter(role => role !== r)
+                    onChange({ ...params, role: nextRoles.length > 0 ? nextRoles.join(',') : undefined, page: 1 })
+                  }}
+                  className="rounded-full hover:bg-blue-200/50 p-0.5"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ))}
+
+            {params.is_active !== undefined && (
+              <Badge variant="secondary" className="gap-1 pr-1 font-normal h-6 bg-emerald-50 text-emerald-700 border-emerald-200">
+                status:{params.is_active ? 'active' : 'inactive'}
+                <button onClick={() => onChange({ ...params, is_active: undefined, page: 1 })} className="rounded-full hover:bg-emerald-200/50 p-0.5">
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            )}
+
+            <input
+              value={inputValue}
+              onChange={(e) => { setInputValue(e.target.value); setShowSuggestions(true) }}
+              onFocus={() => setShowSuggestions(true)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder={roles.length === 0 && params.is_active === undefined ? "Lọc người dùng (role:, status:)..." : ""}
+              className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-[120px]"
+            />
+          </div>
+
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
+              <div className="p-1">
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Gợi ý kết quả</div>
+                {suggestions.map((s) => (
+                  <button
+                    key={s.value}
+                    onClick={() => {
+                      if (s.type === 'role') {
+                        const nextRoles = Array.from(new Set([...roles, s.value]))
+                        onChange({ ...params, role: nextRoles.join(','), page: 1 })
+                      } else {
+                        onChange({ ...params, is_active: s.value === 'active', page: 1 })
+                      }
+                      setInputValue('')
+                      setShowSuggestions(false)
+                    }}
+                    className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-left"
+                  >
+                    <Badge variant="outline" className="mr-2 h-5 font-normal">
+                      {s.type}:{s.value}
+                    </Badge>
+                    <span className="text-muted-foreground truncate">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
-          
-          <input
-            value={inputValue}
-            onChange={(e) => { setInputValue(e.target.value); setShowSuggestions(true) }}
-            onFocus={() => setShowSuggestions(true)}
-            onKeyDown={handleSearchKeyDown}
-            placeholder={roles.length === 0 && params.is_active === undefined ? "Lọc người dùng (role:, status:)..." : ""}
-            className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-[120px]"
-          />
         </div>
 
-        {showSuggestions && suggestions.length > 0 && (
-          <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
-            <div className="p-1">
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Gợi ý kết quả</div>
-              {suggestions.map((s) => (
-                <button
-                  key={s.value}
-                  onClick={() => {
-                    if (s.type === 'role') {
-                      const nextRoles = Array.from(new Set([...roles, s.value]))
-                      onChange({ ...params, role: nextRoles.join(','), page: 1 })
-                    } else {
-                      onChange({ ...params, is_active: s.value === 'active', page: 1 })
-                    }
-                    setInputValue('')
-                    setShowSuggestions(false)
-                  }}
-                  className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-left"
-                >
-                  <Badge variant="outline" className="mr-2 h-5 font-normal">
-                    {s.type}:{s.value}
-                  </Badge>
-                  <span className="text-muted-foreground truncate">{s.label}</span>
-                </button>
-              ))}
+        <div className="relative" ref={prefixDropdownRef}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            onClick={() => setPrefixDropdownOpen(!prefixDropdownOpen)}
+            title="Gợi ý tag prefixes"
+          >
+            <HelpCircle className="size-4" />
+          </Button>
+
+          {prefixDropdownOpen && (
+            <div className="absolute z-50 mt-1 w-48 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95 right-0 sm:right-auto sm:left-0">
+              <div className="p-2">
+                <div className="space-y-1">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Tag prefixes</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputValue('role:')
+                      setPrefixDropdownOpen(false)
+                      // Focus input after state update
+                      setTimeout(() => {
+                        const input = document.querySelector('input[placeholder*="Lọc người dùng"]') as HTMLInputElement
+                        if (input) {
+                          input.focus()
+                          // Move cursor to end
+                          input.selectionStart = input.selectionEnd = 5
+                        }
+                      }, 0)
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent text-left"
+                  >
+                    <Tag className="size-3.5 text-blue-600 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">role:</div>
+                      <div className="text-xs text-muted-foreground truncate">Tìm kiếm theo vai trò người dùng</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputValue('status:')
+                      setPrefixDropdownOpen(false)
+                      // Focus input after state update
+                      setTimeout(() => {
+                        const input = document.querySelector('input[placeholder*="Lọc người dùng"]') as HTMLInputElement
+                        if (input) {
+                          input.focus()
+                          // Move cursor to end
+                          input.selectionStart = input.selectionEnd = 7
+                        }
+                      }, 0)
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent text-left"
+                  >
+                    <Tag className="size-3.5 text-emerald-600 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">status:</div>
+                      <div className="text-xs text-muted-foreground truncate">Lọc theo trạng thái hoạt động</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -470,6 +546,11 @@ function UsersContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
+  const currentRole = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    return getCurrentRoleFromCookie()
+  }, [])
+
   const params = useMemo((): UserListParams => {
     const p: UserListParams = {
       page: Number(searchParams.get('page')) || 1,
@@ -508,6 +589,14 @@ function UsersContent() {
 
   const handleToggleStatus = () => {
     if (!toggleDialog.user) return
+
+    // Prevent admin from toggling admin users
+    if (toggleDialog.user.role === 'admin' && currentRole === 'admin') {
+      toast.error('Không thể thay đổi trạng thái của người dùng có vai trò quản trị viên')
+      setToggleDialog({ open: false, user: null })
+      return
+    }
+
     const nextStatus = !toggleDialog.user.is_active
     toggleStatus(
       { id: toggleDialog.user.id, active: nextStatus },
@@ -610,14 +699,41 @@ function UsersContent() {
                             {new Date(user.created_at).toLocaleDateString('vi-VN')}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={user.is_active ? 'text-destructive hover:bg-destructive/10 hover:text-destructive' : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'}
-                              onClick={() => setToggleDialog({ open: true, user })}
-                            >
-                              {user.is_active ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
-                            </Button>
+                            {(() => {
+                              // Check if current user can toggle this user's status
+                              // Admin cannot toggle any admin users
+                              const isAdminUser = user.role === 'admin'
+                              const isCurrentUserAdmin = currentRole === 'admin'
+
+                              // Admin can't toggle admin users
+                              // Non-admin users can be toggled by admin
+                              const canToggle = !(isCurrentUserAdmin && isAdminUser)
+
+                              if (!canToggle) {
+                                return (
+                                  <div
+                                    className="inline-flex items-center h-8 px-2 text-muted-foreground text-sm"
+                                    title="Không thể thay đổi trạng thái của người dùng admin"
+                                  >
+                                    <span className="sr-only">
+                                      Không thể thay đổi trạng thái của người dùng admin
+                                    </span>
+                                    —
+                                  </div>
+                                )
+                              }
+
+                              return (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={user.is_active ? 'text-destructive hover:bg-destructive/10 hover:text-destructive' : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'}
+                                  onClick={() => setToggleDialog({ open: true, user })}
+                                >
+                                  {user.is_active ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
+                                </Button>
+                              )
+                            })()}
                           </TableCell>
                         </TableRow>
                       ))
