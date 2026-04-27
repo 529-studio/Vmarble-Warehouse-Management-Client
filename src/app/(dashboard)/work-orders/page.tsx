@@ -134,6 +134,28 @@ function formatDate(iso: string) {
   })
 }
 
+function formatPlanOptionLabel(plan: {
+  id: string
+  code?: string
+  po_code?: string
+  deadline?: string
+  status?: string
+}) {
+  const code = plan.code?.trim() || `KH-${shortId(plan.id)}`
+  const parts = [code]
+  if (plan.po_code?.trim()) parts.push(`PO ${plan.po_code}`)
+  if (plan.deadline) {
+    const deadline = new Date(plan.deadline).toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+    parts.push(`HH ${deadline}`)
+  }
+  if (plan.status) parts.push(plan.status)
+  return parts.join(' · ')
+}
+
 function useCurrentRole() {
   return useSyncExternalStore(
     () => () => {},
