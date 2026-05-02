@@ -54,8 +54,5 @@ export function useOpenBarcodeLabelPdf() {
       const blob = await barcodeApi.getLabelPdfBlob(barcodeId)
       return URL.createObjectURL(blob)
     },
-    onError: (err: unknown) => {
-      toast.error(mapApiErrorVi(err, 'Mở file in tem thất bại'))
-    },
   })
 }
