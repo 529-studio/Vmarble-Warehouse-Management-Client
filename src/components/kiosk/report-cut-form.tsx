@@ -4,6 +4,7 @@ import { useState, useId, useMemo, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import QRCode from 'react-qr-code'
+import { toast } from 'sonner'
 import { AlertTriangle, CheckCircle2, ChevronLeft, Copy, Check, Printer } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -226,6 +227,7 @@ function SuccessModal({
       setPdfUrl(labelUrl)
       window.open(labelUrl, '_blank', 'noopener,noreferrer')
     } catch {
+      toast.info('Không mở được file PDF, đang in trực tiếp từ màn hình.')
       window.print()
     }
   }

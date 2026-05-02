@@ -47,7 +47,7 @@ export const barcodeApi = {
         ? normalizeAuthToken(localStorage.getItem('auth_token'))
         : null
 
-    const response = await fetch(buildApiUrl(`/barcodes/${barcodeId}/label`), {
+    const response = await fetch(buildApiUrl(`/barcodes/${barcodeId}/label.pdf`), {
       method: 'GET',
       headers: {
         Accept: 'application/pdf',
