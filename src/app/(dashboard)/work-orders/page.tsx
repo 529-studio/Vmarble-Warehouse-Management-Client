@@ -1,7 +1,7 @@
 'use client'
 
 
-import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { type ReactNode, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, Search, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -158,7 +158,7 @@ function formatPlanOptionLabel(plan: {
 
 function useCurrentRole() {
   return useSyncExternalStore(
-    () => () => {},
+    () => () => { },
     () => getCurrentRoleFromCookie(),
     () => null,
   )
@@ -615,6 +615,41 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
   )
 }
 
+// ── Queue helpers ─────────────────────────────────────────────────────────────
+
+function getQueueDateRange() {
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const fmt = (d: Date) => d.toISOString().split('T')[0]
+  return { from: fmt(yesterday), to: fmt(today) }
+}
+
+function getDateSection(isoDate: string): 'today' | 'yesterday' | 'older' {
+  const now = new Date()
+  const todayStr = now.toISOString().split('T')[0]
+  const yest = new Date(now)
+  yest.setDate(yest.getDate() - 1)
+  const yestStr = yest.toISOString().split('T')[0]
+  const dateStr = isoDate.split('T')[0]
+  if (dateStr === todayStr) return 'today'
+  if (dateStr === yestStr) return 'yesterday'
+  return 'older'
+}
+
+function SectionHeaderRow({ label, count }: { label: string; count: number }) {
+  return (
+    <TableRow className="hover:bg-transparent">
+      <TableCell colSpan={7} className="pb-1 pt-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{count}</span>
+        </div>
+      </TableCell>
+    </TableRow>
+  )
+}
+
 // ── Main list ─────────────────────────────────────────────────────────────────
 
 
@@ -754,6 +789,7 @@ function WorkOrdersContent() {
   const canCreateWorkOrder = can(role, 'create', 'work_orders')
   const canAdvanceWorkOrder = can(role, 'advance', 'work_orders')
 
+  const [viewMode, setViewMode] = useState<'queue' | 'all'>('queue')
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
   const [planSearch, setPlanSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
@@ -763,9 +799,15 @@ function WorkOrdersContent() {
   const planFilter = getParam('plan_id') ?? 'ALL'
   const debouncedPlanSearch = useDebounce(planSearch, 300)
 
+  const queueRange = useMemo(
+    () => (viewMode === 'queue' ? getQueueDateRange() : {}),
+    [viewMode],
+  )
+
   const filter = {
     ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
     ...(planFilter !== 'ALL' ? { plan_id: planFilter } : {}),
+    ...queueRange,
     page,
     limit,
   }
@@ -818,8 +860,121 @@ function WorkOrdersContent() {
     )
   }
 
+  function renderWorkOrderRow(wo: WorkOrder, muted = false) {
+    const canAdvance = NEXT_STATUS[wo.status] !== null
+    return (
+      <TableRow
+        key={wo.id}
+        className={cn(muted && 'opacity-50')}
+      >
+        <TableCell className="font-mono text-sm font-medium">
+          <Link href={`/work-orders/${wo.id}`} className="hover:underline">
+            {shortId(wo.id)}
+          </Link>
+        </TableCell>
+        <TableCell>{wo.sku_code ?? wo.sku_name ?? <span className="text-muted-foreground">—</span>}</TableCell>
+        <TableCell className="text-sm text-muted-foreground">
+          {planById[wo.plan_id]
+            ? planLabel(planById[wo.plan_id], poMap.get(planById[wo.plan_id].po_id))
+            : `KH-${shortId(wo.plan_id)}`}
+        </TableCell>
+        <TableCell>
+          <StatusBadge status={wo.status} />
+        </TableCell>
+        <TableCell className="text-sm">
+          {wo.assigned_to ? shortId(wo.assigned_to) : <span className="text-muted-foreground">—</span>}
+        </TableCell>
+        <TableCell className="text-sm text-muted-foreground">
+          {formatDate(wo.created_at)}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/work-orders/${wo.id}`}>Chi tiết</Link>
+            </Button>
+            {canAdvance && canAdvanceWorkOrder && (
+              <Button
+                size="sm"
+                variant={wo.status === 'PLANNED' ? 'default' : 'outline'}
+                onClick={() => setAdvanceTarget(wo)}
+              >
+                {ADVANCE_LABEL[wo.status]}
+              </Button>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+    )
+  }
+
+  function renderQueueRows(orders: WorkOrder[]) {
+    const todayOrders = orders.filter((wo) => getDateSection(wo.created_at) === 'today')
+    const yesterdayOrders = orders.filter((wo) => getDateSection(wo.created_at) === 'yesterday')
+    const olderOrders = orders.filter((wo) => getDateSection(wo.created_at) === 'older')
+
+    const isTerminal = (wo: WorkOrder) => wo.status === 'COMPLETED' || wo.status === 'COSTED'
+
+    const rows: ReactNode[] = []
+
+    if (todayOrders.length > 0) {
+      rows.push(<SectionHeaderRow key="__today__" label="Hôm nay" count={todayOrders.length} />)
+      todayOrders.forEach((wo) => rows.push(renderWorkOrderRow(wo, isTerminal(wo))))
+    }
+
+    if (yesterdayOrders.length > 0) {
+      rows.push(<SectionHeaderRow key="__yesterday__" label="Tồn hôm qua" count={yesterdayOrders.length} />)
+      yesterdayOrders.forEach((wo) => rows.push(renderWorkOrderRow(wo, isTerminal(wo))))
+    }
+
+    if (olderOrders.length > 0) {
+      rows.push(<SectionHeaderRow key="__older__" label="Cũ hơn" count={olderOrders.length} />)
+      olderOrders.forEach((wo) => rows.push(renderWorkOrderRow(wo, isTerminal(wo))))
+    }
+
+    if (rows.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+            Không có lệnh nào trong hôm nay và hôm qua.
+          </TableCell>
+        </TableRow>
+      )
+    }
+
+    return rows
+  }
+
   return (
     <div className="space-y-4">
+      {/* View mode toggle */}
+      <div className="inline-flex rounded-lg border bg-muted/40 p-1">
+        <button
+          type="button"
+          onClick={() => { setViewMode('queue'); setStatusFilter('ALL'); setPage(1) }}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all',
+            viewMode === 'queue'
+              ? 'bg-white shadow-sm text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <span className={cn('size-1.5 rounded-full', viewMode === 'queue' ? 'bg-blue-500' : 'bg-muted-foreground/50')} />
+          Hôm nay + hàng tồn hôm qua
+        </button>
+        <button
+          type="button"
+          onClick={() => { setViewMode('all'); setPage(1) }}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all',
+            viewMode === 'all'
+              ? 'bg-white shadow-sm text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          Toàn bộ lịch sử
+        </button>
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
@@ -867,7 +1022,11 @@ function WorkOrdersContent() {
       {/* Table */}
       <div className={`rounded-lg border transition-opacity ${isFetching && !isLoading ? 'opacity-60' : ''}`}>
         <div className="border-b px-4 py-3 text-sm font-medium text-muted-foreground">
-          {isLoading ? 'Đang tải…' : `Tất cả lệnh cắt (${totalItems})`}
+          {isLoading
+            ? 'Đang tải…'
+            : viewMode === 'queue'
+              ? `Queue vận hành (${totalItems} lệnh)`
+              : `Tất cả lệnh cắt (${totalItems})`}
         </div>
 
         {isError ? (
@@ -891,56 +1050,15 @@ function WorkOrdersContent() {
               ) : workOrders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                    Chưa có lệnh cắt nào.
+                    {viewMode === 'queue'
+                      ? 'Không có lệnh nào trong hôm nay và hôm qua.'
+                      : 'Chưa có lệnh cắt nào.'}
                   </TableCell>
                 </TableRow>
               ) : (
-                workOrders.map((wo) => {
-                  const canAdvance = NEXT_STATUS[wo.status] !== null
-                  return (
-                    <TableRow key={wo.id}>
-                      <TableCell className="font-mono text-sm font-medium">
-                        <Link
-                          href={`/work-orders/${wo.id}`}
-                          className="hover:underline"
-                        >
-                          {shortId(wo.id)}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{wo.sku_code ?? wo.sku_name ?? <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {planById[wo.plan_id]
-                          ? planLabel(planById[wo.plan_id], poMap.get(planById[wo.plan_id].po_id))
-                          : `KH-${shortId(wo.plan_id)}`}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={wo.status} />
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {wo.assigned_to ? shortId(wo.assigned_to) : <span className="text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(wo.created_at)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={`/work-orders/${wo.id}`}>Chi tiết</Link>
-                          </Button>
-                          {canAdvance && canAdvanceWorkOrder && (
-                            <Button
-                              size="sm"
-                              variant={wo.status === 'PLANNED' ? 'default' : 'outline'}
-                              onClick={() => setAdvanceTarget(wo)}
-                            >
-                              {ADVANCE_LABEL[wo.status]}
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
+                viewMode === 'queue'
+                  ? renderQueueRows(workOrders)
+                  : workOrders.map((wo) => renderWorkOrderRow(wo))
               )}
             </TableBody>
           </Table>
