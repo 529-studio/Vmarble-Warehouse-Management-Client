@@ -1,5 +1,13 @@
 import type { Remnant, BoardSheet, RemnantSuggestion, StorageLocation, PagedResult, PageParams } from '@/types/api'
-import { apiClient } from './client'
+import { ApiClientError, apiClient } from './client'
+import { normalizeAuthToken } from '@/lib/auth/token'
+
+function buildApiUrl(path: string) {
+  const base =
+    typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1'
+  return new URL(`${baseUrl}${path}`, base).toString()
+}
 
 // ── Remnant list filters ─────────────────────────────────────────────────────
 
@@ -59,6 +67,31 @@ export const remnantsApi = {
     apiClient.get<RemnantSuggestion[]>('/inventory/remnants/suggestions', {
       params: { length_mm: lengthMm, width_mm: widthMm, limit },
     }),
+
+  /** GET /api/v1/inventory/remnants/:id/label.pdf — remnant stock label PDF */
+  getRemnantLabelPdfBlob: async (remnantId: string) => {
+    const token =
+      typeof window !== 'undefined'
+        ? normalizeAuthToken(localStorage.getItem('auth_token'))
+        : null
+
+    const response = await fetch(buildApiUrl(`/inventory/remnants/${remnantId}/label.pdf`), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/pdf',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      const code: string = body?.code ?? 'UNKNOWN'
+      const message: string = body?.message ?? body?.error ?? `HTTP ${response.status}`
+      throw new ApiClientError(response.status, code, message, body?.details)
+    }
+
+    return response.blob()
+  },
 }
 
 // ── Storage locations API ─────────────────────────────────────────────────────

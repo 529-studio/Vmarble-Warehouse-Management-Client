@@ -53,6 +53,16 @@ export function useRemnant(id: string) {
   })
 }
 
+/** Opens remnant stock label PDF in a new tab. */
+export function useOpenRemnantLabelPdf() {
+  return useMutation({
+    mutationFn: async (remnantId: string) => {
+      const blob = await remnantsApi.getRemnantLabelPdfBlob(remnantId)
+      return URL.createObjectURL(blob)
+    },
+  })
+}
+
 /** Mutation to assign a remnant to a physical storage bin by location barcode. */
 export function useStockRemnant() {
   const queryClient = useQueryClient()

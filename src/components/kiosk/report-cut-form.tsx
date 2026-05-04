@@ -18,9 +18,7 @@ import {
 } from '@/components/ui/select'
 import { BigButton } from '@/components/kiosk/big-button'
 import { useCuttingOrder, useRecordCut } from '@/lib/hooks/use-cutting-orders'
-import { useGenerateBarcode, useOpenBarcodeLabelPdf } from '@/lib/hooks/use-barcode'
-import { usePlan } from '@/lib/hooks/use-plans'
-import { useAvailableSheets, useRemnant } from '@/lib/hooks/use-remnants'
+import { useAvailableSheets, useRemnant, useOpenRemnantLabelPdf } from '@/lib/hooks/use-remnants'
 import { ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
@@ -163,32 +161,17 @@ function WasteToggle({ hasRemnant, onChange, disabled }: WasteToggleProps) {
 
 interface SuccessModalProps {
   remnantId: string | null | undefined
-  workOrderId: string
-  skuId: string
-  skuCode?: string
-  skuName?: string
-  skuDimensions?: { length_mm: number; width_mm: number }
-  planId: string
   onGoHome: () => void
 }
 
 function SuccessModal({
   remnantId,
-  workOrderId,
-  skuId,
-  skuCode,
-  skuName,
-  skuDimensions,
-  planId,
   onGoHome,
 }: SuccessModalProps) {
   const [copied, setCopied] = useState(false)
-  const [barcodeResult, setBarcodeResult] = useState<{ id: string; labelUrl: string } | null>(null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
 
-  const { data: plan } = usePlan(planId || null)
-  const { mutateAsync: generateBarcode, isPending: isGeneratingBarcode } = useGenerateBarcode()
-  const { mutateAsync: openLabelPdf, isPending: isOpeningLabelPdf } = useOpenBarcodeLabelPdf()
+  const { mutateAsync: openRemnantLabel, isPending: isOpeningLabel } = useOpenRemnantLabelPdf()
 
   function handleCopy() {
     if (!remnantId) return
@@ -197,35 +180,18 @@ function SuccessModal({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const canCallLabelApi = !!plan?.po_id && !!planId && !!skuCode && !!skuName && !!skuDimensions
-
   async function handlePrintLabel() {
-    if (barcodeResult?.labelUrl) {
-      window.open(barcodeResult.labelUrl, '_blank', 'noopener,noreferrer')
+    if (!remnantId) return
+
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank', 'noopener,noreferrer')
       return
     }
 
-    if (!canCallLabelApi || !skuDimensions || !skuCode || !skuName || !plan?.po_id) return
-
-    const dimensions = `${skuDimensions.length_mm}x${skuDimensions.width_mm}mm`
-    const producedDate = new Date().toISOString()
-
     try {
-      const barcode = await generateBarcode({
-        work_order_id: workOrderId,
-        sku_id: skuId,
-        po_id: plan.po_id,
-        production_plan_id: planId,
-        sku_code: skuCode,
-        sku_name: skuName,
-        dimensions,
-        produced_date: producedDate,
-      })
-
-      const labelUrl = await openLabelPdf(barcode.id)
-      setBarcodeResult({ id: barcode.id, labelUrl })
-      setPdfUrl(labelUrl)
-      window.open(labelUrl, '_blank', 'noopener,noreferrer')
+      const url = await openRemnantLabel(remnantId)
+      setPdfUrl(url)
+      window.open(url, '_blank', 'noopener,noreferrer')
     } catch {
       toast.info('Không mở được file PDF, đang in trực tiếp từ màn hình.')
       window.print()
@@ -237,8 +203,6 @@ function SuccessModal({
       if (pdfUrl) URL.revokeObjectURL(pdfUrl)
     }
   }, [pdfUrl])
-
-  const isPrinting = isGeneratingBarcode || isOpeningLabelPdf
 
   return (
     <div
@@ -277,9 +241,9 @@ function SuccessModal({
               )}
             </button>
 
-            <BigButton type="button" onClick={handlePrintLabel} disabled={isPrinting || !canCallLabelApi}>
+            <BigButton type="button" onClick={handlePrintLabel} disabled={isOpeningLabel}>
               <Printer className="mr-2 size-5" aria-hidden="true" />
-              {isPrinting ? 'Đang chuẩn bị file in…' : 'In tem'}
+              {isOpeningLabel ? 'Đang chuẩn bị file in…' : 'In tem tấm lẻ'}
             </BigButton>
 
             <p className="text-center text-xs text-muted-foreground">
@@ -514,12 +478,6 @@ export function ReportCutForm() {
     return (
       <SuccessModal
         remnantId={successResult.remnantId}
-        workOrderId={woId}
-        skuId={workOrder?.sku_id ?? ''}
-        skuCode={workOrder?.sku_code}
-        skuName={workOrder?.sku_name}
-        skuDimensions={workOrder?.sku_dimensions}
-        planId={workOrder?.plan_id ?? ''}
         onGoHome={() => router.push('/cutting-orders')}
       />
     )
