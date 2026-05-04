@@ -15,7 +15,7 @@
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
-DEPLOY_DIR="/opt/vwms-staging-fe"
+DEPLOY_DIR="/home/deploy_vwms/projects/vwms-staging-fe"
 COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.fe.staging.yml"
 ENV_FILE="${DEPLOY_DIR}/.env.fe.staging"
 STATE_FILE="${DEPLOY_DIR}/.last_good_image"
