@@ -16,6 +16,8 @@ export interface PageParamsState {
   setLimit: (limit: number) => void
   /** Update any query-string value; pass empty/undefined to remove. */
   setParam: (key: string, value?: string) => void
+  /** Update multiple query-string values atomically and reset to page 1. */
+  setParams: (updates: Record<string, string | undefined>) => void
 }
 
 /**
@@ -74,5 +76,10 @@ export function usePageParams(defaultLimit = 10): PageParamsState {
     [push],
   )
 
-  return { page, search, limit, getParam, setPage, setSearch, setLimit, setParam }
+  const setParams = useCallback(
+    (updates: Record<string, string | undefined>) => push({ ...updates, page: '1' }),
+    [push],
+  )
+
+  return { page, search, limit, getParam, setPage, setSearch, setLimit, setParam, setParams }
 }
