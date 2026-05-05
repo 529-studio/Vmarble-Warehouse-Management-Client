@@ -1,9 +1,9 @@
 'use client'
 
 
-import { type ReactNode, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, Search, X } from 'lucide-react'
+import { Calendar, Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, RotateCcw, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -615,39 +615,11 @@ function AdvanceDialog({ wo, onConfirm, onCancel, isPending }: AdvanceDialogProp
   )
 }
 
-// ── Queue helpers ─────────────────────────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
 
-function getQueueDateRange() {
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-  const fmt = (d: Date) => d.toISOString().split('T')[0]
-  return { from: fmt(yesterday), to: fmt(today) }
-}
-
-function getDateSection(isoDate: string): 'today' | 'yesterday' | 'older' {
-  const now = new Date()
-  const todayStr = now.toISOString().split('T')[0]
-  const yest = new Date(now)
-  yest.setDate(yest.getDate() - 1)
-  const yestStr = yest.toISOString().split('T')[0]
-  const dateStr = isoDate.split('T')[0]
-  if (dateStr === todayStr) return 'today'
-  if (dateStr === yestStr) return 'yesterday'
-  return 'older'
-}
-
-function SectionHeaderRow({ label, count }: { label: string; count: number }) {
-  return (
-    <TableRow className="hover:bg-transparent">
-      <TableCell colSpan={7} className="pb-1 pt-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
-          <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{count}</span>
-        </div>
-      </TableCell>
-    </TableRow>
-  )
+function todayISO(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 // ── Main list ─────────────────────────────────────────────────────────────────
@@ -789,25 +761,26 @@ function WorkOrdersContent() {
   const canCreateWorkOrder = can(role, 'create', 'work_orders')
   const canAdvanceWorkOrder = can(role, 'advance', 'work_orders')
 
-  const [viewMode, setViewMode] = useState<'queue' | 'all'>('queue')
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
   const [planSearch, setPlanSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [advanceTarget, setAdvanceTarget] = useState<WorkOrder | null>(null)
 
-  const { page, limit, getParam, setPage, setParam } = usePageParams(15)
+  const { page, limit, getParam, setPage, setParam, setParams } = usePageParams(15)
   const planFilter = getParam('plan_id') ?? 'ALL'
   const debouncedPlanSearch = useDebounce(planSearch, 300)
 
-  const queueRange = useMemo(
-    () => (viewMode === 'queue' ? getQueueDateRange() : {}),
-    [viewMode],
-  )
+  // Date filter — URL-driven, default to today (local time, VN-safe)
+  const today = todayISO()
+  const dateFrom = getParam('from') ?? today
+  const dateTo = getParam('to') ?? today
+  const isViewingToday = dateFrom === today && dateTo === today
 
   const filter = {
     ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
     ...(planFilter !== 'ALL' ? { plan_id: planFilter } : {}),
-    ...queueRange,
+    from: dateFrom,
+    to: dateTo,
     page,
     limit,
   }
@@ -907,77 +880,11 @@ function WorkOrdersContent() {
     )
   }
 
-  function renderQueueRows(orders: WorkOrder[]) {
-    const todayOrders = orders.filter((wo) => getDateSection(wo.created_at) === 'today')
-    const yesterdayOrders = orders.filter((wo) => getDateSection(wo.created_at) === 'yesterday')
-    const olderOrders = orders.filter((wo) => getDateSection(wo.created_at) === 'older')
-
-    const isTerminal = (wo: WorkOrder) => wo.status === 'COMPLETED' || wo.status === 'COSTED'
-
-    const rows: ReactNode[] = []
-
-    if (todayOrders.length > 0) {
-      rows.push(<SectionHeaderRow key="__today__" label="Hôm nay" count={todayOrders.length} />)
-      todayOrders.forEach((wo) => rows.push(renderWorkOrderRow(wo, isTerminal(wo))))
-    }
-
-    if (yesterdayOrders.length > 0) {
-      rows.push(<SectionHeaderRow key="__yesterday__" label="Tồn hôm qua" count={yesterdayOrders.length} />)
-      yesterdayOrders.forEach((wo) => rows.push(renderWorkOrderRow(wo, isTerminal(wo))))
-    }
-
-    if (olderOrders.length > 0) {
-      rows.push(<SectionHeaderRow key="__older__" label="Cũ hơn" count={olderOrders.length} />)
-      olderOrders.forEach((wo) => rows.push(renderWorkOrderRow(wo, isTerminal(wo))))
-    }
-
-    if (rows.length === 0) {
-      return (
-        <TableRow>
-          <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-            Không có lệnh nào trong hôm nay và hôm qua.
-          </TableCell>
-        </TableRow>
-      )
-    }
-
-    return rows
-  }
-
   return (
     <div className="space-y-4">
-      {/* View mode toggle */}
-      <div className="inline-flex rounded-lg border bg-muted/40 p-1">
-        <button
-          type="button"
-          onClick={() => { setViewMode('queue'); setStatusFilter('ALL'); setPage(1) }}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all',
-            viewMode === 'queue'
-              ? 'bg-white shadow-sm text-foreground'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <span className={cn('size-1.5 rounded-full', viewMode === 'queue' ? 'bg-blue-500' : 'bg-muted-foreground/50')} />
-          Hôm nay + hàng tồn hôm qua
-        </button>
-        <button
-          type="button"
-          onClick={() => { setViewMode('all'); setPage(1) }}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all',
-            viewMode === 'all'
-              ? 'bg-white shadow-sm text-foreground'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          Toàn bộ lịch sử
-        </button>
-      </div>
-
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select
             value={statusFilter}
             onValueChange={(v) => { setStatusFilter(v as WorkOrderStatus | 'ALL'); setPage(1) }}
@@ -1007,6 +914,45 @@ function WorkOrdersContent() {
               setPage(1)
             }}
           />
+
+          {/* Date range filter */}
+          <div className="flex items-center gap-1.5">
+            <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo}
+              aria-label="Từ ngày"
+              onChange={(e) => {
+                const val = e.target.value
+                setParams({ from: val || undefined, to: dateTo !== today ? dateTo : val || undefined })
+              }}
+              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <span className="text-muted-foreground text-sm" aria-hidden="true">–</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom}
+              aria-label="Đến ngày"
+              onChange={(e) => {
+                const val = e.target.value
+                setParams({ from: dateFrom, to: val || undefined })
+              }}
+              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            {!isViewingToday && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setParams({ from: undefined, to: undefined })}
+                className="gap-1"
+              >
+                <RotateCcw className="size-3" />
+                Hôm nay
+              </Button>
+            )}
+          </div>
         </div>
 
         {canCreateWorkOrder ? (
@@ -1024,9 +970,9 @@ function WorkOrdersContent() {
         <div className="border-b px-4 py-3 text-sm font-medium text-muted-foreground">
           {isLoading
             ? 'Đang tải…'
-            : viewMode === 'queue'
-              ? `Queue vận hành (${totalItems} lệnh)`
-              : `Tất cả lệnh cắt (${totalItems})`}
+            : isViewingToday
+              ? `Lệnh hôm nay (${totalItems})`
+              : `Kết quả (${totalItems} lệnh)`}
         </div>
 
         {isError ? (
@@ -1050,15 +996,13 @@ function WorkOrdersContent() {
               ) : workOrders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                    {viewMode === 'queue'
-                      ? 'Không có lệnh nào trong hôm nay và hôm qua.'
-                      : 'Chưa có lệnh cắt nào.'}
+                    {isViewingToday
+                      ? 'Hôm nay chưa có lệnh sản xuất nào.'
+                      : 'Không có lệnh nào trong khoảng thời gian đã chọn.'}
                   </TableCell>
                 </TableRow>
               ) : (
-                viewMode === 'queue'
-                  ? renderQueueRows(workOrders)
-                  : workOrders.map((wo) => renderWorkOrderRow(wo))
+                workOrders.map((wo) => renderWorkOrderRow(wo))
               )}
             </TableBody>
           </Table>
