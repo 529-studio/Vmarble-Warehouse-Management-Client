@@ -133,6 +133,9 @@ export interface PO {
   code: string
   expected_delivery: string
   created_at: string
+  /** Summary fields added by backend issue #195 */
+  total_skus?: number
+  total_quantity?: number
   /** Included when fetched via GET /pos/:id */
   line_items?: LineItem[]
 }
