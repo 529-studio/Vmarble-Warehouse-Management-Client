@@ -63,6 +63,13 @@ function formatDate(iso: string) {
   })
 }
 
+function poSummary(po: { total_skus?: number; total_quantity?: number }): string {
+  const parts: string[] = []
+  if (po.total_skus != null) parts.push(`${po.total_skus} SKU`)
+  if (po.total_quantity != null) parts.push(`${po.total_quantity} sp`)
+  return parts.join(' · ')
+}
+
 const STATUS_LABEL: Record<PlanStatus, string> = {
   DRAFT: 'Nháp',
   APPROVED: 'Đã duyệt',
@@ -214,17 +221,24 @@ function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) {
                 <SelectValue placeholder="— Chọn đơn hàng —" />
               </SelectTrigger>
               <SelectContent>
-                {pos.map((po) => (
-                  <SelectItem key={po.id} value={po.id}>
-                    {po.code}
-                  </SelectItem>
-                ))}
+                {pos.map((po) => {
+                  const summary = poSummary(po)
+                  return (
+                    <SelectItem key={po.id} value={po.id}>
+                      <span className="font-medium">{po.code}</span>
+                      {summary && (
+                        <span className="ml-2 text-muted-foreground">{summary}</span>
+                      )}
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
             {errors.po_id && <p className="text-xs text-destructive">{errors.po_id}</p>}
             {selectedPO && (
               <p className="text-xs text-muted-foreground">
                 Hạn giao hàng: {formatDate(selectedPO.expected_delivery)}
+                {poSummary(selectedPO) && ` · ${poSummary(selectedPO)}`}
               </p>
             )}
           </div>
