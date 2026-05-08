@@ -23,6 +23,7 @@ export type AppResource =
   | 'remnant_store'
   | 'account'
   | 'users'
+  | 'profile'
 
 export type AppAction =
   | 'read'
@@ -50,6 +51,7 @@ const DASHBOARD_PATHS = [
   '/barcodes',
   '/cutting-dispatch',
   '/users',
+  '/profile',
 ]
 
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account']
@@ -66,6 +68,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/barcodes', resource: 'barcodes' },
   { path: '/cutting-dispatch', resource: 'cutting_dispatch' },
   { path: '/users', resource: 'users' },
+  { path: '/profile', resource: 'profile' },
   { path: '/scan', resource: 'scan' },
   { path: '/cutting-orders', resource: 'cutting_orders' },
   { path: '/report-cut', resource: 'report_cut' },
@@ -85,6 +88,7 @@ const DASHBOARD_RESOURCES: AppResource[] = [
   'work_orders',
   'barcodes',
   'cutting_dispatch',
+  'profile',
 ]
 
 function matchPath(pathname: string, path: string): boolean {
@@ -119,10 +123,12 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     ...readOnly(DASHBOARD_RESOURCES),
   },
   foreman: {
+    ...readOnly(['profile']),
     work_orders: ['read', 'advance', 'consume', 'generate'],
     barcodes: ['read'],
   },
   cnc_manager: {
+    ...readOnly(['profile']),
     work_orders: ['read'],
     cutting_dispatch: ['read', 'assign'],
   },
