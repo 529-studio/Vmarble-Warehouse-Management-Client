@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -32,11 +31,11 @@ import {
 } from '@/components/ui/table'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { usePageParams } from '@/lib/hooks/use-page-params'
-import {
-  useWorkOrders,
+import { useWorkOrders,
   useAssignWorkOrder,
   useSuggestAssignment,
 } from '@/lib/hooks/use-work-orders'
+import { useUsers } from '@/lib/hooks/use-users'
 import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { WorkOrder, WorkOrderStatus } from '@/types/api'
@@ -100,45 +99,34 @@ function TableSkeleton() {
 
 interface AssignDialogProps {
   wo: WorkOrder | null
-  suggestedWorkerName?: string | null
-  suggestedWorkerUsername?: string | null
-  onSuggestedUserMetaChange?: (meta: { userId: string; username?: string | null; fullName?: string | null }) => void
   onClose: () => void
 }
 
-function AssignDialog({ wo, suggestedWorkerName, suggestedWorkerUsername, onSuggestedUserMetaChange, onClose }: AssignDialogProps) {
+function AssignDialog({ wo, onClose }: AssignDialogProps) {
   const [userId, setUserId] = useState('')
-  const [suggestedCount, setSuggestedCount] = useState<number | null>(null)
   const [suggestedUserId, setSuggestedUserId] = useState<string | null>(null)
+  const [suggestedCount, setSuggestedCount] = useState<number | null>(null)
 
-  const suggestedWorkerLabel = suggestedWorkerName
-    ?? (suggestedUserId ? `Công nhân ${shortId(suggestedUserId)}` : null)
-  const suggestedUsernameLabel = suggestedWorkerUsername
-    ?? (suggestedUserId ? shortId(suggestedUserId) : null)
+  const { data: usersData, isLoading: loadingUsers } = useUsers({ role: 'cnc', limit: 200 })
+  const workers = useMemo(() => usersData?.items ?? [], [usersData?.items])
 
   const { mutate: assign, isPending: assigning } = useAssignWorkOrder()
   const { mutate: suggest, isPending: suggesting } = useSuggestAssignment()
 
   if (!wo) return null
 
+  const isReassign = !!wo.assigned_to
+  const currentWorker = workers.find((w) => w.id === wo.assigned_to)
+
   function handleSuggest() {
     suggest(wo!.id, {
       onSuccess: (result) => {
-        setUserId(result.user_id)
         setSuggestedUserId(result.user_id)
         setSuggestedCount(result.in_cutting_count)
-        onSuggestedUserMetaChange?.({
-          userId: result.user_id,
-          username: result.username,
-          fullName: result.full_name,
-        })
+        setUserId(result.user_id)
       },
       onError: (err) => {
-        if (
-          err instanceof ApiClientError
-          && err.status === 404
-          && err.message === 'HTTP 404'
-        ) {
+        if (err instanceof ApiClientError && err.status === 404) {
           toast.error('Backend chưa hỗ trợ API gợi ý công nhân CNC')
           return
         }
@@ -148,16 +136,27 @@ function AssignDialog({ wo, suggestedWorkerName, suggestedWorkerUsername, onSugg
   }
 
   function handleAssign() {
-    if (!userId.trim()) {
-      toast.error('Nhập ID công nhân CNC')
+    if (!userId) {
+      toast.error('Chọn công nhân CNC')
       return
     }
     assign(
-      { id: wo!.id, input: { user_id: userId.trim() } },
+      { id: wo!.id, input: { user_id: userId } },
       {
         onSuccess: () => {
-          toast.success(`Đã phân công lệnh ${shortId(wo!.id)}`)
+          toast.success(
+            isReassign
+              ? `Đã phân công lại lệnh ${shortId(wo!.id)}`
+              : `Đã phân công lệnh ${shortId(wo!.id)}`,
+          )
           onClose()
+        },
+        onError: (err) => {
+          if (err instanceof ApiClientError && err.status === 412) {
+            toast.error('Lệnh đã chuyển sang trạng thái đang cắt, không thể phân công lại')
+          } else {
+            toast.error(mapApiErrorVi(err, 'Phân công thất bại'))
+          }
         },
       },
     )
@@ -174,7 +173,7 @@ function AssignDialog({ wo, suggestedWorkerName, suggestedWorkerUsername, onSugg
     <Dialog open onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Phân công lệnh cắt</DialogTitle>
+          <DialogTitle>{isReassign ? 'Phân công lại lệnh cắt' : 'Phân công lệnh cắt'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-1">
@@ -182,24 +181,35 @@ function AssignDialog({ wo, suggestedWorkerName, suggestedWorkerUsername, onSugg
           <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm space-y-1">
             <p><span className="text-muted-foreground">Mã lệnh:</span> <span className="font-mono font-medium">{shortId(wo.id)}</span></p>
             <p><span className="text-muted-foreground">SKU:</span> <span className="font-medium">{wo.sku_code ?? '—'}</span></p>
-            <p><span className="text-muted-foreground">Trạng thái:</span>{' '}
-              <Badge variant="outline" className={STATUS_CLASS[wo.status]}>
-                {STATUS_LABEL[wo.status]}
-              </Badge>
-            </p>
+            {isReassign && currentWorker && (
+              <p>
+                <span className="text-muted-foreground">Đang phân công:</span>{' '}
+                <span className="font-medium">{currentWorker.full_name ?? currentWorker.username}</span>
+              </p>
+            )}
           </div>
 
-          {/* Worker ID input */}
+          {/* Worker dropdown */}
           <div className="space-y-1.5">
-            <Label htmlFor="worker-id">ID Công nhân CNC *</Label>
+            <Label>Công nhân CNC *</Label>
             <div className="flex gap-2">
-              <Input
-                id="worker-id"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder="UUID công nhân"
-                className="flex-1 font-mono text-sm"
-              />
+              <Select value={userId} onValueChange={setUserId} disabled={loadingUsers}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder={loadingUsers ? 'Đang tải…' : '— Chọn công nhân —'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {workers.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      <span>{w.full_name ?? w.username}</span>
+                      {suggestedUserId === w.id && suggestedCount !== null && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({suggestedCount} lệnh đang cắt)
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 type="button"
                 variant="outline"
@@ -211,18 +221,10 @@ function AssignDialog({ wo, suggestedWorkerName, suggestedWorkerUsername, onSugg
                 <Sparkles className="size-4" />
               </Button>
             </div>
-            {suggestedCount !== null && (
-              <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-1">
-                <p>
-                  Gợi ý công nhân: <span className="font-medium text-foreground">{suggestedWorkerLabel ?? 'Chưa có tên hiển thị'}</span>
-                </p>
-                <p>
-                  Username: <span className="font-mono">{suggestedUsernameLabel ?? '—'}</span>
-                </p>
-                <p>
-                  Tải hiện tại: {suggestedCount} lệnh đang cắt
-                </p>
-              </div>
+            {suggestedCount !== null && userId === suggestedUserId && (
+              <p className="text-xs text-muted-foreground">
+                Gợi ý: công nhân đang có {suggestedCount} lệnh cắt
+              </p>
             )}
           </div>
         </div>
@@ -231,8 +233,8 @@ function AssignDialog({ wo, suggestedWorkerName, suggestedWorkerUsername, onSugg
           <Button variant="outline" onClick={handleClose} disabled={assigning}>
             Hủy
           </Button>
-          <Button onClick={handleAssign} disabled={assigning || !userId.trim()}>
-            {assigning ? 'Đang phân công…' : 'Phân công'}
+          <Button onClick={handleAssign} disabled={assigning || !userId}>
+            {assigning ? 'Đang phân công…' : isReassign ? 'Phân công lại' : 'Phân công'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -248,11 +250,6 @@ function CuttingDispatchContent() {
 
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
   const [assignTarget, setAssignTarget] = useState<WorkOrder | null>(null)
-  const [lastSuggestedUserMeta, setLastSuggestedUserMeta] = useState<{
-    userId: string
-    username?: string | null
-    fullName?: string | null
-  } | null>(null)
 
   const { page, limit, setPage } = usePageParams(15)
 
@@ -266,12 +263,6 @@ function CuttingDispatchContent() {
   const workOrders = useMemo(() => data?.items ?? [], [data?.items])
   const totalItems = data?.total_items ?? 0
   const totalPages = data?.total_pages ?? 1
-
-  const suggestedWorkerName = lastSuggestedUserMeta
-    ? lastSuggestedUserMeta.fullName ?? null
-    : null
-
-  const suggestedWorkerUsername = lastSuggestedUserMeta?.username ?? null
 
   return (
     <div className="space-y-4">
@@ -352,13 +343,13 @@ function CuttingDispatchContent() {
                       {formatDate(wo.created_at)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {(wo.status === 'PLANNED' || wo.status === 'IN_CUTTING') && canAssignWorkOrder && (
+                      {wo.status === 'PLANNED' && canAssignWorkOrder && (
                         <Button
                           size="sm"
                           variant={wo.assigned_to ? 'outline' : 'default'}
                           onClick={() => setAssignTarget(wo)}
                         >
-                          {wo.assigned_to ? 'Đổi phân công' : 'Phân công'}
+                          {wo.assigned_to ? 'Phân công lại' : 'Phân công'}
                         </Button>
                       )}
                     </TableCell>
@@ -383,13 +374,7 @@ function CuttingDispatchContent() {
       {canAssignWorkOrder && (
         <AssignDialog
           wo={assignTarget}
-          suggestedWorkerName={suggestedWorkerName}
-          suggestedWorkerUsername={suggestedWorkerUsername}
-          onSuggestedUserMetaChange={setLastSuggestedUserMeta}
-          onClose={() => {
-            setAssignTarget(null)
-            setLastSuggestedUserMeta(null)
-          }}
+          onClose={() => setAssignTarget(null)}
         />
       )}
     </div>
