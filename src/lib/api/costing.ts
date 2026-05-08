@@ -3,6 +3,7 @@ import type { CostingRecord, PageParams, PagedResult } from '@/types/api'
 
 export interface CostingFilter extends PageParams {
   finalized?: boolean
+  work_order_id?: string
 }
 
 export const costingApi = {
@@ -13,6 +14,7 @@ export const costingApi = {
         limit: filter.limit,
         order: filter.order,
         finalized: filter.finalized,
+        work_order_id: filter.work_order_id,
       },
     }),
 

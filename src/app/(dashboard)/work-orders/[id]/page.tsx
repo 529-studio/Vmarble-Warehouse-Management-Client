@@ -1,9 +1,10 @@
 'use client'
 
 import { use, useMemo, useSyncExternalStore, useState } from 'react'
+import { toast } from 'sonner'
 import QRCode from 'react-qr-code'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardCheck, QrCode, Copy, Check, CheckCircle2, Circle, ExternalLink } from 'lucide-react'
+import { ArrowLeft, ClipboardCheck, QrCode, Copy, Check, CheckCircle2, Circle, ExternalLink, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -33,12 +34,15 @@ import {
 } from '@/components/ui/select'
 import {
   useAddWorkOrderConsumption,
+  useAdvanceStatus,
   useWorkOrder,
   useWorkOrderConsumptions,
 } from '@/lib/hooks/use-work-orders'
 import { usePlan } from '@/lib/hooks/use-plans'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useGenerateBarcode, useBarcodesForWorkOrder, useBarcodeScanEvents } from '@/lib/hooks/use-barcode'
+import { useWorkOrderCosting, useComputeCosting } from '@/lib/hooks/use-costing'
+import { ApiClientError } from '@/lib/api/client'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type {
   WorkOrderStatus,
@@ -47,6 +51,7 @@ import type {
   WorkOrder,
   ScanCheckpoint,
   MaterialType,
+  AdvanceStatusInput,
 } from '@/types/api'
 
 // ── Helpers
@@ -351,6 +356,14 @@ function WorkOrderDetail({ id }: { id: string }) {
   } = useWorkOrderConsumptions(id)
   const { data: materialsData, isLoading: materialsLoading } = useMaterials({ limit: 200 })
   const { mutate: addConsumption, isPending: addingConsumption } = useAddWorkOrderConsumption()
+  const { mutate: advance, isPending: advancing } = useAdvanceStatus()
+
+  // Costing gate — only relevant when PLANNED
+  const { data: costingRecord, isLoading: costingLoading, error: costingError } = useWorkOrderCosting(
+    wo?.status === 'PLANNED' ? id : null,
+  )
+  const hasCostingRecord = !!costingRecord && !(costingError instanceof ApiClientError && costingError.status === 404)
+  const { mutate: computeCosting, isPending: computingCosting } = useComputeCosting()
 
   const materials = useMemo(() => materialsData?.items ?? [], [materialsData?.items])
   const selectedMaterial = useMemo(
@@ -478,6 +491,71 @@ function WorkOrderDetail({ id }: { id: string }) {
           <Field label="Ngày tạo" value={formatDate(wo.created_at)} />
         </div>
       </div>
+
+      {/* Costing gate — only shown for PLANNED */}
+      {wo.status === 'PLANNED' && (
+        <div>
+          <h2 className="mb-3 text-base font-semibold">Giá thành dự kiến</h2>
+          <div className="rounded-lg border p-4">
+            {costingLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Đang kiểm tra giá thành…
+              </div>
+            ) : hasCostingRecord && costingRecord ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                  <Field label="Nguyên vật liệu" value={`${costingRecord.material_cost.amount} ${costingRecord.material_cost.currency}`} />
+                  <Field label="Vật tư phụ" value={`${costingRecord.auxiliary_cost.amount} ${costingRecord.auxiliary_cost.currency}`} />
+                  <Field label="Nhân công" value={`${costingRecord.labor_cost.amount} ${costingRecord.labor_cost.currency}`} />
+                  <Field label="Tổng chi phí" value={<span className="font-bold">{costingRecord.total_cost.amount} {costingRecord.total_cost.currency}</span>} />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const input: AdvanceStatusInput = { status: 'IN_CUTTING' }
+                    advance(
+                      { id: wo.id, input },
+                      {
+                        onError: (err) => {
+                          if (err instanceof ApiClientError && err.status === 412) {
+                            toast.error('Chưa đủ điều kiện để bắt đầu cắt. Kiểm tra lại giá thành hoặc phân công.')
+                          }
+                        },
+                      },
+                    )
+                  }}
+                  disabled={advancing}
+                >
+                  {advancing ? 'Đang xử lý…' : 'Bắt đầu cắt'}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Chưa có giá thành dự kiến. Cần tính giá thành trước khi bắt đầu cắt.
+                </p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={() => computeCosting(wo.id)}
+                    disabled={computingCosting}
+                  >
+                    {computingCosting ? <><Loader2 className="mr-2 size-4 animate-spin" />Đang tính…</> : 'Tính giá thành'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled
+                    title="Cần tính giá thành trước khi bắt đầu cắt"
+                  >
+                    Bắt đầu cắt
+                  </Button>
+                  <p className="text-xs text-muted-foreground">← Cần tính giá thành trước</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Scan history */}
       <ScanHistorySection workOrderId={wo.id} />
