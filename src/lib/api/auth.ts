@@ -6,6 +6,9 @@
  * call it from the browser without CORS issues.
  */
 
+import { apiClient } from './client'
+import { User } from '@/types/api'
+
 export interface LoginRequest {
   username: string
   password: string
@@ -32,4 +35,6 @@ export const authApi = {
 
     return res.json() as Promise<LoginResponse>
   },
+
+  getMe: () => apiClient.get<User>('/users/me'),
 }

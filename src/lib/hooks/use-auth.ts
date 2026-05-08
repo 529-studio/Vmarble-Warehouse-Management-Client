@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { authApi, type LoginRequest } from '@/lib/api/auth'
 import { getDefaultRouteForRole } from '@/lib/auth/authorization'
 import { normalizeAuthToken } from '@/lib/auth/token'
 
 const TOKEN_KEY = 'auth_token'
 const ROLE_KEY = 'auth_role'
+const USERNAME_KEY = 'auth_username'
+const LAST_LOGIN_KEY = 'auth_last_login'
 
 // ── Cookie helpers ────────────────────────────────────────────────────────────
 // We store the token in BOTH:
@@ -32,8 +35,20 @@ export function getStoredToken(): string | null {
   return normalizeAuthToken(localStorage.getItem(TOKEN_KEY))
 }
 
+export function getStoredUsername(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(USERNAME_KEY)
+}
+
+export function getStoredLastLogin(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(LAST_LOGIN_KEY)
+}
+
 export function logout() {
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(USERNAME_KEY)
+  localStorage.removeItem(LAST_LOGIN_KEY)
   clearAuthCookies()
 }
 
@@ -76,4 +91,12 @@ export function useLogin(): UseLoginReturn {
   }
 
   return { login, isPending, error }
+}
+
+export function useMe() {
+  return useQuery({
+    queryKey: ['me'],
+    queryFn: () => authApi.getMe(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
 }
