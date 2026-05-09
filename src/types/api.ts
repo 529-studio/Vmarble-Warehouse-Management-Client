@@ -258,6 +258,8 @@ export interface CostingRecord {
   id: string
   work_order_id: string
   sku_id: string
+  /** Added by backend #211: ESTIMATED (before cutting) or ACTUAL (after completion) */
+  costing_type?: 'ESTIMATED' | 'ACTUAL'
   material_cost: Money
   auxiliary_cost: Money
   labor_cost: Money
