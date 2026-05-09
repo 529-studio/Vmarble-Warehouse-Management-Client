@@ -24,6 +24,7 @@ export type AppResource =
   | 'account'
   | 'users'
   | 'profile'
+  | 'purchasing'
 
 export type AppAction =
   | 'read'
@@ -52,6 +53,7 @@ const DASHBOARD_PATHS = [
   '/cutting-dispatch',
   '/users',
   '/profile',
+  '/purchasing',
 ]
 
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account']
@@ -69,6 +71,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/cutting-dispatch', resource: 'cutting_dispatch' },
   { path: '/users', resource: 'users' },
   { path: '/profile', resource: 'profile' },
+  { path: '/purchasing', resource: 'purchasing' },
   { path: '/scan', resource: 'scan' },
   { path: '/cutting-orders', resource: 'cutting_orders' },
   { path: '/report-cut', resource: 'report_cut' },
@@ -89,6 +92,7 @@ const DASHBOARD_RESOURCES: AppResource[] = [
   'barcodes',
   'cutting_dispatch',
   'profile',
+  'purchasing',
 ]
 
 function matchPath(pathname: string, path: string): boolean {
@@ -108,6 +112,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     work_orders: ['read', 'create', 'advance', 'assign', 'consume', 'generate'],
     cutting_dispatch: ['read', 'assign'],
     costing: ['read', 'compute', 'finalize', 'adjust'],
+    purchasing: ['read', 'create', 'cancel'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
@@ -121,6 +126,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
   },
   warehouse: {
     ...readOnly(DASHBOARD_RESOURCES),
+    purchasing: ['read', 'create', 'cancel'],
   },
   foreman: {
     ...readOnly(['profile']),
