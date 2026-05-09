@@ -44,6 +44,8 @@ import { useGenerateBarcode, useBarcodesForWorkOrder, useBarcodeScanEvents } fro
 import { useWorkOrderCosting, useComputeCosting } from '@/lib/hooks/use-costing'
 import { ApiClientError } from '@/lib/api/client'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { evaluateStartCutGate, startCutTooltip } from '@/lib/auth/work-order-gate'
+import { useMe } from '@/lib/hooks/use-auth'
 import type {
   WorkOrderStatus,
   BarcodeRecord,
@@ -339,6 +341,7 @@ function GenerateBarcodeDialog({ wo, open, onClose }: {
 
 function WorkOrderDetail({ id }: { id: string }) {
   const role = useCurrentRole()
+  const { data: me } = useMe()
   const canGenerateBarcode = can(role, 'generate', 'work_orders')
   const canConsume = can(role, 'consume', 'work_orders')
 
@@ -510,25 +513,53 @@ function WorkOrderDetail({ id }: { id: string }) {
                   <Field label="Nhân công" value={`${costingRecord.labor_cost.amount} ${costingRecord.labor_cost.currency}`} />
                   <Field label="Tổng chi phí" value={<span className="font-bold">{costingRecord.total_cost.amount} {costingRecord.total_cost.currency}</span>} />
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    const input: AdvanceStatusInput = { status: 'IN_CUTTING' }
-                    advance(
-                      { id: wo.id, input },
-                      {
-                        onError: (err) => {
-                          if (err instanceof ApiClientError && err.status === 412) {
-                            toast.error('Chưa đủ điều kiện để bắt đầu cắt. Kiểm tra lại giá thành hoặc phân công.')
-                          }
-                        },
-                      },
+                {(() => {
+                  const gate = evaluateStartCutGate({ wo, currentUserId: me?.id ?? null, role })
+
+                  if (gate.kind === 'unassigned-dispatchable') {
+                    return (
+                      <div className="flex items-center gap-3">
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href={`/cutting-dispatch?focus=${wo.id}`}>Điều phối</Link>
+                        </Button>
+                        <p className="text-xs text-muted-foreground">Lệnh chưa phân công CNC</p>
+                      </div>
                     )
-                  }}
-                  disabled={advancing}
-                >
-                  {advancing ? 'Đang xử lý…' : 'Bắt đầu cắt'}
-                </Button>
+                  }
+
+                  if (gate.kind !== 'allowed') {
+                    return (
+                      <div className="flex items-center gap-3">
+                        <Button size="sm" variant="outline" disabled title={startCutTooltip(gate)}>
+                          Bắt đầu cắt
+                        </Button>
+                        <p className="text-xs text-muted-foreground">{startCutTooltip(gate)}</p>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const input: AdvanceStatusInput = { status: 'IN_CUTTING' }
+                        advance(
+                          { id: wo.id, input },
+                          {
+                            onError: (err) => {
+                              if (err instanceof ApiClientError && err.status === 412) {
+                                toast.error('Chưa đủ điều kiện để bắt đầu cắt. Kiểm tra lại giá thành hoặc phân công.')
+                              }
+                            },
+                          },
+                        )
+                      }}
+                      disabled={advancing}
+                    >
+                      {advancing ? 'Đang xử lý…' : 'Bắt đầu cắt'}
+                    </Button>
+                  )
+                })()}
               </div>
             ) : (
               <div className="space-y-3">
