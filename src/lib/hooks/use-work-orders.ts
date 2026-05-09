@@ -32,8 +32,12 @@ export function useCreateWorkOrder() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateWOInput) => workOrdersApi.create(input),
-    onSuccess: () => {
+    onSuccess: (_, input) => {
       queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+      // Refresh REMNANT_BYPASSED audit feed so the new badge shows up immediately.
+      if (input.bypass_reason) {
+        queryClient.invalidateQueries({ queryKey: ['inventory-audit-log', 'REMNANT_BYPASSED'] })
+      }
       toast.success('Đã tạo lệnh sản xuất')
     },
     onError: (err) => {
