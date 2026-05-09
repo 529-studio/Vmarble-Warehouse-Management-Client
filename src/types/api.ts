@@ -578,3 +578,52 @@ export interface ApiError {
   message: string
   details?: Record<string, string>
 }
+
+// ── Material Purchase Orders (Purchasing) ────────────────────────────────────
+
+export type MPOStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'CANCELLED'
+
+export interface MPOItem {
+  id: string
+  po_id: string
+  material_id: string
+  material_type: string
+  quantity: number
+  length_mm: number
+  width_mm: number
+  unit_cost: Money
+  total_cost: Money
+  created_at: string
+}
+
+export interface MaterialPurchaseOrder {
+  id: string
+  code: string
+  supplier?: string
+  status: MPOStatus
+  note?: string
+  items?: MPOItem[]
+  created_at: string
+  ordered_at?: string
+  received_at?: string
+}
+
+export interface CreateMPOInput {
+  code: string
+  supplier?: string
+  note?: string
+}
+
+export interface AddMPOItemInput {
+  material_id: string
+  material_type: string
+  quantity: number
+  length_mm: number
+  width_mm: number
+  unit_cost: Money
+}
+
+export interface MPOFilter extends PageParams {
+  status?: MPOStatus
+  material_id?: string
+}
