@@ -244,25 +244,39 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
 
 // ── Main content ──────────────────────────────────────────────────────────────
 
+type AssignmentFilter = 'unassigned' | 'all'
+
 function CuttingDispatchContent() {
   const role = useCurrentRole()
   const canAssignWorkOrder = can(role, 'assign', 'cutting_dispatch')
 
-  const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
+  // Default view mirrors BE precondition (`production/service.go:199`): only
+  // PLANNED + unassigned WOs are dispatchable, so the operator-friendly
+  // landing matches that shape. Reviewers can still toggle to other statuses.
+  const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('PLANNED')
+  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('unassigned')
   const [assignTarget, setAssignTarget] = useState<WorkOrder | null>(null)
 
   const { page, limit, setPage } = usePageParams(15)
 
   const filter = {
     ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+    ...(assignmentFilter === 'unassigned' ? { assigned: 'null' as const } : {}),
     page,
     limit,
   }
 
   const { data, isLoading, isFetching, isError } = useWorkOrders(filter)
-  const workOrders = useMemo(() => data?.items ?? [], [data?.items])
+  // Defensive client-side filter: if the backend ignores `assigned=null`
+  // (Spec §5.1 notes the param is pending BE confirmation), fall back to
+  // filtering the page in the client so the UX promise still holds.
+  const workOrders = useMemo(() => {
+    const items = data?.items ?? []
+    return assignmentFilter === 'unassigned' ? items.filter((wo) => !wo.assigned_to) : items
+  }, [data?.items, assignmentFilter])
   const totalItems = data?.total_items ?? 0
   const totalPages = data?.total_pages ?? 1
+  const isDefaultDispatchView = statusFilter === 'PLANNED' && assignmentFilter === 'unassigned'
 
   return (
     <div className="space-y-4">
@@ -284,12 +298,29 @@ function CuttingDispatchContent() {
             ))}
           </SelectContent>
         </Select>
+
+        <Select
+          value={assignmentFilter}
+          onValueChange={(v) => { setAssignmentFilter(v as AssignmentFilter); setPage(1) }}
+        >
+          <SelectTrigger className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="unassigned">Chưa phân công</SelectItem>
+            <SelectItem value="all">Tất cả phân công</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
       <div className={`rounded-lg border transition-opacity ${isFetching && !isLoading ? 'opacity-60' : ''}`}>
         <div className="border-b px-4 py-3 text-sm font-medium text-muted-foreground">
-          {isLoading ? 'Đang tải…' : `Tất cả lệnh cắt (${totalItems})`}
+          {isLoading
+            ? 'Đang tải…'
+            : isDefaultDispatchView
+              ? `Lệnh chờ điều phối (${workOrders.length})`
+              : `Lệnh cắt (${totalItems})`}
         </div>
 
         {isError ? (
@@ -312,7 +343,9 @@ function CuttingDispatchContent() {
               ) : workOrders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                    Không có lệnh cắt nào.
+                    {isDefaultDispatchView
+                      ? 'Không có lệnh nào chờ điều phối.'
+                      : 'Không có lệnh cắt nào.'}
                   </TableCell>
                 </TableRow>
               ) : (

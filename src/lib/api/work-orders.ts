@@ -16,6 +16,13 @@ export interface WorkOrdersFilter {
   date?: string
   from?: string
   to?: string
+  /**
+   * Assignment filter for /cutting-dispatch. Pass `'null'` to fetch only WOs
+   * with `assigned_to IS NULL`; omit to include all. Backend may not yet honor
+   * this — callers should apply a client-side fallback when defensiveness
+   * matters.
+   */
+  assigned?: 'null' | string
   page?: number
   limit?: number
 }
