@@ -59,6 +59,8 @@ import { DataPagination } from '@/components/ui/data-pagination'
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { evaluateStartCutGate, startCutTooltip } from '@/lib/auth/work-order-gate'
+import { useMe } from '@/lib/hooks/use-auth'
 import type {
   WorkOrderStatus,
   WorkOrder,
@@ -758,6 +760,7 @@ function PlanFilterCombobox({
 
 function WorkOrdersContent() {
   const role = useCurrentRole()
+  const { data: me } = useMe()
   const canCreateWorkOrder = can(role, 'create', 'work_orders')
   const canAdvanceWorkOrder = can(role, 'advance', 'work_orders')
 
@@ -833,6 +836,53 @@ function WorkOrdersContent() {
     )
   }
 
+  function renderAdvanceCell(wo: WorkOrder) {
+    if (wo.status !== 'PLANNED') {
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setAdvanceTarget(wo)}
+        >
+          {ADVANCE_LABEL[wo.status]}
+        </Button>
+      )
+    }
+
+    const gate = evaluateStartCutGate({
+      wo,
+      currentUserId: me?.id ?? null,
+      role,
+    })
+
+    if (gate.kind === 'allowed') {
+      return (
+        <Button size="sm" onClick={() => setAdvanceTarget(wo)}>
+          {ADVANCE_LABEL.PLANNED}
+        </Button>
+      )
+    }
+
+    if (gate.kind === 'unassigned-dispatchable') {
+      return (
+        <Button size="sm" variant="outline" asChild>
+          <Link href={`/cutting-dispatch?focus=${wo.id}`}>Điều phối</Link>
+        </Button>
+      )
+    }
+
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        disabled
+        title={startCutTooltip(gate)}
+      >
+        {ADVANCE_LABEL.PLANNED}
+      </Button>
+    )
+  }
+
   function renderWorkOrderRow(wo: WorkOrder, muted = false) {
     const canAdvance = NEXT_STATUS[wo.status] !== null
     return (
@@ -865,15 +915,7 @@ function WorkOrdersContent() {
             <Button variant="outline" size="sm" asChild>
               <Link href={`/work-orders/${wo.id}`}>Chi tiết</Link>
             </Button>
-            {canAdvance && canAdvanceWorkOrder && (
-              <Button
-                size="sm"
-                variant={wo.status === 'PLANNED' ? 'default' : 'outline'}
-                onClick={() => setAdvanceTarget(wo)}
-              >
-                {ADVANCE_LABEL[wo.status]}
-              </Button>
-            )}
+            {canAdvance && canAdvanceWorkOrder && renderAdvanceCell(wo)}
           </div>
         </TableCell>
       </TableRow>
