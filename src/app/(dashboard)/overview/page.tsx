@@ -20,7 +20,7 @@ import { StatCard } from '@/components/dashboard/stat-card'
 import { AlertBanner } from '@/components/dashboard/alert-banner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardOverview } from '@/lib/hooks/use-dashboard'
-import type { RecentCutItem, RecentWorkOrderItem, RecentCostingFinalizationItem } from '@/types/api'
+import type { RecentCutItem, RecentWorkOrderItem, RecentCostingFinalizationItem, WholeSheetsByMaterialItem } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +61,7 @@ function OverviewSkeleton() {
           <Skeleton key={i} className="h-64 rounded-xl" />
         ))}
       </div>
+      <Skeleton className="h-48 rounded-xl" />
       <Skeleton className="h-64 rounded-xl" />
     </div>
   )
@@ -121,6 +122,34 @@ function RecentCosting({ items }: { items: RecentCostingFinalizationItem[] }) {
         </li>
       ))}
     </ul>
+  )
+}
+
+// ── Whole sheets by material ──────────────────────────────────────────────────
+
+function WholeSheetsByMaterial({ items }: { items: WholeSheetsByMaterialItem[] }) {
+  if (items.length === 0) {
+    return <p className="text-sm text-muted-foreground">Không có tấm nguyên nào trong kho.</p>
+  }
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="border-b text-left text-xs text-muted-foreground">
+          <th className="pb-2 font-medium">Tên vật liệu</th>
+          <th className="pb-2 font-medium">Loại</th>
+          <th className="pb-2 text-right font-medium">Số tấm còn lại</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item) => (
+          <tr key={item.material_id} className="border-b last:border-0">
+            <td className="py-2 font-medium">{item.material_name}</td>
+            <td className="py-2 text-muted-foreground">{item.material_type}</td>
+            <td className="py-2 text-right font-semibold tabular-nums">{item.available_count}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
@@ -273,6 +302,19 @@ export default function OverviewPage() {
               <Bar dataKey="ACCESSORY" stackId="a" fill="#d97706" name="Phụ kiện" />
             </BarChart>
           </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Whole sheets by material */}
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <Layers className="size-4 text-muted-foreground" />
+          <p className="text-sm font-semibold">Tấm nguyên theo vật liệu</p>
+        </div>
+        {kpi.whole_sheets_by_material !== undefined ? (
+          <WholeSheetsByMaterial items={kpi.whole_sheets_by_material} />
+        ) : (
+          <p className="text-sm text-muted-foreground">Dữ liệu chưa khả dụng.</p>
         )}
       </div>
 

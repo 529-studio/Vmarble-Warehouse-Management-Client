@@ -379,11 +379,19 @@ export interface RemnantKPIOutput {
   waste: number
 }
 
+export interface WholeSheetsByMaterialItem {
+  material_id: string
+  material_name: string
+  material_type: string
+  available_count: number
+}
+
 export interface KPIOutput {
   remnants: RemnantKPIOutput
   utilization_pct: number
   active_work_orders: number
   pending_costing: number
+  whole_sheets_by_material?: WholeSheetsByMaterialItem[]
 }
 
 export interface RemnantTrendPoint {
