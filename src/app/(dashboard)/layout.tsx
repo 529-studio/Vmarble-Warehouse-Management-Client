@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { SideNav } from '@/components/dashboard/side-nav'
+import { OverflowBanner } from '@/components/inventory/overflow-banner'
 
 export const metadata: Metadata = {
   title: {
@@ -20,6 +21,7 @@ export default function DashboardLayout({
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto bg-muted/30 p-6 md:ml-60">
+        <OverflowBanner className="-mx-6 -mt-6 mb-6" />
         {children}
       </main>
     </div>

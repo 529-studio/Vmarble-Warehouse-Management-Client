@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { BottomNav } from '@/components/kiosk/bottom-nav'
 import { KioskLogoutButton } from '@/components/kiosk/logout-button'
+import { OverflowBanner } from '@/components/inventory/overflow-banner'
 
 export const metadata: Metadata = {
   title: {
@@ -21,6 +22,8 @@ export default function KioskLayout({
         <span className="text-base font-semibold">Vmarble Kiosk</span>
         <KioskLogoutButton />
       </header>
+
+      <OverflowBanner />
 
       {/* Page content — padded bottom for fixed nav */}
       <main className="flex-1 overflow-y-auto pb-20">{children}</main>

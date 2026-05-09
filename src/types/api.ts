@@ -105,13 +105,17 @@ export interface StorageLocation {
   isActive: boolean
 }
 
+/** GET /api/v1/inventory/overflow-status — mirrors Go inventory.OverflowStatus */
 export interface OverflowStatus {
   status: 'GREEN' | 'YELLOW' | 'RED'
-  remnantAreaM2: number
-  rawStockAreaM2: number
-  utilizationPct: number
-  blockNewSheetIssue: boolean
-  message: string
+  /** Total remnant area / total raw stock area, expressed as percent (0–100+) */
+  overflow_pct: number
+  /** Threshold percent above which `status` flips to RED (default 15) */
+  threshold_pct: number
+  /** True when sheet pre-assignment must be blocked (status === 'RED') */
+  block_new_sheet_issue: boolean
+  total_remnant_area_mm2: number
+  total_sheet_area_mm2: number
 }
 
 // ── Purchase Orders ──────────────────────────────────────────────────────────
