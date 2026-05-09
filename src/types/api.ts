@@ -211,6 +211,13 @@ export interface CreateWOInput {
   plan_id: string
   sku_id: string
   quantity: number
+  /**
+   * Optional planner note recorded on the REMNANT_BYPASSED audit row when the
+   * work order is created without allocating any of the fitting remnant
+   * suggestions (BR-K05). Sent only when the planner confirmed the bypass via
+   * the confirmation dialog.
+   */
+  bypass_reason?: string
 }
 
 /** POST /api/v1/work-orders/:id/advance */
@@ -550,6 +557,31 @@ export interface UpdateUserInput {
   role: UserRole
   full_name?: string
   email?: string
+}
+
+// ── Audit log ────────────────────────────────────────────────────────────────
+
+export type AuditLogAction =
+  | 'REMNANT_BYPASSED'
+  | 'OVERFLOW_BYPASSED'
+  | 'TRANSFER'
+  | 'ADJUSTMENT'
+
+/** Mirrors backend `inventory.AuditLogEntry`. */
+export interface AuditLogEntry {
+  id: string
+  entity_type: string
+  entity_id: string
+  action: string
+  actor_id: string
+  from_location?: string | null
+  to_location?: string | null
+  from_status?: string | null
+  to_status?: string | null
+  reason?: string | null
+  session_id?: string | null
+  metadata?: unknown
+  created_at: string
 }
 
 // ── Pagination / shared response wrappers ────────────────────────────────────

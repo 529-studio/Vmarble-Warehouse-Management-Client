@@ -3,12 +3,13 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { Calendar, Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, RotateCcw, X } from 'lucide-react'
+import { AlertTriangle, Calendar, Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -61,6 +62,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { evaluateStartCutGate, startCutTooltip } from '@/lib/auth/work-order-gate'
 import { useMe } from '@/lib/hooks/use-auth'
+import { useRemnantBypassedWorkOrders } from '@/lib/hooks/use-inventory'
 import type {
   WorkOrderStatus,
   WorkOrder,
@@ -208,29 +210,12 @@ const REMNANT_STATUS_CLASS: Record<RemnantStatus, string> = {
 }
 
 interface RemnantSuggestionPanelProps {
-  skuId: string
+  /** Pre-fetched suggestions (lifted up by parent so the dialog knows the count). */
+  items: RemnantSuggestion[]
+  isLoading: boolean
 }
 
-function RemnantSuggestionPanel({ skuId }: RemnantSuggestionPanelProps) {
-  const [dismissed, setDismissed] = useState(false)
-  const [showSkipForm, setShowSkipForm] = useState(false)
-  const [skipReason, setSkipReason] = useState('')
-
-  const { data: sku } = useSKU(skuId || null)
-  const { data: suggestions, isLoading } = useSuggestRemnants(skuId, sku?.dimensions, 3)
-  const items: RemnantSuggestion[] = suggestions ?? []
-
-  function handleSkip() {
-    // Log skip decision for audit trail — no backend endpoint yet
-    console.info('[BR-K05] Remnant suggestion skipped', {
-      skuId,
-      reason: skipReason.trim() || '(không ghi lý do)',
-    })
-    setDismissed(true)
-  }
-
-  if (dismissed || !skuId) return null
-
+function RemnantSuggestionPanel({ items, isLoading }: RemnantSuggestionPanelProps) {
   if (isLoading) {
     return (
       <div className="rounded-lg border bg-muted/30 p-3">
@@ -256,19 +241,9 @@ function RemnantSuggestionPanel({ skuId }: RemnantSuggestionPanelProps) {
 
   return (
     <div className="rounded-lg border bg-muted/20 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Package className="size-4 text-primary" />
-          <span className="text-sm font-medium">Gợi ý tấm lẻ ({items.length})</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowSkipForm(true)}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted"
-        >
-          <X className="size-3" />
-          Bỏ qua
-        </button>
+      <div className="mb-2 flex items-center gap-1.5">
+        <Package className="size-4 text-primary" />
+        <span className="text-sm font-medium">Gợi ý tấm lẻ ({items.length})</span>
       </div>
 
       <div className="space-y-2">
@@ -309,27 +284,85 @@ function RemnantSuggestionPanel({ skuId }: RemnantSuggestionPanelProps) {
           )
         })}
       </div>
-
-      {showSkipForm ? (
-        <div className="mt-3 space-y-2 border-t pt-3">
-          <Label className="text-xs text-muted-foreground">Lý do bỏ qua (tùy chọn)</Label>
-          <Textarea
-            placeholder="Ví dụ: Tấm lẻ không đạt chất lượng yêu cầu…"
-            value={skipReason}
-            onChange={(e) => setSkipReason(e.target.value)}
-            className="min-h-[60px] resize-none text-sm"
-          />
-          <div className="flex gap-2">
-            <Button size="sm" variant="destructive" onClick={handleSkip}>
-              Xác nhận bỏ qua
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowSkipForm(false)}>
-              Hủy
-            </Button>
-          </div>
-        </div>
-      ) : null}
     </div>
+  )
+}
+
+// ── Remnant bypass confirmation dialog (BR-K05) ───────────────────────────────
+
+interface RemnantBypassDialogProps {
+  open: boolean
+  suggestionCount: number
+  isPending: boolean
+  onConfirm: (reason: string) => void
+  onCancel: () => void
+}
+
+function RemnantBypassDialog({
+  open,
+  suggestionCount,
+  isPending,
+  onConfirm,
+  onCancel,
+}: RemnantBypassDialogProps) {
+  const [reason, setReason] = useState('')
+  const [touched, setTouched] = useState(false)
+  const reasonInvalid = reason.trim().length < 10
+
+  function handleClose() {
+    setReason('')
+    setTouched(false)
+    onCancel()
+  }
+
+  function handleSubmit() {
+    setTouched(true)
+    if (reasonInvalid) return
+    onConfirm(reason.trim())
+    setReason('')
+    setTouched(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => (!o ? handleClose() : null)}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-amber-800">
+            <AlertTriangle className="size-5" aria-hidden="true" />
+            Bỏ qua tấm lẻ phù hợp?
+          </DialogTitle>
+          <DialogDescription>
+            Có {suggestionCount} tấm lẻ phù hợp đang sẵn có. Tạo lệnh không dùng tấm lẻ sẽ làm tăng
+            tồn kho và được ghi vào nhật ký kiểm toán (<code>REMNANT_BYPASSED</code>).
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-1">
+          <Label htmlFor="remnant-bypass-reason">Lý do bỏ qua *</Label>
+          <Textarea
+            id="remnant-bypass-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            onBlur={() => setTouched(true)}
+            rows={3}
+            placeholder="vd: Tấm lẻ không cùng vân gỗ, lệnh khách yêu cầu chất lượng đồng nhất"
+          />
+          {touched && reasonInvalid && (
+            <p className="text-xs text-destructive">Lý do phải dài ít nhất 10 ký tự.</p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={isPending}>
+            Hủy
+          </Button>
+          <Button variant="destructive" onClick={handleSubmit} disabled={isPending}>
+            {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            Xác nhận bỏ qua
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -343,6 +376,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
   const [skuId, setSkuId] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [bypassPromptOpen, setBypassPromptOpen] = useState(false)
 
   const { data: plansData } = usePlans({ status: 'APPROVED', limit: 200 })
   const approvedPlans = useMemo(() => plansData?.items ?? [], [plansData?.items])
@@ -367,7 +401,25 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
   )
   const maxQuantity = selectedPlanItem?.quantity ?? 1
 
+  // Lifted up so the dialog gates submit on the suggestion count (BR-K05).
+  const { data: sku } = useSKU(skuId || null)
+  const { data: suggestionsData, isLoading: isLoadingSuggestions } = useSuggestRemnants(
+    skuId,
+    sku?.dimensions,
+    3,
+  )
+  const suggestions: RemnantSuggestion[] = useMemo(() => suggestionsData ?? [], [suggestionsData])
+  const hasFitRemnants = suggestions.length > 0
+
   const { mutate, isPending } = useCreateWorkOrder()
+
+  function resetState() {
+    setPlanId('')
+    setSkuId('')
+    setQuantity(1)
+    setErrors({})
+    setBypassPromptOpen(false)
+  }
 
   function handlePlanChange(newPlanId: string) {
     setPlanId(newPlanId)
@@ -393,117 +445,144 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
     return Object.keys(next).length === 0
   }
 
-  function handleSubmit() {
-    if (!validate()) return
-    const input: CreateWOInput = { plan_id: planId, sku_id: skuId, quantity }
+  function submitCreate(bypassReason?: string) {
+    const input: CreateWOInput = {
+      plan_id: planId,
+      sku_id: skuId,
+      quantity,
+      ...(bypassReason ? { bypass_reason: bypassReason } : {}),
+    }
     mutate(input, {
       onSuccess: () => {
         onOpenChange(false)
-        setPlanId('')
-        setSkuId('')
-        setQuantity(1)
-        setErrors({})
+        resetState()
       },
     })
   }
 
+  function handleSubmit() {
+    if (!validate()) return
+    if (hasFitRemnants) {
+      setBypassPromptOpen(true)
+      return
+    }
+    submitCreate()
+  }
+
+  function handleBypassConfirm(reason: string) {
+    setBypassPromptOpen(false)
+    submitCreate(reason)
+  }
+
   function handleClose() {
     onOpenChange(false)
-    setPlanId('')
-    setSkuId('')
-    setQuantity(1)
-    setErrors({})
+    resetState()
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Tạo lệnh cắt mới</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={(v) => (!v ? handleClose() : null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Tạo lệnh cắt mới</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <Label>Kế hoạch *</Label>
-            <Select value={planId} onValueChange={handlePlanChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="— Chọn kế hoạch đã duyệt —" />
-              </SelectTrigger>
-              <SelectContent>
-                {approvedPlans.length === 0 && (
-                  <SelectItem value="__none__" disabled>
-                    Không có kế hoạch đã duyệt
-                  </SelectItem>
-                )}
-                {approvedPlans.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {planLabel(p, poMapDialog.get(p.po_id))}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.plan_id && <p className="text-xs text-destructive">{errors.plan_id}</p>}
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>Kế hoạch *</Label>
+              <Select value={planId} onValueChange={handlePlanChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="— Chọn kế hoạch đã duyệt —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {approvedPlans.length === 0 && (
+                    <SelectItem value="__none__" disabled>
+                      Không có kế hoạch đã duyệt
+                    </SelectItem>
+                  )}
+                  {approvedPlans.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {planLabel(p, poMapDialog.get(p.po_id))}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.plan_id && <p className="text-xs text-destructive">{errors.plan_id}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <Label>Sản phẩm (từ kế hoạch) *</Label>
+              <Select
+                value={skuId}
+                onValueChange={handleSkuChange}
+                disabled={!planId}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      !planId
+                        ? '— Chọn kế hoạch trước —'
+                        : planItems.length === 0
+                          ? '— Kế hoạch không có sản phẩm —'
+                          : '— Chọn sản phẩm —'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {planItems.map((item) => (
+                    <SelectItem key={item.sku_id} value={item.sku_id}>
+                      {item.sku_code ?? item.sku_id.slice(0, 8)} — {item.sku_name ?? 'N/A'} (SL: {item.quantity})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.sku_id && <p className="text-xs text-destructive">{errors.sku_id}</p>}
+            </div>
+
+            {/* Remnant suggestions — shown when a SKU is selected (BR-K05) */}
+            {skuId && (
+              <RemnantSuggestionPanel
+                items={suggestions}
+                isLoading={isLoadingSuggestions}
+              />
+            )}
+
+            <div className="space-y-1">
+              <Label htmlFor="wo-quantity">
+                Số lượng *{selectedPlanItem ? ` (tối đa: ${maxQuantity})` : ''}
+              </Label>
+              <Input
+                id="wo-quantity"
+                type="number"
+                min={1}
+                max={maxQuantity}
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                disabled={!skuId}
+              />
+              {errors.quantity && <p className="text-xs text-destructive">{errors.quantity}</p>}
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <Label>Sản phẩm (từ kế hoạch) *</Label>
-            <Select
-              value={skuId}
-              onValueChange={handleSkuChange}
-              disabled={!planId}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    !planId
-                      ? '— Chọn kế hoạch trước —'
-                      : planItems.length === 0
-                        ? '— Kế hoạch không có sản phẩm —'
-                        : '— Chọn sản phẩm —'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {planItems.map((item) => (
-                  <SelectItem key={item.sku_id} value={item.sku_id}>
-                    {item.sku_code ?? item.sku_id.slice(0, 8)} — {item.sku_name ?? 'N/A'} (SL: {item.quantity})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.sku_id && <p className="text-xs text-destructive">{errors.sku_id}</p>}
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleClose}>
+              Hủy
+            </Button>
+            <Button onClick={handleSubmit} disabled={isPending || isLoadingSuggestions}>
+              {isPending ? 'Đang tạo…' : 'Tạo lệnh'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          {/* Remnant suggestions — shown when a SKU is selected (BR-K05) */}
-          {skuId && <RemnantSuggestionPanel skuId={skuId} />}
-
-          <div className="space-y-1">
-            <Label htmlFor="wo-quantity">
-              Số lượng *{selectedPlanItem ? ` (tối đa: ${maxQuantity})` : ''}
-            </Label>
-            <Input
-              id="wo-quantity"
-              type="number"
-              min={1}
-              max={maxQuantity}
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              disabled={!skuId}
-            />
-            {errors.quantity && <p className="text-xs text-destructive">{errors.quantity}</p>}
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            Hủy
-          </Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? 'Đang tạo…' : 'Tạo lệnh'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <RemnantBypassDialog
+        open={bypassPromptOpen}
+        suggestionCount={suggestions.length}
+        isPending={isPending}
+        onConfirm={handleBypassConfirm}
+        onCancel={() => setBypassPromptOpen(false)}
+      />
+    </>
   )
 }
 
@@ -823,6 +902,9 @@ function WorkOrdersContent() {
     [posData],
   )
 
+  // Build a Map<wo_id, reason> of bypassed WOs to badge in the list (BR-K05).
+  const { reasonByWorkOrderId } = useRemnantBypassedWorkOrders()
+
   const { mutate: advance, isPending: advancing } = useAdvanceStatus()
 
   function handleAdvanceConfirm(materialId?: string) {
@@ -885,15 +967,28 @@ function WorkOrdersContent() {
 
   function renderWorkOrderRow(wo: WorkOrder, muted = false) {
     const canAdvance = NEXT_STATUS[wo.status] !== null
+    const bypassReason = reasonByWorkOrderId.get(wo.id)
     return (
       <TableRow
         key={wo.id}
         className={cn(muted && 'opacity-50')}
       >
         <TableCell className="font-mono text-sm font-medium">
-          <Link href={`/work-orders/${wo.id}`} className="hover:underline">
-            {shortId(wo.id)}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href={`/work-orders/${wo.id}`} className="hover:underline">
+              {shortId(wo.id)}
+            </Link>
+            {bypassReason !== undefined && (
+              <Badge
+                variant="outline"
+                className="border-amber-200 bg-amber-50 text-xs font-normal text-amber-800"
+                title={bypassReason || 'Không ghi lý do'}
+              >
+                <AlertTriangle className="mr-1 size-3" aria-hidden="true" />
+                Bỏ qua tấm lẻ
+              </Badge>
+            )}
+          </div>
         </TableCell>
         <TableCell>{wo.sku_code ?? wo.sku_name ?? <span className="text-muted-foreground">—</span>}</TableCell>
         <TableCell className="text-sm text-muted-foreground">

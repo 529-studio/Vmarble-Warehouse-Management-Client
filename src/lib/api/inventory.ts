@@ -1,4 +1,4 @@
-import type { OverflowStatus } from '@/types/api'
+import type { AuditLogAction, AuditLogEntry, OverflowStatus } from '@/types/api'
 import { apiClient } from './client'
 
 export interface PreAssignSheetInput {
@@ -29,4 +29,14 @@ export const inventoryApi = {
         },
       },
     ),
+
+  /**
+   * GET /api/v1/inventory/audit-log?action=REMNANT_BYPASSED
+   * Returns audit-log entries filtered by action — used by the WO list to
+   * badge work orders the planner created via remnant bypass (BR-K05).
+   */
+  listAuditLogByAction: (action: AuditLogAction) =>
+    apiClient.get<AuditLogEntry[]>('/inventory/audit-log', {
+      params: { action },
+    }),
 }
