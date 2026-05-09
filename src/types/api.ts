@@ -279,6 +279,29 @@ export interface CostingRecord {
   created_at: string
 }
 
+/**
+ * GET /api/v1/costing/waste-report — one row per material aggregated over the
+ * filter range. Mirrors backend `costing.WasteReportRow` (BR-C03 ledger).
+ */
+export interface WasteReportRow {
+  material_id: string
+  material_name: string
+  sheets_consumed: number
+  /** Total waste area in mm² across the range. Display in m² (÷ 1_000_000). */
+  waste_area_mm2: number
+  /** Mean board-sheet cost across the consumed sheets — used by BE to allocate. */
+  avg_sheet_cost: Money
+  total_waste_cost: Money
+}
+
+export interface WasteReportFilter {
+  /** Inclusive day in Asia/Ho_Chi_Minh; format YYYY-MM-DD. */
+  from?: string
+  /** Inclusive day; BE adds +1 day server-side to make it half-open. */
+  to?: string
+  material_id?: string
+}
+
 // ── Cutting ──────────────────────────────────────────────────────────────────
 
 export interface CuttingRecord {

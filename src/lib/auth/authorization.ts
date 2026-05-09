@@ -25,6 +25,7 @@ export type AppResource =
   | 'users'
   | 'profile'
   | 'purchasing'
+  | 'waste_report'
 
 export type AppAction =
   | 'read'
@@ -54,6 +55,7 @@ const DASHBOARD_PATHS = [
   '/users',
   '/profile',
   '/purchasing',
+  '/waste-report',
 ]
 
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account']
@@ -72,6 +74,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/users', resource: 'users' },
   { path: '/profile', resource: 'profile' },
   { path: '/purchasing', resource: 'purchasing' },
+  { path: '/waste-report', resource: 'waste_report' },
   { path: '/scan', resource: 'scan' },
   { path: '/cutting-orders', resource: 'cutting_orders' },
   { path: '/report-cut', resource: 'report_cut' },
@@ -113,11 +116,13 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     cutting_dispatch: ['read', 'assign'],
     costing: ['read', 'compute', 'finalize', 'adjust'],
     purchasing: ['read', 'create', 'cancel'],
+    waste_report: ['read', 'generate'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
     pos: ['read', 'create'],
     costing: ['read', 'compute', 'finalize', 'adjust'],
+    waste_report: ['read', 'generate'],
   },
   planner: {
     ...readOnly(DASHBOARD_RESOURCES),
