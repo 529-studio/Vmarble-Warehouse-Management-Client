@@ -33,13 +33,22 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import {
+  useAddLaborEntry,
   useAddWorkOrderConsumption,
   useAdvanceStatus,
   useWorkOrder,
   useWorkOrderConsumptions,
+  useWorkOrderLaborEntries,
 } from '@/lib/hooks/use-work-orders'
 import { usePlan } from '@/lib/hooks/use-plans'
 import { useMaterials } from '@/lib/hooks/use-materials'
+import { useUsers } from '@/lib/hooks/use-users'
 import { useGenerateBarcode, useBarcodesForWorkOrder, useBarcodeScanEvents } from '@/lib/hooks/use-barcode'
 import { useWorkOrderCosting, useComputeCosting } from '@/lib/hooks/use-costing'
 import { ApiClientError } from '@/lib/api/client'
@@ -54,6 +63,8 @@ import type {
   ScanCheckpoint,
   MaterialType,
   AdvanceStatusInput,
+  LaborStage,
+  User,
 } from '@/types/api'
 
 // ── Helpers
@@ -66,6 +77,15 @@ function useCurrentRole() {
   )
 }
 
+
+const LABOR_STAGE_LABEL: Record<LaborStage, string> = {
+  CNC: 'CNC',
+  GRINDING: 'Mài',
+  ASSEMBLY: 'Dán',
+  POLISHING: 'Đánh bóng',
+}
+
+const LABOR_STAGES: LaborStage[] = ['CNC', 'GRINDING', 'ASSEMBLY', 'POLISHING']
 
 const STATUS_LABEL: Record<WorkOrderStatus, string> = {
   PLANNED: 'Kế hoạch',
@@ -337,6 +357,246 @@ function GenerateBarcodeDialog({ wo, open, onClose }: {
   )
 }
 
+// ── Labor section ─────────────────────────────────────────────────────────────
+
+function LaborSection({ wo }: { wo: WorkOrder }) {
+  const role = useCurrentRole()
+  const canRecordLabor = can(role, 'record_labor', 'work_orders')
+  const locked = wo.status === 'COSTED'
+
+  const [stage, setStage] = useState<LaborStage | ''>('')
+  const [minutes, setMinutes] = useState('')
+  const [workerId, setWorkerId] = useState('')
+  const [ratePerHour, setRatePerHour] = useState('')
+
+  const {
+    data: entries,
+    isLoading: entriesLoading,
+    isError: entriesError,
+  } = useWorkOrderLaborEntries(wo.id)
+  // Workers eligible to have their time recorded: kiosk operators and the
+  // production roles that can also perform labor themselves.
+  const { data: usersData, isLoading: usersLoading } = useUsers({
+    role: 'cnc,foreman,cnc_manager',
+    is_active: true,
+    limit: 200,
+  })
+  const workers = useMemo<User[]>(() => usersData?.items ?? [], [usersData?.items])
+  const workersById = useMemo(() => new Map(workers.map((u) => [u.id, u])), [workers])
+
+  const { mutate: addEntry, isPending: adding } = useAddLaborEntry()
+
+  function workerLabel(id: string): string {
+    const u = workersById.get(id)
+    if (!u) return shortId(id)
+    return u.full_name?.trim() || u.username
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!canRecordLabor || locked || adding) return
+    if (!stage) return
+
+    const parsedMinutes = Number(minutes)
+    if (!Number.isFinite(parsedMinutes) || parsedMinutes <= 0) return
+
+    const parsedRate = Number(ratePerHour)
+    if (!Number.isFinite(parsedRate) || parsedRate <= 0) return
+
+    addEntry(
+      {
+        workOrderId: wo.id,
+        input: {
+          stage,
+          minutes: parsedMinutes,
+          rate_per_hour: parsedRate,
+          worker_id: workerId || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          setStage('')
+          setMinutes('')
+          setWorkerId('')
+          setRatePerHour('')
+        },
+      },
+    )
+  }
+
+  return (
+    <div>
+      <h2 className="mb-3 text-base font-semibold">Ghi nhận công lao động</h2>
+
+      <div className="mb-3 rounded-lg border p-4">
+        {!canRecordLabor ? (
+          <p className="text-sm text-muted-foreground">Bạn chỉ có quyền xem công lao động.</p>
+        ) : locked ? (
+          <p className="text-sm text-muted-foreground">
+            Giá thành đã được chốt — không thể bổ sung công lao động (BR-C04).
+          </p>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="labor-stage">Công đoạn *</Label>
+                <Select value={stage} onValueChange={(v) => setStage(v as LaborStage)} disabled={adding}>
+                  <SelectTrigger id="labor-stage" className="h-12">
+                    <SelectValue placeholder="Chọn công đoạn" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LABOR_STAGES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {LABOR_STAGE_LABEL[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="labor-minutes">Số phút *</Label>
+                <Input
+                  id="labor-minutes"
+                  type="number"
+                  min={5}
+                  step={5}
+                  inputMode="numeric"
+                  className="h-12"
+                  value={minutes}
+                  onChange={(e) => setMinutes(e.target.value)}
+                  disabled={adding}
+                  placeholder="vd: 60"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="labor-rate">Đơn giá / giờ (VND) *</Label>
+                <Input
+                  id="labor-rate"
+                  type="number"
+                  min={1}
+                  step="any"
+                  inputMode="numeric"
+                  className="h-12"
+                  value={ratePerHour}
+                  onChange={(e) => setRatePerHour(e.target.value)}
+                  disabled={adding}
+                  placeholder="vd: 50000"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="labor-worker">Công nhân</Label>
+                <Select value={workerId} onValueChange={setWorkerId} disabled={usersLoading || adding}>
+                  <SelectTrigger id="labor-worker" className="h-12">
+                    <SelectValue placeholder={usersLoading ? 'Đang tải…' : 'Chính tôi'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workers.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name?.trim() || u.username}
+                        <span className="ml-1 text-xs text-muted-foreground">({u.role})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="h-12"
+              disabled={
+                adding ||
+                !stage ||
+                !minutes.trim() ||
+                Number(minutes) <= 0 ||
+                !ratePerHour.trim() ||
+                Number(ratePerHour) <= 0
+              }
+            >
+              {adding ? 'Đang lưu…' : 'Ghi nhận công'}
+            </Button>
+          </form>
+        )}
+      </div>
+
+      <div className="rounded-lg border">
+        {entriesLoading ? (
+          <div className="divide-y">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex gap-4 px-4 py-3">
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <Skeleton key={j} className="h-5 flex-1" />
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : entriesError ? (
+          <p className="p-4 text-sm text-destructive">Không thể tải dữ liệu công lao động.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Công đoạn</TableHead>
+                  <TableHead className="text-right">Số phút</TableHead>
+                  <TableHead className="text-right">Đơn giá / giờ</TableHead>
+                  <TableHead className="text-right">Chi phí</TableHead>
+                  <TableHead>Công nhân / Ghi nhận bởi</TableHead>
+                  <TableHead>Thời gian</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {!entries || entries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                      Chưa có ghi nhận công nào.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  entries.map((entry) => {
+                    const costVnd = Math.round((entry.minutes * entry.rate_per_hour) / 60)
+                    const sameActor = entry.worker_id === entry.actor_id
+                    return (
+                      <TableRow key={entry.id}>
+                        <TableCell className="font-medium">
+                          {LABOR_STAGE_LABEL[entry.stage] ?? entry.stage}
+                        </TableCell>
+                        <TableCell className="text-right">{entry.minutes}</TableCell>
+                        <TableCell className="text-right">
+                          {entry.rate_per_hour.toLocaleString('vi-VN')}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {costVnd.toLocaleString('vi-VN')}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          <span className="font-medium">{workerLabel(entry.worker_id)}</span>
+                          {!sameActor && (
+                            <span className="text-muted-foreground">
+                              {' '}· ghi nhận bởi {workerLabel(entry.actor_id)}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(entry.created_at)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Detail content ────────────────────────────────────────────────────────────
 
 function WorkOrderDetail({ id }: { id: string }) {
@@ -495,6 +755,13 @@ function WorkOrderDetail({ id }: { id: string }) {
         </div>
       </div>
 
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList>
+          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          <TabsTrigger value="labor">Nhân công</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-8 pt-4">
       {/* Costing gate — only shown for PLANNED */}
       {wo.status === 'PLANNED' && (
         <div>
@@ -729,6 +996,12 @@ function WorkOrderDetail({ id }: { id: string }) {
           )}
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="labor" className="pt-4">
+          <LaborSection wo={wo} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

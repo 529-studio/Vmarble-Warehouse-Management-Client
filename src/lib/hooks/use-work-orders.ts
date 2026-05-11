@@ -6,11 +6,13 @@ import type {
   AdvanceStatusInput,
   AssignWorkOrderInput,
   AddConsumptionInput,
+  AddLaborEntryInput,
 } from '@/types/api'
 import { mapApiErrorVi } from '@/lib/api/client'
 
 export const WORK_ORDERS_KEY = 'work-orders'
 export const CONSUMPTIONS_KEY = 'consumptions'
+export const LABOR_ENTRIES_KEY = 'labor-entries'
 
 export function useWorkOrders(filter: WorkOrdersFilter = {}) {
   return useQuery({
@@ -109,5 +111,36 @@ export function useAssignWorkOrder() {
 export function useSuggestAssignment() {
   return useMutation({
     mutationFn: (woId: string) => workOrdersApi.suggestAssignment(woId),
+  })
+}
+
+export function useWorkOrderLaborEntries(workOrderId: string) {
+  return useQuery({
+    queryKey: [LABOR_ENTRIES_KEY, workOrderId],
+    queryFn: () => workOrdersApi.listLaborEntries(workOrderId),
+    enabled: !!workOrderId,
+  })
+}
+
+export function useAddLaborEntry() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      workOrderId,
+      input,
+    }: {
+      workOrderId: string
+      input: AddLaborEntryInput
+    }) => workOrdersApi.addLaborEntry(workOrderId, input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [LABOR_ENTRIES_KEY, variables.workOrderId] })
+      // Labor cost is part of the costing record — refresh so the WO detail
+      // page reflects the new total once costing is recomputed.
+      queryClient.invalidateQueries({ queryKey: ['costing'] })
+      toast.success('Đã ghi nhận công lao động')
+    },
+    onError: (err) => {
+      toast.error(mapApiErrorVi(err, 'Ghi nhận công lao động thất bại'))
+    },
   })
 }
