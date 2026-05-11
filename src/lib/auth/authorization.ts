@@ -40,6 +40,7 @@ export type AppAction =
   | 'generate'
   | 'assign'
   | 'toggle_active'
+  | 'record_labor'
 
 const DASHBOARD_PATHS = [
   '/overview',
@@ -112,7 +113,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     users: ['read', 'create', 'toggle_active'],
     pos: ['read', 'create'],
     plans: ['read', 'create', 'approve', 'cancel'],
-    work_orders: ['read', 'create', 'advance', 'assign', 'consume', 'generate'],
+    work_orders: ['read', 'create', 'advance', 'assign', 'consume', 'generate', 'record_labor'],
     cutting_dispatch: ['read', 'assign'],
     costing: ['read', 'compute', 'finalize', 'adjust'],
     purchasing: ['read', 'create', 'cancel'],
@@ -135,12 +136,12 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
   },
   foreman: {
     ...readOnly(['profile']),
-    work_orders: ['read', 'advance', 'consume', 'generate'],
+    work_orders: ['read', 'advance', 'consume', 'generate', 'record_labor'],
     barcodes: ['read'],
   },
   cnc_manager: {
     ...readOnly(['profile']),
-    work_orders: ['read'],
+    work_orders: ['read', 'record_labor'],
     cutting_dispatch: ['read', 'assign'],
   },
   cnc: {

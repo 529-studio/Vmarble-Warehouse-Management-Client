@@ -262,6 +262,34 @@ export interface ConsumptionRecord {
   created_at: string
 }
 
+// ── Labor entries (Pillar C — Actual Costing) ───────────────────────────────
+
+export type LaborStage = 'CNC' | 'GRINDING' | 'ASSEMBLY' | 'POLISHING'
+
+/** GET /api/v1/work-orders/:id/labor-entries */
+export interface LaborEntry {
+  id: string
+  work_order_id: string
+  stage: LaborStage
+  minutes: number
+  /** Hourly rate in smallest currency unit (VND/hour). Cost = minutes * rate_per_hour / 60. */
+  rate_per_hour: number
+  /** Person whose time is recorded (may differ from actor when foreman logs for crew). */
+  worker_id: string
+  /** Recorder — the user who submitted the entry, from JWT. */
+  actor_id: string
+  created_at: string
+}
+
+/** POST /api/v1/work-orders/:id/labor-entries */
+export interface AddLaborEntryInput {
+  stage: LaborStage
+  minutes: number
+  rate_per_hour: number
+  /** Optional; when omitted backend attributes the entry to the caller. */
+  worker_id?: string
+}
+
 // ── Costing ──────────────────────────────────────────────────────────────────
 
 /** GET /api/v1/costing  or  GET /api/v1/costing/{workOrderID} */
