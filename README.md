@@ -44,7 +44,8 @@ src/
 │   │                      remnant-list · scan · account
 │   └── (dashboard)/       overview · materials · skus · pos · plans
 │                          work-orders · costing · cutting-dispatch
-│                          remnants · barcodes · users
+│                          remnants · barcodes · users · purchasing
+│                          waste-report · profile
 ├── components/
 │   ├── ui/                shadcn/ui components
 │   ├── kiosk/             BigButton · ScannerView · LabelPreview · BottomNav
@@ -61,7 +62,7 @@ src/
 ## Testing
 
 ```bash
-npm run test:unit          # Vitest + jsdom — 17 component tests
+npm run test:unit          # Vitest + jsdom — component & util tests
 npm run test:unit:watch    # Watch mode
 
 npm run test:e2e           # Playwright (requires npm run dev running)
@@ -72,10 +73,10 @@ npx vitest --project storybook  # Storybook interaction tests (play functions)
 
 ### Coverage
 
-| Suite | Tests | Scope |
-|---|---|---|
-| Component unit | 17 | `CuttingOrderCard`, `SuggestionCard`, `ReportCutForm` smoke |
-| E2E smoke | 18 | Auth redirects, kiosk nav, cutting flow, scan checkpoint, dashboard WO |
+| Suite | Scope |
+|---|---|
+| Component unit | `CuttingOrderCard`, `SuggestionCard`, `ReportCutForm`, `OverflowBanner`, `work-order-gate` |
+| E2E smoke | Auth redirects, kiosk nav, cutting flow, scan checkpoint, dashboard WO |
 | Storybook interaction | `play()` on Button + Header stories |
 
 ---
@@ -120,13 +121,19 @@ npx vitest --project storybook  # Storybook interaction tests (play functions)
 | Purchase Orders — list & create | Done |
 | Production Plans — list, create & approve | Done |
 | Work Orders — list, create, advance status, assign | Done |
-| Cutting Dispatch — start-cut with material selection | Done |
+| Cutting Dispatch — default `PLANNED` + unassigned filter | Done |
 | Remnants — list, filter, allocate, waste | Done |
 | Barcodes — generate, scan history | Done |
 | Costing — compute, finalize, adjustment (BR-C01–C04) | Done |
+| Costing pre-cut gate — block start without finalized cost | Done |
+| Waste cost report — filter, chart, CSV export (BR-C03) | Done |
+| Purchasing — material purchase orders list & create | Done |
+| Whole-sheet stock widget on overview | Done |
 | Scan Event History — checkpoint timeline | Done |
 | Remnant suggestions in WO create dialog (BR-K05) | Done |
+| Remnant bypass confirmation modal (BR-K05) | Done |
 | Consumption record per WO — auxiliary/metal (BR-P03/P04) | Done |
+| User profile page (self-service) | Done |
 | Admin — User Management CRUD + active toggle | Done |
 
 ### Shared / Infrastructure
@@ -134,7 +141,7 @@ npx vitest --project storybook  # Storybook interaction tests (play functions)
 | Feature | Status |
 |---|---|
 | RBAC — `can(role, action, resource)` central policy | Done |
-| Admin read-only enforced across all modules | Done |
+| Kiosk account profile (self-service password change) | Done |
 | Vietnamese domain terminology standardization | Done |
 | Scan metadata (actor / device) attached to scans | Done |
 | CI quality gates — tsc + build | Done |
@@ -147,13 +154,13 @@ npx vitest --project storybook  # Storybook interaction tests (play functions)
 
 | Role | Access |
 |---|---|
-| `admin` | Read-only on all modules |
-| `foreman` | Full kiosk + dashboard WO management |
-| `cnc` | Kiosk only (cutting, scan, remnants) |
-| `cnc_manager` | Kiosk + cutting dispatch |
-| `planner` | Dashboard — plans, WO, overview |
-| `warehouse` | Remnants, remnant-store |
-| `accountant` | Costing, PO, read-only plans |
+| `admin` | All dashboard modules; user CRUD; create PO/plans/WO; approve/cancel; advance/assign WO; compute & finalize costing; create purchase orders; generate waste report |
+| `accountant` | All dashboard read; create PO; compute, finalize, adjust costing; generate waste cost report |
+| `planner` | All dashboard read; create + approve + cancel plans; create work orders |
+| `warehouse` | All dashboard read; create + cancel material purchase orders |
+| `foreman` | Work orders — advance, consume, generate barcodes; profile |
+| `cnc_manager` | Work orders read; cutting dispatch — assign; profile |
+| `cnc` | Kiosk only — scan, cutting orders, report-cut, remnant list/store, account |
 
 ---
 
@@ -211,7 +218,8 @@ src/
 │   │                      remnant-list · scan · account
 │   └── (dashboard)/       overview · materials · skus · pos · plans
 │                          work-orders · costing · cutting-dispatch
-│                          remnants · barcodes · users
+│                          remnants · barcodes · users · purchasing
+│                          waste-report · profile
 ├── components/
 │   ├── ui/                shadcn/ui
 │   ├── kiosk/             BigButton · ScannerView · LabelPreview · BottomNav
@@ -228,7 +236,7 @@ src/
 ## Kiểm thử
 
 ```bash
-npm run test:unit          # Vitest + jsdom — 17 component tests
+npm run test:unit          # Vitest + jsdom — component & util tests
 npm run test:unit:watch    # Watch mode
 
 npm run test:e2e           # Playwright (cần npm run dev đang chạy)
@@ -239,10 +247,10 @@ npx vitest --project storybook  # Storybook interaction tests (hàm play)
 
 ### Phạm vi kiểm thử
 
-| Bộ test | Số test | Phạm vi |
-|---|---|---|
-| Component unit | 17 | `CuttingOrderCard`, `SuggestionCard`, smoke `ReportCutForm` |
-| E2E smoke | 18 | Auth redirect, nav kiosk, luồng cắt, scan checkpoint, dashboard WO |
+| Bộ test | Phạm vi |
+|---|---|
+| Component unit | `CuttingOrderCard`, `SuggestionCard`, `ReportCutForm`, `OverflowBanner`, `work-order-gate` |
+| E2E smoke | Auth redirect, nav kiosk, luồng cắt, scan checkpoint, dashboard WO |
 | Storybook interaction | `play()` trên Button + Header story |
 
 ---
@@ -274,13 +282,19 @@ npx vitest --project storybook  # Storybook interaction tests (hàm play)
 | Đơn hàng (PO) — danh sách & tạo | Hoàn thành |
 | Kế hoạch sản xuất — danh sách, tạo & duyệt | Hoàn thành |
 | Lệnh sản xuất — danh sách, tạo, chuyển trạng thái, phân công | Hoàn thành |
-| Điều phối cắt — bắt đầu cắt kèm chọn vật liệu | Hoàn thành |
+| Điều phối cắt — mặc định lọc `PLANNED` + chưa phân công | Hoàn thành |
 | Tấm lẻ — danh sách, lọc, cấp phát, hủy | Hoàn thành |
 | Mã vạch — tạo tem, lịch sử quét | Hoàn thành |
 | Tính giá thành — tính, chốt, điều chỉnh (BR-C01–C04) | Hoàn thành |
+| Chặn bắt đầu cắt khi chưa chốt giá thành | Hoàn thành |
+| Báo cáo hao hụt — bộ lọc, biểu đồ, xuất CSV (BR-C03) | Hoàn thành |
+| Đơn nhập vật liệu — danh sách & tạo mới | Hoàn thành |
+| Widget tấm nguyên theo vật liệu trên tổng quan | Hoàn thành |
 | Lịch sử quét điểm kiểm tra | Hoàn thành |
 | Gợi ý tấm lẻ trong dialog tạo WO (BR-K05) | Hoàn thành |
+| Modal xác nhận bỏ qua tấm lẻ (BR-K05) | Hoàn thành |
 | Nhập tiêu hao vật tư phụ/metal theo WO (BR-P03/P04) | Hoàn thành |
+| Trang hồ sơ người dùng (tự cập nhật) | Hoàn thành |
 | Admin — Quản lý người dùng CRUD + bật/tắt hoạt động | Hoàn thành |
 
 ### Dùng chung / Hạ tầng
@@ -288,7 +302,7 @@ npx vitest --project storybook  # Storybook interaction tests (hàm play)
 | Tính năng | Trạng thái |
 |---|---|
 | RBAC — policy tập trung `can(role, action, resource)` | Hoàn thành |
-| Admin chỉ đọc trên toàn bộ module | Hoàn thành |
+| Hồ sơ kiosk (tự đổi mật khẩu) | Hoàn thành |
 | Chuẩn hóa thuật ngữ tiếng Việt theo nghiệp vụ | Hoàn thành |
 | Metadata quét (actor / thiết bị) gắn vào scan | Hoàn thành |
 | CI quality gates — tsc + build | Hoàn thành |
@@ -301,13 +315,13 @@ npx vitest --project storybook  # Storybook interaction tests (hàm play)
 
 | Role | Quyền truy cập |
 |---|---|
-| `admin` | Chỉ đọc trên toàn bộ module |
-| `foreman` | Kiosk đầy đủ + quản lý lệnh sản xuất dashboard |
-| `cnc` | Chỉ kiosk (cắt, quét, tấm lẻ) |
-| `cnc_manager` | Kiosk + điều phối cắt |
-| `planner` | Dashboard — kế hoạch, WO, tổng quan |
-| `warehouse` | Tấm lẻ, nhập kho tấm lẻ |
-| `accountant` | Tính giá thành, PO, chỉ đọc kế hoạch |
+| `admin` | Toàn bộ module dashboard; CRUD người dùng; tạo PO/kế hoạch/WO; duyệt/hủy; chuyển trạng thái & phân công WO; tính & chốt giá thành; tạo đơn nhập vật liệu; xuất báo cáo hao hụt |
+| `accountant` | Đọc toàn bộ dashboard; tạo PO; tính, chốt, điều chỉnh giá thành; xuất báo cáo hao hụt |
+| `planner` | Đọc toàn bộ dashboard; tạo + duyệt + hủy kế hoạch; tạo lệnh sản xuất |
+| `warehouse` | Đọc toàn bộ dashboard; tạo + hủy đơn nhập vật liệu |
+| `foreman` | Lệnh sản xuất — chuyển trạng thái, ghi tiêu hao, in tem; hồ sơ |
+| `cnc_manager` | Đọc lệnh sản xuất; điều phối cắt — phân công; hồ sơ |
+| `cnc` | Chỉ kiosk — quét, lệnh cắt, báo cáo cắt, tấm lẻ, tài khoản |
 
 ---
 
