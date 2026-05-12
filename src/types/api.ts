@@ -571,6 +571,25 @@ export interface BOMResponse {
   components: BOMItem[]
 }
 
+// ── BOM Variants (dynamic substitution) ──────────────────────────────────────
+
+/** GET /api/v1/skus/:id/variants item */
+export interface BOMVariant {
+  id: string
+  sku_id: string
+  variant_code: string
+  name: string
+  is_default: boolean
+  created_at: string
+}
+
+/** POST /api/v1/skus/:id/variants */
+export interface CreateBOMVariantInput {
+  variant_code: string
+  name: string
+  components: BOMItem[]
+}
+
 // ── Users ───────────────────────────────────────────────────────────────────
 
 export type UserRole =

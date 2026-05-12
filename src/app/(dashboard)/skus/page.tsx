@@ -1,8 +1,8 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Plus, Pencil, FlaskConical, Trash2, Wrench } from 'lucide-react'
+import { Plus, Pencil, FlaskConical, Trash2, Wrench, Layers, Check } from 'lucide-react'
 import { mapApiErrorVi } from '@/lib/api/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,13 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,11 +34,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useSKUs, useCreateSKU, useSKUBOM, useSetSKUBOM } from '@/lib/hooks/use-skus'
+import {
+  useSKUs,
+  useCreateSKU,
+  useSKUBOM,
+  useSetSKUBOM,
+  useBOMVariants,
+  useCreateBOMVariant,
+} from '@/lib/hooks/use-skus'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
-import type { SKU, CreateSKUInput, BOMItem } from '@/types/api'
+import { cn } from '@/lib/utils'
+import type { SKU, CreateSKUInput, BOMItem, BOMVariant } from '@/types/api'
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
@@ -244,17 +259,50 @@ function emptyRow(): BOMRowDraft {
   return { _key: ++_bomKeyCounter, material_id: '', material_type: 'OTHER', quantity_per_unit: 1, unit: '' }
 }
 
+type DiffState = 'same' | 'changed' | 'added' | 'removed'
+
+function diffRow(row: BOMItem, defaultMap: Map<string, BOMItem>): DiffState {
+  const base = defaultMap.get(row.material_id)
+  if (!base) return 'added'
+  if (base.quantity_per_unit !== row.quantity_per_unit || base.unit !== row.unit) return 'changed'
+  return 'same'
+}
+
+const DIFF_BADGE: Record<Exclude<DiffState, 'same'>, { label: string; className: string }> = {
+  changed: { label: 'Đã thay đổi', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  added: { label: 'Thêm mới', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  removed: { label: 'Bỏ', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+}
+
 function BOMEditorDialog({ sku, onClose }: BOMEditorDialogProps) {
   const open = sku !== null
-  const { data: bomData, isLoading: bomLoading } = useSKUBOM(sku?.id ?? null)
-  const { mutate: setBOM, isPending: saving } = useSetSKUBOM(sku?.id ?? '')
+  const skuId = sku?.id ?? null
+
+  // Null = default variant; any other string is a variant_code.
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(null)
+  const [createVariantOpen, setCreateVariantOpen] = useState(false)
+
+  const { data: variants } = useBOMVariants(skuId)
+  const { data: bomData, isLoading: bomLoading } = useSKUBOM(skuId, selectedVariant)
+  const { data: defaultBomData } = useSKUBOM(skuId, null)
+  const { mutate: setBOM, isPending: saving } = useSetSKUBOM(skuId ?? '')
   const { data: materialsData } = useMaterials()
   const materials = materialsData?.items ?? []
 
   const [rows, setRows] = useState<BOMRowDraft[]>([emptyRow()])
   const [validationError, setValidationError] = useState<string | null>(null)
 
-  // Populate rows when BOM loads
+  const isEditingDefault = selectedVariant === null
+
+  // Reset state when dialog closes or SKU changes.
+  useEffect(() => {
+    if (!open) {
+      setSelectedVariant(null)
+      setValidationError(null)
+    }
+  }, [open, skuId])
+
+  // Populate rows when BOM loads (per variant).
   useEffect(() => {
     if (!open) return
     setValidationError(null)
@@ -264,6 +312,20 @@ function BOMEditorDialog({ sku, onClose }: BOMEditorDialogProps) {
       setRows([emptyRow()])
     }
   }, [bomData, open])
+
+  // Map default BOM by material_id for O(1) diff lookup.
+  const defaultMap = useMemo(() => {
+    const m = new Map<string, BOMItem>()
+    for (const c of defaultBomData?.components ?? []) m.set(c.material_id, c)
+    return m
+  }, [defaultBomData])
+
+  // Materials present in default but removed from the variant view.
+  const removedRows = useMemo(() => {
+    if (isEditingDefault) return []
+    const current = new Set(rows.map((r) => r.material_id))
+    return (defaultBomData?.components ?? []).filter((c) => !current.has(c.material_id))
+  }, [defaultBomData, rows, isEditingDefault])
 
   function addRow() {
     setRows((r) => [...r, emptyRow()])
@@ -278,20 +340,25 @@ function BOMEditorDialog({ sku, onClose }: BOMEditorDialogProps) {
     setValidationError(null)
   }
 
-  function handleSave() {
+  function validateRows(): boolean {
     const invalid = rows.some(
       (r) => !r.material_id || r.quantity_per_unit <= 0 || !r.unit.trim(),
     )
     if (invalid) {
       setValidationError('Vui lòng điền đầy đủ: nguyên liệu, số lượng > 0, và đơn vị cho mỗi dòng.')
-      return
+      return false
     }
     const ids = rows.map((r) => r.material_id)
     if (new Set(ids).size !== ids.length) {
       setValidationError('Mỗi nguyên liệu chỉ được xuất hiện 1 lần trong định mức. Gộp số lượng vào cùng 1 dòng.')
-      return
+      return false
     }
     setValidationError(null)
+    return true
+  }
+
+  function handleSave() {
+    if (!validateRows()) return
     setBOM(
       { components: rows.map(({ material_id, material_type, quantity_per_unit, unit }) => ({ material_id, material_type, quantity_per_unit, unit })) },
       {
@@ -306,119 +373,375 @@ function BOMEditorDialog({ sku, onClose }: BOMEditorDialogProps) {
     )
   }
 
+  const variantItems = variants ?? []
+  const selectedVariantMeta = variantItems.find((v) => v.variant_code === selectedVariant) ?? null
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FlaskConical className="size-4 text-muted-foreground" />
+              Định mức NVL — {sku?.code} · {sku?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Variant switcher */}
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
+            <Layers className="ml-1 size-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Phiên bản:</span>
+            <Select
+              value={selectedVariant ?? '__default__'}
+              onValueChange={(v) => setSelectedVariant(v === '__default__' ? null : v)}
+            >
+              <SelectTrigger className="h-8 w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">Mặc định</SelectItem>
+                {variantItems.map((v) => (
+                  <SelectItem key={v.id} value={v.variant_code}>
+                    {v.variant_code} — {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setCreateVariantOpen(true)}
+              disabled={!skuId}
+              className="ml-auto"
+            >
+              <Plus className="size-3.5" />
+              Tạo phiên bản
+            </Button>
+          </div>
+
+          {!isEditingDefault && (
+            <p className="text-xs text-muted-foreground">
+              Đang xem phiên bản <span className="font-medium">{selectedVariantMeta?.name}</span>.
+              Các dòng có nhãn màu là thay đổi so với mặc định. Chỉ phiên bản mặc định có thể chỉnh sửa trực tiếp.
+            </p>
+          )}
+
+          <div className="max-h-[60vh] overflow-y-auto">
+            {bomLoading ? (
+              <div className="space-y-2 py-2">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full rounded" />)}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nguyên liệu *</TableHead>
+                    <TableHead className="w-32">Số lượng *</TableHead>
+                    <TableHead className="w-28">Đơn vị *</TableHead>
+                    <TableHead className="w-28">Thay đổi</TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row) => {
+                    const state: DiffState = isEditingDefault ? 'same' : diffRow(row, defaultMap)
+                    const diff = state !== 'same' ? DIFF_BADGE[state] : null
+                    return (
+                      <TableRow
+                        key={row._key}
+                        className={cn(
+                          state === 'changed' && 'bg-amber-50/40',
+                          state === 'added' && 'bg-blue-50/40',
+                        )}
+                      >
+                        <TableCell>
+                          <select
+                            value={row.material_id}
+                            disabled={!isEditingDefault}
+                            onChange={(e) => {
+                              const selected = materials.find((m) => m.id === e.target.value)
+                              updateRow(row._key, {
+                                material_id: e.target.value,
+                                material_type: selected?.type ?? 'OTHER',
+                              })
+                            }}
+                            className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <option value="">— Chọn nguyên liệu —</option>
+                            {materials.map((m) => {
+                              const usedByOther = rows.some(
+                                (r) => r._key !== row._key && r.material_id === m.id,
+                              )
+                              return (
+                                <option key={m.id} value={m.id} disabled={usedByOther}>
+                                  {m.name} ({m.type}){usedByOther ? ' — đã chọn' : ''}
+                                </option>
+                              )
+                            })}
+                          </select>
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={0.001}
+                            step={0.001}
+                            value={row.quantity_per_unit}
+                            disabled={!isEditingDefault}
+                            onChange={(e) =>
+                              updateRow(row._key, { quantity_per_unit: Number(e.target.value) })
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={row.unit}
+                            disabled={!isEditingDefault}
+                            onChange={(e) => updateRow(row._key, { unit: e.target.value })}
+                            placeholder="tấm, kg…"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {diff ? (
+                            <Badge variant="outline" className={diff.className}>
+                              {diff.label}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => removeRow(row._key)}
+                            disabled={!isEditingDefault || rows.length === 1}
+                            aria-label="Xóa dòng"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {/* Ghost rows for materials in default but removed from variant */}
+                  {removedRows.map((c) => (
+                    <TableRow key={`removed-${c.material_id}`} className="bg-rose-50/30 opacity-70">
+                      <TableCell className="line-through">
+                        {c.material_name ?? materials.find((m) => m.id === c.material_id)?.name ?? c.material_id.slice(0, 8)}
+                      </TableCell>
+                      <TableCell className="line-through">{c.quantity_per_unit}</TableCell>
+                      <TableCell className="line-through">{c.unit}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={DIFF_BADGE.removed.className}>
+                          {DIFF_BADGE.removed.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+
+          {isEditingDefault && (
+            <Button type="button" variant="outline" size="sm" onClick={addRow} className="w-fit">
+              <Plus className="size-4" />
+              Thêm nguyên liệu
+            </Button>
+          )}
+
+          {validationError && (
+            <p className="text-sm text-destructive">{validationError}</p>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={saving}>
+              Đóng
+            </Button>
+            <Button onClick={handleSave} disabled={!isEditingDefault || saving || bomLoading}>
+              {saving ? 'Đang lưu…' : 'Lưu định mức mặc định'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <CreateVariantDialog
+        open={createVariantOpen}
+        skuId={skuId}
+        templateRows={rows}
+        onClose={(created) => {
+          setCreateVariantOpen(false)
+          if (created) setSelectedVariant(created)
+        }}
+      />
+    </>
+  )
+}
+
+// ── Create BOM Variant Dialog ─────────────────────────────────────────────────
+
+interface CreateVariantDialogProps {
+  open: boolean
+  skuId: string | null
+  /** Seed rows from the currently-visible BOM so the user can tweak then save. */
+  templateRows: BOMRowDraft[]
+  onClose: (createdVariantCode?: string) => void
+}
+
+function CreateVariantDialog({ open, skuId, templateRows, onClose }: CreateVariantDialogProps) {
+  const [variantCode, setVariantCode] = useState('')
+  const [variantName, setVariantName] = useState('')
+  const [rows, setRows] = useState<BOMRowDraft[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const { data: materialsData } = useMaterials()
+  const materials = materialsData?.items ?? []
+  const { mutate: createVariant, isPending } = useCreateBOMVariant(skuId ?? '')
+
+  useEffect(() => {
+    if (!open) return
+    setVariantCode('')
+    setVariantName('')
+    setError(null)
+    // Clone template rows so edits here don't leak back to the parent dialog.
+    setRows(templateRows.map((r) => ({ ...r, _key: ++_bomKeyCounter })))
+  }, [open, templateRows])
+
+  function updateRow(key: number, patch: Partial<BOMItem>) {
+    setRows((r) => r.map((x) => x._key === key ? { ...x, ...patch } : x))
+    setError(null)
+  }
+
+  function handleSubmit() {
+    const code = variantCode.trim().toUpperCase()
+    if (!code) return setError('Mã phiên bản không được để trống')
+    if (code === 'DEFAULT') return setError('"DEFAULT" là mã dành riêng cho phiên bản mặc định')
+    if (!variantName.trim()) return setError('Tên phiên bản không được để trống')
+
+    const invalid = rows.some((r) => !r.material_id || r.quantity_per_unit <= 0 || !r.unit.trim())
+    if (invalid) return setError('Mỗi dòng cần có nguyên liệu, số lượng > 0, và đơn vị.')
+    const ids = rows.map((r) => r.material_id)
+    if (new Set(ids).size !== ids.length) return setError('Mỗi nguyên liệu chỉ được xuất hiện 1 lần.')
+
+    createVariant(
+      {
+        variant_code: code,
+        name: variantName.trim(),
+        components: rows.map(({ material_id, material_type, quantity_per_unit, unit }) => ({
+          material_id, material_type, quantity_per_unit, unit,
+        })),
+      },
+      {
+        onSuccess: () => {
+          toast.success(`Đã tạo phiên bản "${code}"`)
+          onClose(code)
+        },
+        onError: (err) => {
+          toast.error(mapApiErrorVi(err, 'Tạo phiên bản thất bại'))
+        },
+      },
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FlaskConical className="size-4 text-muted-foreground" />
-            Định mức NVL — {sku?.code} · {sku?.name}
+            <Layers className="size-4 text-muted-foreground" />
+            Tạo phiên bản định mức mới
           </DialogTitle>
         </DialogHeader>
 
-        <div className="max-h-[60vh] overflow-y-auto">
-          {bomLoading ? (
-            <div className="space-y-2 py-2">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full rounded" />)}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nguyên liệu *</TableHead>
-                  <TableHead className="w-32">Số lượng *</TableHead>
-                  <TableHead className="w-28">Đơn vị *</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row._key}>
-                    {/* Material picker */}
-                    <TableCell>
-                      <select
-                        value={row.material_id}
-                        onChange={(e) => {
-                          const selected = materials.find((m) => m.id === e.target.value)
-                          updateRow(row._key, {
-                            material_id: e.target.value,
-                            material_type: selected?.type ?? 'OTHER',
-                          })
-                        }}
-                        className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        <option value="">— Chọn nguyên liệu —</option>
-                        {materials.map((m) => {
-                          const usedByOther = rows.some(
-                            (r) => r._key !== row._key && r.material_id === m.id,
-                          )
-                          return (
-                            <option key={m.id} value={m.id} disabled={usedByOther}>
-                              {m.name} ({m.type}){usedByOther ? ' — đã chọn' : ''}
-                            </option>
-                          )
-                        })}
-                      </select>
-                    </TableCell>
-
-                    {/* Quantity */}
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min={0.001}
-                        step={0.001}
-                        value={row.quantity_per_unit}
-                        onChange={(e) =>
-                          updateRow(row._key, { quantity_per_unit: Number(e.target.value) })
-                        }
-                      />
-                    </TableCell>
-
-                    {/* Unit */}
-                    <TableCell>
-                      <Input
-                        value={row.unit}
-                        onChange={(e) => updateRow(row._key, { unit: e.target.value })}
-                        placeholder="tấm, kg…"
-                      />
-                    </TableCell>
-
-                    {/* Remove */}
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => removeRow(row._key)}
-                        disabled={rows.length === 1}
-                        aria-label="Xóa dòng"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="variant-code">Mã phiên bản *</Label>
+            <Input
+              id="variant-code"
+              value={variantCode}
+              onChange={(e) => setVariantCode(e.target.value)}
+              placeholder="VD: MARBLE_A, WALNUT"
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="variant-name">Tên hiển thị *</Label>
+            <Input
+              id="variant-name"
+              value={variantName}
+              onChange={(e) => setVariantName(e.target.value)}
+              placeholder="VD: Mặt đá A, Gỗ óc chó"
+              autoComplete="off"
+            />
+          </div>
         </div>
 
-        <Button type="button" variant="outline" size="sm" onClick={addRow} className="w-fit">
-          <Plus className="size-4" />
-          Thêm nguyên liệu
-        </Button>
+        <p className="text-xs text-muted-foreground">
+          Chỉnh số lượng / đơn vị / nguyên liệu để tạo công thức thay thế. Chỉ cần khác với mặc định.
+        </p>
 
-        {validationError && (
-          <p className="text-sm text-destructive">{validationError}</p>
-        )}
+        <div className="max-h-[50vh] overflow-y-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nguyên liệu *</TableHead>
+                <TableHead className="w-32">Số lượng *</TableHead>
+                <TableHead className="w-28">Đơn vị *</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row._key}>
+                  <TableCell>
+                    <select
+                      value={row.material_id}
+                      onChange={(e) => {
+                        const selected = materials.find((m) => m.id === e.target.value)
+                        updateRow(row._key, {
+                          material_id: e.target.value,
+                          material_type: selected?.type ?? 'OTHER',
+                        })
+                      }}
+                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">— Chọn nguyên liệu —</option>
+                      {materials.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.type})
+                        </option>
+                      ))}
+                    </select>
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min={0.001}
+                      step={0.001}
+                      value={row.quantity_per_unit}
+                      onChange={(e) => updateRow(row._key, { quantity_per_unit: Number(e.target.value) })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={row.unit}
+                      onChange={(e) => updateRow(row._key, { unit: e.target.value })}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Hủy
-          </Button>
-          <Button onClick={handleSave} disabled={saving || bomLoading}>
-            {saving ? 'Đang lưu…' : 'Lưu định mức'}
+          <Button variant="outline" onClick={() => onClose()} disabled={isPending}>Hủy</Button>
+          <Button onClick={handleSubmit} disabled={isPending}>
+            {isPending ? 'Đang tạo…' : <><Check className="size-4" /> Tạo phiên bản</>}
           </Button>
         </DialogFooter>
       </DialogContent>
