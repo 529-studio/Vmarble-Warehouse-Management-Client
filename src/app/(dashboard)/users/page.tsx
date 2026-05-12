@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, UserX, UserCheck, ShieldCheck, Filter, X, Search, Check, HelpCircle, Tag } from 'lucide-react'
+import { Plus, UserX, UserCheck, ShieldCheck, Filter, X, Search, Check, HelpCircle } from 'lucide-react'
 import { mapApiErrorVi } from '@/lib/api/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -399,63 +399,55 @@ function UserFilters({ params, onChange }: { params: UserListParams; onChange: (
             size="icon"
             className="h-9 w-9 text-muted-foreground hover:text-foreground"
             onClick={() => setPrefixDropdownOpen(!prefixDropdownOpen)}
-            title="Gợi ý tag prefixes"
+            title="Gợi ý tag lọc"
           >
             <HelpCircle className="size-4" />
           </Button>
 
           {prefixDropdownOpen && (
-            <div className="absolute z-50 mt-1 w-48 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95 right-0 sm:right-auto sm:left-0">
+            <div className="absolute z-50 mt-1 w-72 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95 right-0">
               <div className="p-2">
-                <div className="space-y-1">
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Tag prefixes</div>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Vai trò</div>
+                {USER_ROLES.map((role) => (
                   <button
+                    key={role}
                     type="button"
                     onClick={() => {
-                      setInputValue('role:')
+                      const nextRoles = Array.from(new Set([...roles, role]))
+                      onChange({ ...params, role: nextRoles.join(','), page: 1 })
                       setPrefixDropdownOpen(false)
-                      // Focus input after state update
-                      setTimeout(() => {
-                        const input = document.querySelector('input[placeholder*="Lọc người dùng"]') as HTMLInputElement
-                        if (input) {
-                          input.focus()
-                          // Move cursor to end
-                          input.selectionStart = input.selectionEnd = 5
-                        }
-                      }, 0)
                     }}
                     className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent text-left"
                   >
-                    <Tag className="size-3.5 text-blue-600 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">role:</div>
-                      <div className="text-xs text-muted-foreground truncate">Tìm kiếm theo vai trò người dùng</div>
-                    </div>
+                    <Badge variant="outline" className="h-5 font-normal text-xs shrink-0 bg-blue-50 text-blue-700 border-blue-200">
+                      role:{role}
+                    </Badge>
+                    <span className="text-muted-foreground truncate">{ROLE_LABELS[role]}</span>
+                    {roles.includes(role) && <Check className="size-3.5 text-emerald-600 ml-auto shrink-0" />}
                   </button>
+                ))}
+                <div className="border-t my-1" />
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Trạng thái</div>
+                {([
+                  { value: 'active', label: 'Đang hoạt động' },
+                  { value: 'inactive', label: 'Đang bị khóa' },
+                ] as const).map((s) => (
                   <button
+                    key={s.value}
                     type="button"
                     onClick={() => {
-                      setInputValue('status:')
+                      onChange({ ...params, is_active: s.value === 'active', page: 1 })
                       setPrefixDropdownOpen(false)
-                      // Focus input after state update
-                      setTimeout(() => {
-                        const input = document.querySelector('input[placeholder*="Lọc người dùng"]') as HTMLInputElement
-                        if (input) {
-                          input.focus()
-                          // Move cursor to end
-                          input.selectionStart = input.selectionEnd = 7
-                        }
-                      }, 0)
                     }}
                     className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent text-left"
                   >
-                    <Tag className="size-3.5 text-emerald-600 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">status:</div>
-                      <div className="text-xs text-muted-foreground truncate">Lọc theo trạng thái hoạt động</div>
-                    </div>
+                    <Badge variant="outline" className="h-5 font-normal text-xs shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200">
+                      status:{s.value}
+                    </Badge>
+                    <span className="text-muted-foreground truncate">{s.label}</span>
+                    {params.is_active === (s.value === 'active') && <Check className="size-3.5 text-emerald-600 ml-auto shrink-0" />}
                   </button>
-                </div>
+                ))}
               </div>
             </div>
           )}
