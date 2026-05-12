@@ -3,6 +3,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { AlertTriangle, Calendar, Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,7 +30,7 @@ import { SearchInput } from '@/components/ui/search-input'
 import { Label } from '@/components/ui/label'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useSKU } from '@/lib/hooks/use-skus'
-import { useSuggestRemnants } from '@/lib/hooks/use-remnants'
+import { useSuggestRemnants, useAllocateRemnant } from '@/lib/hooks/use-remnants'
 import {
   Select,
   SelectContent,
@@ -213,9 +214,13 @@ interface RemnantSuggestionPanelProps {
   /** Pre-fetched suggestions (lifted up by parent so the dialog knows the count). */
   items: RemnantSuggestion[]
   isLoading: boolean
+  /** Currently selected remnant id, or null when none picked. */
+  selectedId: string | null
+  /** Click handler — toggles selection (click again to deselect). */
+  onSelect: (id: string | null) => void
 }
 
-function RemnantSuggestionPanel({ items, isLoading }: RemnantSuggestionPanelProps) {
+function RemnantSuggestionPanel({ items, isLoading, selectedId, onSelect }: RemnantSuggestionPanelProps) {
   if (isLoading) {
     return (
       <div className="rounded-lg border bg-muted/30 p-3">
@@ -241,19 +246,30 @@ function RemnantSuggestionPanel({ items, isLoading }: RemnantSuggestionPanelProp
 
   return (
     <div className="rounded-lg border bg-muted/20 p-3">
-      <div className="mb-2 flex items-center gap-1.5">
-        <Package className="size-4 text-primary" />
-        <span className="text-sm font-medium">Gợi ý tấm lẻ ({items.length})</span>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Package className="size-4 text-primary" />
+          <span className="text-sm font-medium">Gợi ý tấm lẻ ({items.length})</span>
+        </div>
+        <span className="text-xs text-muted-foreground">Nhấn để chọn</span>
       </div>
 
       <div className="space-y-2">
         {items.map((s) => {
           const status = (s.remnant.status as RemnantStatus) ?? 'AVAILABLE'
           const ageDays = ageDaysFromIso(s.remnant.created_at)
+          const isSelected = selectedId === s.remnant.id
           return (
-            <div
+            <button
               key={s.remnant.id}
-              className="flex items-start justify-between gap-3 rounded-md border bg-white px-3 py-2 text-sm"
+              type="button"
+              onClick={() => onSelect(isSelected ? null : s.remnant.id)}
+              aria-pressed={isSelected}
+              className={cn(
+                'flex w-full items-start justify-between gap-3 rounded-md border bg-white px-3 py-2 text-left text-sm transition-colors',
+                'hover:border-primary/60 hover:bg-primary/5',
+                isSelected && 'border-primary bg-primary/10 ring-2 ring-primary/30',
+              )}
             >
               <div className="min-w-0 flex-1 space-y-0.5">
                 <div className="flex items-center gap-2">
@@ -261,6 +277,12 @@ function RemnantSuggestionPanel({ items, isLoading }: RemnantSuggestionPanelProp
                   <span className="font-medium">
                     {s.remnant.dimensions.length_mm} × {s.remnant.dimensions.width_mm} mm
                   </span>
+                  {isSelected && (
+                    <span className="ml-auto flex items-center gap-1 text-xs font-medium text-primary">
+                      <Check className="size-3.5" />
+                      Đã chọn
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge
@@ -280,7 +302,7 @@ function RemnantSuggestionPanel({ items, isLoading }: RemnantSuggestionPanelProp
                   )}
                 </div>
               </div>
-            </div>
+            </button>
           )
         })}
       </div>
@@ -377,6 +399,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
   const [quantity, setQuantity] = useState(1)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [bypassPromptOpen, setBypassPromptOpen] = useState(false)
+  const [selectedRemnantId, setSelectedRemnantId] = useState<string | null>(null)
 
   const { data: plansData } = usePlans({ status: 'APPROVED', limit: 200 })
   const approvedPlans = useMemo(() => plansData?.items ?? [], [plansData?.items])
@@ -412,6 +435,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
   const hasFitRemnants = suggestions.length > 0
 
   const { mutate, isPending } = useCreateWorkOrder()
+  const { mutateAsync: allocateRemnant, isPending: isAllocating } = useAllocateRemnant()
 
   function resetState() {
     setPlanId('')
@@ -419,12 +443,14 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
     setQuantity(1)
     setErrors({})
     setBypassPromptOpen(false)
+    setSelectedRemnantId(null)
   }
 
   function handlePlanChange(newPlanId: string) {
     setPlanId(newPlanId)
     setSkuId('')
     setQuantity(1)
+    setSelectedRemnantId(null)
     setErrors((prev) => ({ ...prev, plan_id: '', sku_id: '' }))
   }
 
@@ -432,6 +458,7 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
     setSkuId(newSkuId)
     const item = planItems.find((i) => i.sku_id === newSkuId)
     if (item) setQuantity(item.quantity)
+    setSelectedRemnantId(null)
     setErrors((prev) => ({ ...prev, sku_id: '' }))
   }
 
@@ -453,7 +480,15 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
       ...(bypassReason ? { bypass_reason: bypassReason } : {}),
     }
     mutate(input, {
-      onSuccess: () => {
+      onSuccess: async (createdWO) => {
+        if (selectedRemnantId) {
+          try {
+            await allocateRemnant({ remnantId: selectedRemnantId, workOrderId: createdWO.id })
+            toast.success('Đã tạo lệnh và cấp tấm lẻ')
+          } catch {
+            toast.error('Đã tạo lệnh nhưng không cấp được tấm lẻ — vui lòng cấp thủ công')
+          }
+        }
         onOpenChange(false)
         resetState()
       },
@@ -462,6 +497,11 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
 
   function handleSubmit() {
     if (!validate()) return
+    // If a remnant is selected, allocate it and skip the bypass dialog.
+    if (selectedRemnantId) {
+      submitCreate()
+      return
+    }
     if (hasFitRemnants) {
       setBypassPromptOpen(true)
       return
@@ -544,6 +584,8 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
               <RemnantSuggestionPanel
                 items={suggestions}
                 isLoading={isLoadingSuggestions}
+                selectedId={selectedRemnantId}
+                onSelect={setSelectedRemnantId}
               />
             )}
 
@@ -568,8 +610,8 @@ function CreateWODialog({ open, onOpenChange }: CreateWODialogProps) {
             <Button variant="outline" onClick={handleClose}>
               Hủy
             </Button>
-            <Button onClick={handleSubmit} disabled={isPending || isLoadingSuggestions}>
-              {isPending ? 'Đang tạo…' : 'Tạo lệnh'}
+            <Button onClick={handleSubmit} disabled={isPending || isAllocating || isLoadingSuggestions}>
+              {isPending || isAllocating ? 'Đang tạo…' : selectedRemnantId ? 'Tạo lệnh & cấp tấm lẻ' : 'Tạo lệnh'}
             </Button>
           </DialogFooter>
         </DialogContent>
