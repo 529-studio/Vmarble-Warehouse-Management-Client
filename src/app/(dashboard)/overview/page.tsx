@@ -1,5 +1,7 @@
 'use client'
 
+import { useMemo } from 'react'
+import Link from 'next/link'
 import {
   LineChart,
   Line,
@@ -15,12 +17,13 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
-import { Layers, TrendingUp, Scissors, DollarSign, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
+import { Layers, TrendingUp, Scissors, DollarSign, AlertTriangle, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { AlertBanner } from '@/components/dashboard/alert-banner'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useDashboardOverview } from '@/lib/hooks/use-dashboard'
-import type { RecentCutItem, RecentWorkOrderItem, RecentCostingFinalizationItem, WholeSheetsByMaterialItem } from '@/types/api'
+import { useDashboardOverview, useWIPPipeline } from '@/lib/hooks/use-dashboard'
+import { getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import type { RecentCutItem, RecentWorkOrderItem, RecentCostingFinalizationItem, WholeSheetsByMaterialItem, WorkOrderStatus, WIPPipelineEntry } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -42,7 +45,112 @@ function formatVND(amount: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
 }
 
+function formatAge(iso: string | null): string {
+  if (!iso) return '—'
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const days = Math.floor(diffMs / 86_400_000)
+  if (days === 0) return 'Hôm nay'
+  return `${days} ngày`
+}
+
 const PIE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2']
+
+const WIP_STATUS_LABEL: Record<WorkOrderStatus, string> = {
+  PLANNED: 'Kế hoạch',
+  IN_CUTTING: 'Đang cắt',
+  IN_PROCESSING: 'Đang xử lý',
+  COMPLETED: 'Hoàn thành',
+  COSTED: 'Đã tính giá',
+}
+
+const WIP_STATUS_COLOR: Record<WorkOrderStatus, string> = {
+  PLANNED: 'bg-slate-100 text-slate-700 border-slate-200',
+  IN_CUTTING: 'bg-orange-100 text-orange-700 border-orange-200',
+  IN_PROCESSING: 'bg-blue-100 text-blue-700 border-blue-200',
+  COMPLETED: 'bg-green-100 text-green-700 border-green-200',
+  COSTED: 'bg-purple-100 text-purple-700 border-purple-200',
+}
+
+const WIP_STATUS_ORDER: WorkOrderStatus[] = ['PLANNED', 'IN_CUTTING', 'IN_PROCESSING', 'COMPLETED', 'COSTED']
+
+const WIP_VISIBLE_ROLES = new Set(['admin', 'planner', 'cnc_manager'])
+
+// ── WIP Pipeline widget ───────────────────────────────────────────────────────
+
+function WIPPipelineWidget() {
+  const { data, isLoading, isError } = useWIPPipeline()
+  const role = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    return getCurrentRoleFromCookie()
+  }, [])
+
+  if (!role || !WIP_VISIBLE_ROLES.has(role)) return null
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <Skeleton className="mb-4 h-5 w-40" />
+        <div className="grid grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <p className="text-sm text-muted-foreground">Không thể tải WIP pipeline.</p>
+      </div>
+    )
+  }
+
+  const stageMap = new Map<WorkOrderStatus, WIPPipelineEntry>(
+    data.stages.map((s) => [s.status, s])
+  )
+
+  return (
+    <div className="rounded-xl border bg-card p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <Scissors className="size-4 text-muted-foreground" />
+        <p className="text-sm font-semibold">WIP Pipeline</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {WIP_STATUS_ORDER.map((status) => {
+          const entry = stageMap.get(status)
+          const count = entry?.count ?? 0
+          const atRisk = entry?.at_risk_count ?? 0
+          const age = entry?.oldest_started_at ?? null
+          const hasRisk = atRisk > 0
+
+          return (
+            <Link
+              key={status}
+              href={`/work-orders?status=${status}`}
+              className="group flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+            >
+              <span className={`inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-xs font-medium ${WIP_STATUS_COLOR[status]}`}>
+                {WIP_STATUS_LABEL[status]}
+              </span>
+              <span className="text-2xl font-bold tabular-nums">{count}</span>
+              <div className="space-y-0.5 text-xs text-muted-foreground">
+                <p>Tuổi: {formatAge(age)}</p>
+                {hasRisk && (
+                  <p className="flex items-center gap-1 font-medium text-destructive">
+                    <AlertCircle className="size-3 shrink-0" />
+                    {atRisk} rủi ro
+                  </p>
+                )}
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
@@ -240,6 +348,9 @@ export default function OverviewPage() {
           trend={kpi.pending_costing > 0 ? 'down' : 'up'}
         />
       </div>
+
+      {/* WIP Pipeline */}
+      <WIPPipelineWidget />
 
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-3">

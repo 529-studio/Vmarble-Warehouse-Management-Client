@@ -843,12 +843,12 @@ function WorkOrdersContent() {
   const canCreateWorkOrder = can(role, 'create', 'work_orders')
   const canAdvanceWorkOrder = can(role, 'advance', 'work_orders')
 
-  const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
   const [planSearch, setPlanSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [advanceTarget, setAdvanceTarget] = useState<WorkOrder | null>(null)
 
   const { page, limit, getParam, setPage, setParam, setParams } = usePageParams(15)
+  const statusFilter = (getParam('status') ?? 'ALL') as WorkOrderStatus | 'ALL'
   const planFilter = getParam('plan_id') ?? 'ALL'
   const debouncedPlanSearch = useDebounce(planSearch, 300)
 
@@ -1024,7 +1024,7 @@ function WorkOrdersContent() {
         <div className="flex flex-wrap items-center gap-2">
           <Select
             value={statusFilter}
-            onValueChange={(v) => { setStatusFilter(v as WorkOrderStatus | 'ALL'); setPage(1) }}
+            onValueChange={(v) => { setParam('status', v === 'ALL' ? undefined : v) }}
           >
             <SelectTrigger className="w-44">
               <SelectValue />

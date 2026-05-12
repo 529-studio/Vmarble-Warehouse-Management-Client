@@ -722,3 +722,18 @@ export interface MPOFilter extends PageParams {
   status?: MPOStatus
   material_id?: string
 }
+
+// ── WIP Pipeline (dashboard) ─────────────────────────────────────────────────
+
+export interface WIPPipelineEntry {
+  status: WorkOrderStatus
+  count: number
+  /** ISO timestamp of the oldest started_at in this stage, null if none */
+  oldest_started_at: string | null
+  /** WOs whose expected_completion < now + 2 days and not yet COMPLETED */
+  at_risk_count: number
+}
+
+export interface WIPPipelineOutput {
+  stages: WIPPipelineEntry[]
+}
