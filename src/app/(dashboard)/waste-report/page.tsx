@@ -75,6 +75,16 @@ function formatCostPerM2(row: WasteReportRow): string {
   return formatVND(row.total_waste_cost.amount / m2)
 }
 
+/**
+ * BR-C03: a row with total_waste_cost.amount === 0 means the underlying work
+ * orders have not been costed yet, so there is no sheet price to allocate
+ * waste against. We keep those rows filterable because users reading the
+ * report almost always want the accounting view, not the operational one.
+ */
+export function filterCostedRows(rows: WasteReportRow[]): WasteReportRow[] {
+  return rows.filter((r) => r.total_waste_cost.amount > 0)
+}
+
 function buildCsvFilename(filter: WasteReportFilter): string {
   const from = filter.from ?? 'all'
   const to = filter.to ?? 'all'
@@ -125,7 +135,15 @@ function WasteReportContent() {
     error,
   } = useWasteReport(canRead ? filter : {})
 
-  const reportRows: WasteReportRow[] = useMemo(() => rows ?? [], [rows])
+  const allReportRows: WasteReportRow[] = useMemo(() => rows ?? [], [rows])
+
+  // Row filter — default ON: hide materials with 0đ waste (WO chưa costed).
+  const [onlyCosted, setOnlyCosted] = useState(true)
+  const reportRows = useMemo(
+    () => (onlyCosted ? filterCostedRows(allReportRows) : allReportRows),
+    [allReportRows, onlyCosted],
+  )
+  const uncostedCount = allReportRows.length - filterCostedRows(allReportRows).length
 
   const totals = useMemo(() => {
     return reportRows.reduce(
@@ -238,6 +256,27 @@ function WasteReportContent() {
         )}
       </div>
 
+      {/* Filter toggle */}
+      <label
+        className="flex w-fit cursor-pointer items-center gap-2 rounded-md border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground"
+        title="Ẩn các dòng có tổng chi phí hao hụt = 0 (WO chưa được tính giá)."
+      >
+        <input
+          type="checkbox"
+          className="size-3.5 accent-primary"
+          checked={onlyCosted}
+          onChange={(e) => setOnlyCosted(e.target.checked)}
+        />
+        <span>
+          Chỉ hiển thị vật liệu đã tính giá
+          {onlyCosted && uncostedCount > 0 && (
+            <span className="ml-1 font-medium text-foreground">
+              ({uncostedCount} dòng đang bị ẩn)
+            </span>
+          )}
+        </span>
+      </label>
+
       {/* Summary cards */}
       <div className="grid gap-3 md:grid-cols-3">
         <Card>
@@ -338,17 +377,31 @@ function WasteReportContent() {
                   </TableCell>
                 </TableRow>
               ) : (
-                reportRows.map((r) => (
-                  <TableRow key={r.material_id}>
-                    <TableCell className="font-medium">{r.material_name}</TableCell>
-                    <TableCell className="text-right">{r.sheets_consumed.toLocaleString('vi-VN')}</TableCell>
-                    <TableCell className="text-right">{formatM2(r.waste_area_mm2)}</TableCell>
-                    <TableCell className="text-right">{formatCostPerM2(r)}</TableCell>
-                    <TableCell className="text-right font-medium text-red-700">
-                      {formatVND(r.total_waste_cost.amount)}
-                    </TableCell>
-                  </TableRow>
-                ))
+                reportRows.map((r) => {
+                  const uncosted = r.total_waste_cost.amount <= 0
+                  return (
+                    <TableRow
+                      key={r.material_id}
+                      className={uncosted ? 'opacity-70' : ''}
+                      title={uncosted ? 'Chưa tính giá thành (WO chưa được cost). Tổng chi phí hao hụt hiển thị 0đ vì không có giá tấm gốc để phân bổ.' : undefined}
+                    >
+                      <TableCell className="font-medium">
+                        {r.material_name}
+                        {uncosted && (
+                          <span className="ml-1 text-[10px] font-normal uppercase tracking-wide text-amber-700">
+                            (chưa tính giá)
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">{r.sheets_consumed.toLocaleString('vi-VN')}</TableCell>
+                      <TableCell className="text-right">{formatM2(r.waste_area_mm2)}</TableCell>
+                      <TableCell className="text-right">{formatCostPerM2(r)}</TableCell>
+                      <TableCell className="text-right font-medium text-red-700">
+                        {formatVND(r.total_waste_cost.amount)}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>
