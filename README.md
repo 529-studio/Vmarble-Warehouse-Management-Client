@@ -328,3 +328,4 @@ npx vitest --project storybook  # Storybook interaction tests (hàm play)
 ## Repository liên quan
 
 - **Backend (Go):** `giangdq202/Vmarble-Warehouse-Management` — Gin · pgx/v5 · PostgreSQL 17
+# Test deployment
