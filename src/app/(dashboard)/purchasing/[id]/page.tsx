@@ -41,6 +41,7 @@ import {
 } from '@/lib/hooks/use-purchasing'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { formatMoney } from '@/lib/format'
 import type { MPOStatus, AddMPOItemInput } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -369,10 +370,10 @@ function PurchasingDetail({ id }: { id: string }) {
                     </TableCell>
                     <TableCell className="text-right text-sm">{item.quantity}</TableCell>
                     <TableCell className="text-right text-sm">
-                      {item.unit_cost.amount.toLocaleString('vi-VN')} {item.unit_cost.currency}
+                      {formatMoney(item.unit_cost.amount, item.unit_cost.currency)}
                     </TableCell>
                     <TableCell className="text-right text-sm font-medium">
-                      {item.total_cost.amount.toLocaleString('vi-VN')} {item.total_cost.currency}
+                      {formatMoney(item.total_cost.amount, item.total_cost.currency)}
                     </TableCell>
                     {isDraft && canManage && (
                       <TableCell className="text-right">

@@ -36,10 +36,10 @@ import { useComputeCosting, useCosting, useFinalizeCosting } from '@/lib/hooks/u
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { formatVND } from '@/lib/format'
 import type { CostingRecord } from '@/types/api'
 
-const fmt = (n: number) =>
-  n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
+const fmt = formatVND
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleString('vi-VN', {

@@ -23,6 +23,7 @@ import { AlertBanner } from '@/components/dashboard/alert-banner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardOverview, useWIPPipeline } from '@/lib/hooks/use-dashboard'
 import { getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { formatVND } from '@/lib/format'
 import type { RecentCutItem, RecentWorkOrderItem, RecentCostingFinalizationItem, WholeSheetsByMaterialItem, WorkOrderStatus, WIPPipelineEntry } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -39,10 +40,6 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('vi-VN', {
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
-}
-
-function formatVND(amount: number) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
 }
 
 function formatAge(iso: string | null): string {
