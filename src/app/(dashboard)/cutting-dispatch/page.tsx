@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useMemo, useSyncExternalStore, useState } from 'react'
+import { Suspense, useMemo, useState, useSyncExternalStore } from 'react'
 import { toast } from 'sonner'
 import { Scissors, UserCheck, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -100,9 +100,10 @@ function TableSkeleton() {
 interface AssignDialogProps {
   wo: WorkOrder | null
   onClose: () => void
+  onAssigned?: (woId: string, workerLabel: string, isReassign: boolean) => void
 }
 
-function AssignDialog({ wo, onClose }: AssignDialogProps) {
+function AssignDialog({ wo, onClose, onAssigned }: AssignDialogProps) {
   const [userId, setUserId] = useState('')
   const [suggestedUserId, setSuggestedUserId] = useState<string | null>(null)
   const [suggestedCount, setSuggestedCount] = useState<number | null>(null)
@@ -140,15 +141,18 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
       toast.error('Chọn công nhân CNC')
       return
     }
+    const targetWorker = workers.find((w) => w.id === userId)
+    const workerLabel = targetWorker?.full_name ?? targetWorker?.username ?? 'công nhân'
     assign(
       { id: wo!.id, input: { user_id: userId } },
       {
         onSuccess: () => {
           toast.success(
             isReassign
-              ? `Đã phân công lại lệnh ${shortId(wo!.id)}`
-              : `Đã phân công lệnh ${shortId(wo!.id)}`,
+              ? `Đã phân công lại ${shortId(wo!.id)} cho ${workerLabel}`
+              : `Đã điều phối ${shortId(wo!.id)} cho ${workerLabel}`,
           )
+          onAssigned?.(wo!.id, workerLabel, isReassign)
           onClose()
         },
         onError: (err) => {
@@ -244,7 +248,10 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
 
 // ── Main content ──────────────────────────────────────────────────────────────
 
-type AssignmentFilter = 'unassigned' | 'all'
+type AssignmentFilter = 'unassigned' | 'recent' | 'all'
+
+const RECENT_DISPATCH_WINDOW_MS = 5 * 60 * 1000 // 5 minutes — matches DoD §2
+const PULSE_DURATION_MS = 5_000 // row pulse duration after dispatch
 
 function CuttingDispatchContent() {
   const role = useCurrentRole()
@@ -256,6 +263,11 @@ function CuttingDispatchContent() {
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('PLANNED')
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('unassigned')
   const [assignTarget, setAssignTarget] = useState<WorkOrder | null>(null)
+  // Tracks WOs dispatched in this session so we can pulse the row and let the
+  // operator immediately confirm the dispatch landed (#187). pulseIds drives
+  // the 5s row highlight; recentIds drives the 5-minute "Vừa điều phối" tab.
+  const [pulseIds, setPulseIds] = useState<Set<string>>(() => new Set())
+  const [recentIds, setRecentIds] = useState<Set<string>>(() => new Set())
 
   const { page, limit, setPage } = usePageParams(15)
 
@@ -272,11 +284,60 @@ function CuttingDispatchContent() {
   // filtering the page in the client so the UX promise still holds.
   const workOrders = useMemo(() => {
     const items = data?.items ?? []
-    return assignmentFilter === 'unassigned' ? items.filter((wo) => !wo.assigned_to) : items
-  }, [data?.items, assignmentFilter])
+    if (assignmentFilter === 'unassigned') {
+      return items.filter((wo) => !wo.assigned_to)
+    }
+    if (assignmentFilter === 'recent') {
+      // Only show WOs dispatched in this browser session — keeps render pure
+      // (no Date.now() in the memo) and matches the operator intent of "what
+      // I just dispatched, where did it land".
+      return items.filter((wo) => recentIds.has(wo.id))
+    }
+    return items
+  }, [data?.items, assignmentFilter, recentIds])
   const totalItems = data?.total_items ?? 0
   const totalPages = data?.total_pages ?? 1
   const isDefaultDispatchView = statusFilter === 'PLANNED' && assignmentFilter === 'unassigned'
+
+  function markRecentlyDispatched(woId: string) {
+    setPulseIds((prev) => {
+      const next = new Set(prev)
+      next.add(woId)
+      return next
+    })
+    setRecentIds((prev) => {
+      const next = new Set(prev)
+      next.add(woId)
+      return next
+    })
+    setTimeout(() => {
+      setPulseIds((prev) => {
+        if (!prev.has(woId)) return prev
+        const next = new Set(prev)
+        next.delete(woId)
+        return next
+      })
+    }, PULSE_DURATION_MS)
+    setTimeout(() => {
+      setRecentIds((prev) => {
+        if (!prev.has(woId)) return prev
+        const next = new Set(prev)
+        next.delete(woId)
+        return next
+      })
+    }, RECENT_DISPATCH_WINDOW_MS)
+  }
+
+  // After a dispatch the operator usually wants to verify the WO landed
+  // somewhere — auto-flip to the "Vừa điều phối" tab if they were on the
+  // unassigned default view, otherwise keep their current filter.
+  function handleAssigned(woId: string) {
+    markRecentlyDispatched(woId)
+    if (assignmentFilter === 'unassigned') {
+      setAssignmentFilter('recent')
+      setPage(1)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -308,6 +369,7 @@ function CuttingDispatchContent() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="unassigned">Chưa phân công</SelectItem>
+            <SelectItem value="recent">Vừa điều phối (5 phút)</SelectItem>
             <SelectItem value="all">Tất cả phân công</SelectItem>
           </SelectContent>
         </Select>
@@ -320,7 +382,9 @@ function CuttingDispatchContent() {
             ? 'Đang tải…'
             : isDefaultDispatchView
               ? `Lệnh chờ điều phối (${workOrders.length})`
-              : `Lệnh cắt (${totalItems})`}
+              : assignmentFilter === 'recent'
+                ? `Vừa điều phối — 5 phút gần đây (${workOrders.length})`
+                : `Lệnh cắt (${totalItems})`}
         </div>
 
         {isError ? (
@@ -345,49 +409,66 @@ function CuttingDispatchContent() {
                   <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                     {isDefaultDispatchView
                       ? 'Không có lệnh nào chờ điều phối.'
-                      : 'Không có lệnh cắt nào.'}
+                      : assignmentFilter === 'recent'
+                        ? 'Chưa có lệnh nào được điều phối trong 5 phút qua.'
+                        : 'Không có lệnh cắt nào.'}
                   </TableCell>
                 </TableRow>
               ) : (
-                workOrders.map((wo) => (
-                  <TableRow key={wo.id}>
-                    <TableCell className="font-mono text-sm font-medium">
-                      {shortId(wo.id)}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {wo.sku_code ?? <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={STATUS_CLASS[wo.status]}>
-                        {STATUS_LABEL[wo.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {wo.assigned_to ? (
-                        <span className="flex items-center gap-1.5">
-                          <UserCheck className="size-3.5 text-green-500 shrink-0" />
-                          {shortId(wo.assigned_to)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Chưa phân công</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(wo.created_at)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {wo.status === 'PLANNED' && canAssignWorkOrder && (
-                        <Button
-                          size="sm"
-                          variant={wo.assigned_to ? 'outline' : 'default'}
-                          onClick={() => setAssignTarget(wo)}
-                        >
-                          {wo.assigned_to ? 'Phân công lại' : 'Phân công'}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
+                workOrders.map((wo) => {
+                  const justDispatched = pulseIds.has(wo.id)
+                  return (
+                    <TableRow
+                      key={wo.id}
+                      className={
+                        justDispatched
+                          ? 'bg-yellow-50 transition-colors duration-1000 dark:bg-yellow-950/30'
+                          : 'transition-colors duration-1000'
+                      }
+                    >
+                      <TableCell className="font-mono text-sm font-medium">
+                        {shortId(wo.id)}
+                        {justDispatched && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200">
+                            Vừa điều phối
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {wo.sku_code ?? <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={STATUS_CLASS[wo.status]}>
+                          {STATUS_LABEL[wo.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {wo.assigned_to ? (
+                          <span className="flex items-center gap-1.5">
+                            <UserCheck className="size-3.5 text-green-500 shrink-0" />
+                            {shortId(wo.assigned_to)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Chưa phân công</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(wo.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {wo.status === 'PLANNED' && canAssignWorkOrder && (
+                          <Button
+                            size="sm"
+                            variant={wo.assigned_to ? 'outline' : 'default'}
+                            onClick={() => setAssignTarget(wo)}
+                          >
+                            {wo.assigned_to ? 'Phân công lại' : 'Phân công'}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>
@@ -408,6 +489,7 @@ function CuttingDispatchContent() {
         <AssignDialog
           wo={assignTarget}
           onClose={() => setAssignTarget(null)}
+          onAssigned={(woId) => handleAssigned(woId)}
         />
       )}
     </div>

@@ -100,7 +100,9 @@ export function useAssignWorkOrder() {
       workOrdersApi.assign(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
-      toast.success('Đã phân công')
+      // Caller owns the success toast so it can include the WO id + worker
+      // name (#187). Default error toast still applies if the caller does not
+      // override it.
     },
     onError: (err) => {
       toast.error(mapApiErrorVi(err, 'Phân công thất bại'))
