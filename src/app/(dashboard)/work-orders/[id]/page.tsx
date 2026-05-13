@@ -4,7 +4,7 @@ import { use, useMemo, useSyncExternalStore, useState } from 'react'
 import { toast } from 'sonner'
 import QRCode from 'react-qr-code'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardCheck, QrCode, Copy, Check, CheckCircle2, Circle, ExternalLink, Loader2 } from 'lucide-react'
+import { ArrowLeft, ClipboardCheck, QrCode, Eye, Copy, Check, CheckCircle2, Circle, ExternalLink, Loader2, Printer } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -49,7 +49,7 @@ import {
 import { usePlan } from '@/lib/hooks/use-plans'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useUsers } from '@/lib/hooks/use-users'
-import { useGenerateBarcode, useBarcodesForWorkOrder, useBarcodeScanEvents } from '@/lib/hooks/use-barcode'
+import { useGenerateBarcode, useBarcodesForWorkOrder, useBarcodeScanEvents, useOpenBarcodeLabelPdf } from '@/lib/hooks/use-barcode'
 import { useWorkOrderCosting, useComputeCosting } from '@/lib/hooks/use-costing'
 import { ApiClientError } from '@/lib/api/client'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
@@ -225,6 +225,73 @@ function ScanHistorySection({ workOrderId }: { workOrderId: string }) {
 }
 
 // ── Generate Barcode Dialog ───────────────────────────────────────────────────
+
+function ViewBarcodeDialog({ barcode, open, onClose }: {
+  barcode: BarcodeRecord
+  open: boolean
+  onClose: () => void
+}) {
+  const [copied, setCopied] = useState(false)
+  const { mutate: openPdf, isPending: openingPdf } = useOpenBarcodeLabelPdf()
+
+  function handleCopy() {
+    navigator.clipboard.writeText(barcode.id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handlePrint() {
+    openPdf(barcode.id, {
+      onSuccess: (url) => {
+        const win = window.open(url, '_blank')
+        if (!win) toast.error('Không mở được cửa sổ in. Vui lòng cho phép pop-up.')
+      },
+      onError: () => toast.error('Không tải được nhãn PDF'),
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Barcode của lệnh sản xuất</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-3 rounded-lg border bg-muted/30 p-4">
+            <div className="rounded bg-white p-2">
+              <QRCode value={barcode.id} size={200} />
+            </div>
+            <p className="text-xs text-muted-foreground">Mã barcode</p>
+            <p className="break-all font-mono text-sm font-semibold">{barcode.id}</p>
+            <div className="grid w-full grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopy}>
+                {copied ? (
+                  <><Check className="size-4" /> Đã sao chép</>
+                ) : (
+                  <><Copy className="size-4" /> Sao chép mã</>
+                )}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePrint} disabled={openingPdf}>
+                {openingPdf ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Printer className="size-4" />
+                )}
+                In nhãn
+              </Button>
+            </div>
+          </div>
+          <p className="text-center text-xs text-muted-foreground">
+            Barcode đã được tạo cho lệnh này. Tránh tạo thêm để không sinh lịch sử quét trùng.
+          </p>
+          <Button className="w-full" onClick={onClose}>
+            Đóng
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function GenerateBarcodeDialog({ wo, open, onClose }: {
   wo: WorkOrder
@@ -606,12 +673,16 @@ function WorkOrderDetail({ id }: { id: string }) {
   const canConsume = can(role, 'consume', 'work_orders')
 
   const [showBarcodeDialog, setShowBarcodeDialog] = useState(false)
+  const [showViewBarcodeDialog, setShowViewBarcodeDialog] = useState(false)
   const [materialId, setMaterialId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState('')
   const [unitTouched, setUnitTouched] = useState(false)
 
   const { data: wo, isLoading: woLoading, isError: woError } = useWorkOrder(id)
+  const { data: existingBarcodes } = useBarcodesForWorkOrder(id)
+  const firstBarcode = existingBarcodes?.[0] ?? null
+  const hasBarcode = !!firstBarcode
   const {
     data: consumptions,
     isLoading: consumptionsLoading,
@@ -700,6 +771,13 @@ function WorkOrderDetail({ id }: { id: string }) {
           onClose={() => setShowBarcodeDialog(false)}
         />
       )}
+      {firstBarcode && (
+        <ViewBarcodeDialog
+          barcode={firstBarcode}
+          open={showViewBarcodeDialog}
+          onClose={() => setShowViewBarcodeDialog(false)}
+        />
+      )}
 
       {/* Header card */}
       <div className="rounded-lg border p-6">
@@ -712,14 +790,25 @@ function WorkOrderDetail({ id }: { id: string }) {
           </div>
           <div className="flex items-center gap-2">
             {canGenerateBarcode && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowBarcodeDialog(true)}
-              >
-                <QrCode className="size-4" />
-                Tạo barcode
-              </Button>
+              hasBarcode ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowViewBarcodeDialog(true)}
+                >
+                  <Eye className="size-4" />
+                  Xem barcode
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowBarcodeDialog(true)}
+                >
+                  <QrCode className="size-4" />
+                  Tạo barcode
+                </Button>
+              )
             )}
             <Badge variant="outline" className={STATUS_CLASS[wo.status]}>
               {STATUS_LABEL[wo.status]}
