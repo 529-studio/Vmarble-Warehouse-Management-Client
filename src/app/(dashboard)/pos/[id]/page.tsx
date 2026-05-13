@@ -18,6 +18,7 @@ import {
 import { usePOLineItems } from '@/lib/hooks/use-pos'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { usePOs } from '@/lib/hooks/use-pos'
+import { formatMoney } from '@/lib/format'
 import type { LineItem } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -28,10 +29,6 @@ function formatDate(iso: string) {
     month: '2-digit',
     year: 'numeric',
   })
-}
-
-function formatMoney(amount: number, currency: string) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency }).format(amount)
 }
 
 // ── Line items table ──────────────────────────────────────────────────────────

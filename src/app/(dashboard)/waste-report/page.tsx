@@ -34,6 +34,7 @@ import {
 import { mapApiErrorVi } from '@/lib/api/client'
 import { costingApi } from '@/lib/api/costing'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { formatVND } from '@/lib/format'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useWasteReport } from '@/lib/hooks/use-waste-report'
 import type { WasteReportFilter, WasteReportRow } from '@/types/api'
@@ -63,10 +64,6 @@ function formatM2(mm2: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
-}
-
-function formatVND(amount: number): string {
-  return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
 }
 
 function formatCostPerM2(row: WasteReportRow): string {

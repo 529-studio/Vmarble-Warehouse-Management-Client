@@ -68,10 +68,6 @@ function formatDate(iso: string) {
   })
 }
 
-function formatMoney(amount: number, currency: string) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency }).format(amount)
-}
-
 // ── Helpers — price formatting ────────────────────────────────────────────────
 
 /** Format a number with thousand-separators: 1500000 → "1,500,000" */

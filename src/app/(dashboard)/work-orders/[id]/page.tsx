@@ -55,6 +55,7 @@ import { ApiClientError } from '@/lib/api/client'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { evaluateStartCutGate, startCutTooltip } from '@/lib/auth/work-order-gate'
 import { useMe } from '@/lib/hooks/use-auth'
+import { formatMoney, formatVND } from '@/lib/format'
 import type {
   WorkOrderStatus,
   BarcodeRecord,
@@ -568,10 +569,10 @@ function LaborSection({ wo }: { wo: WorkOrder }) {
                         </TableCell>
                         <TableCell className="text-right">{entry.minutes}</TableCell>
                         <TableCell className="text-right">
-                          {entry.rate_per_hour.toLocaleString('vi-VN')}
+                          {formatVND(entry.rate_per_hour)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {costVnd.toLocaleString('vi-VN')}
+                          {formatVND(costVnd)}
                         </TableCell>
                         <TableCell className="text-sm">
                           <span className="font-medium">{workerLabel(entry.worker_id)}</span>
@@ -775,10 +776,10 @@ function WorkOrderDetail({ id }: { id: string }) {
             ) : hasCostingRecord && costingRecord ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                  <Field label="Nguyên vật liệu" value={`${costingRecord.material_cost.amount} ${costingRecord.material_cost.currency}`} />
-                  <Field label="Vật tư phụ" value={`${costingRecord.auxiliary_cost.amount} ${costingRecord.auxiliary_cost.currency}`} />
-                  <Field label="Nhân công" value={`${costingRecord.labor_cost.amount} ${costingRecord.labor_cost.currency}`} />
-                  <Field label="Tổng chi phí" value={<span className="font-bold">{costingRecord.total_cost.amount} {costingRecord.total_cost.currency}</span>} />
+                  <Field label="Nguyên vật liệu" value={formatMoney(costingRecord.material_cost.amount, costingRecord.material_cost.currency)} />
+                  <Field label="Vật tư phụ" value={formatMoney(costingRecord.auxiliary_cost.amount, costingRecord.auxiliary_cost.currency)} />
+                  <Field label="Nhân công" value={formatMoney(costingRecord.labor_cost.amount, costingRecord.labor_cost.currency)} />
+                  <Field label="Tổng chi phí" value={<span className="font-bold">{formatMoney(costingRecord.total_cost.amount, costingRecord.total_cost.currency)}</span>} />
                 </div>
                 {(() => {
                   const gate = evaluateStartCutGate({ wo, currentUserId: me?.id ?? null, role })
