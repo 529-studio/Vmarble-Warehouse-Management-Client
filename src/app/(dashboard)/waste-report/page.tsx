@@ -284,9 +284,9 @@ function WasteReportContent() {
             <CardTitle className="text-xs font-medium text-muted-foreground">Số tấm tiêu thụ</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">
+            <div className="text-2xl font-semibold">
               {isLoading ? <Skeleton className="h-7 w-20" /> : totals.sheets.toLocaleString('vi-VN')}
-            </p>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -294,9 +294,9 @@ function WasteReportContent() {
             <CardTitle className="text-xs font-medium text-muted-foreground">Tổng diện tích hao hụt</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">
+            <div className="text-2xl font-semibold">
               {isLoading ? <Skeleton className="h-7 w-24" /> : `${formatM2(totals.areaMm2)} m²`}
-            </p>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -304,9 +304,9 @@ function WasteReportContent() {
             <CardTitle className="text-xs font-medium text-muted-foreground">Tổng chi phí hao hụt</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold text-red-700">
+            <div className="text-2xl font-semibold text-red-700">
               {isLoading ? <Skeleton className="h-7 w-32" /> : formatVND(totals.cost)}
-            </p>
+            </div>
           </CardContent>
         </Card>
       </div>
