@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useSyncExternalStore, useState } from 'react'
 import { toast } from 'sonner'
+import { Calendar, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ import {
 import { useComputeCosting, useCosting, useFinalizeCosting } from '@/lib/hooks/use-costing'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { useSKUs } from '@/lib/hooks/use-skus'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { formatVND } from '@/lib/format'
 import type { CostingRecord } from '@/types/api'
@@ -56,6 +58,13 @@ const FINALIZED_LABELS: Record<FinalizedFilter, string> = {
   ALL: 'Tất cả',
   FINALIZED: 'Đã chốt',
   DRAFT: 'Nháp',
+}
+
+const ALL_SKUS = '__all__'
+
+function isoToday(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function computeDisabledReason(
@@ -196,7 +205,8 @@ function CostingContent() {
   const canAdjustCosting = can(role, 'adjust', 'costing')
   const canWriteCosting = canComputeCosting || canFinalizeCosting || canAdjustCosting
 
-  const { page, search, limit, setPage, setSearch } = usePageParams(10)
+  const { page, search, limit, getParam, setPage, setSearch, setParam, setParams } =
+    usePageParams(10)
 
   const [inputValue, setInputValue] = useState(search)
   const debouncedSearch = useDebounce(inputValue, 400)
@@ -211,7 +221,19 @@ function CostingContent() {
     setSearch(debouncedSearch)
   }, [debouncedSearch, search, setSearch])
 
-  const [finalizedFilter, setFinalizedFilter] = useState<FinalizedFilter>('ALL')
+  // URL-driven filters mirror /work-orders so accountants can deep-link reports
+  // (#190 DoD §3). 'finalized', 'sku_id', 'from', 'to' all live in the query
+  // string; defaults are blank (no constraint) rather than today's date so the
+  // costing page surfaces all historical records by default.
+  const finalizedFilter = (getParam('finalized') ?? 'ALL') as FinalizedFilter
+  const skuFilter = getParam('sku_id') ?? ALL_SKUS
+  const dateFrom = getParam('from') ?? ''
+  const dateTo = getParam('to') ?? ''
+  const today = isoToday()
+  const hasDateFilter = !!(dateFrom || dateTo)
+  const hasAnyFilter =
+    !!normalizedSearch || finalizedFilter !== 'ALL' || skuFilter !== ALL_SKUS || hasDateFilter
+
   const [adjustmentOpen, setAdjustmentOpen] = useState(false)
   const [adjustmentRecord, setAdjustmentRecord] = useState<CostingRecord | null>(null)
 
@@ -224,7 +246,24 @@ function CostingContent() {
     search: normalizedSearch,
     finalized:
       finalizedFilter === 'ALL' ? undefined : finalizedFilter === 'FINALIZED',
+    sku_id: skuFilter !== ALL_SKUS ? skuFilter : undefined,
+    from: dateFrom || undefined,
+    to: dateTo || undefined,
   })
+
+  // SKU lookup — used both for the dropdown and to render readable names in
+  // the table once #190 lands.
+  const { data: skusData } = useSKUs({ limit: 200 })
+  const skus = useMemo(() => skusData?.items ?? [], [skusData?.items])
+  const skuLabelById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const sku of skus) {
+      const code = sku.code ?? sku.id.slice(0, 8)
+      const name = sku.name ?? ''
+      map.set(sku.id, name ? `${code} — ${name}` : code)
+    }
+    return map
+  }, [skus])
 
   const { mutate: computeCosting, isPending: computePending } = useComputeCosting()
   const { mutate: finalizeCosting, isPending: finalizePending } = useFinalizeCosting()
@@ -254,9 +293,38 @@ function CostingContent() {
 
   const isPending = isFetching && inputValue !== debouncedSearch
 
-  const records = data?.items ?? []
+  // Defensive client-side filter: if BE silently drops sku_id/from/to params
+  // (#190 says these may not be wired yet), the toolbar still narrows the
+  // visible page so the user trusts what they see. Mirrors the same fallback
+  // we use on /cutting-dispatch for `assigned`.
+  const filteredRecords = useMemo(() => {
+    const items = data?.items ?? []
+    return items.filter((r) => {
+      if (skuFilter !== ALL_SKUS && r.sku_id !== skuFilter) return false
+      if (dateFrom) {
+        const created = (r.created_at ?? '').slice(0, 10)
+        if (created < dateFrom) return false
+      }
+      if (dateTo) {
+        const created = (r.created_at ?? '').slice(0, 10)
+        if (created > dateTo) return false
+      }
+      return true
+    })
+  }, [data?.items, skuFilter, dateFrom, dateTo])
   const totalItems = data?.total_items ?? 0
   const totalPages = data?.total_pages ?? 1
+
+  function clearAllFilters() {
+    setInputValue('')
+    setParams({
+      search: undefined,
+      finalized: undefined,
+      sku_id: undefined,
+      from: undefined,
+      to: undefined,
+    })
+  }
 
   return (
     <>
@@ -270,35 +338,100 @@ function CostingContent() {
         Màn hình đã hỗ trợ workflow Compute → Finalize. API Costing Adjustment chưa có trên backend dev nên tạm thời hiển thị form và validate lý do.
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <SearchInput
-          value={inputValue}
-          onChange={(v) => {
-            setInputValue(v)
-          }}
-          isPending={isPending}
-          placeholder="Tìm theo WO ID, SKU ID…"
-          containerClassName="w-full sm:max-w-sm"
-        />
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-60">
+          <Label className="text-xs text-muted-foreground">Tìm WO / SKU</Label>
+          <SearchInput
+            value={inputValue}
+            onChange={(v) => setInputValue(v)}
+            isPending={isPending}
+            placeholder="Tìm theo WO ID, SKU ID…"
+            containerClassName="mt-1 w-full max-w-sm"
+          />
+        </div>
 
-        <Select
-          value={finalizedFilter}
-          onValueChange={(v) => {
-            setFinalizedFilter(v as FinalizedFilter)
-            setPage(1)
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Lọc trạng thái" />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(FINALIZED_LABELS) as FinalizedFilter[]).map((k) => (
-              <SelectItem key={k} value={k}>
-                {FINALIZED_LABELS[k]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div>
+          <Label className="text-xs text-muted-foreground">Trạng thái</Label>
+          <Select
+            value={finalizedFilter}
+            onValueChange={(v) => setParam('finalized', v === 'ALL' ? undefined : v)}
+          >
+            <SelectTrigger className="mt-1 w-44">
+              <SelectValue placeholder="Lọc trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(FINALIZED_LABELS) as FinalizedFilter[]).map((k) => (
+                <SelectItem key={k} value={k}>
+                  {FINALIZED_LABELS[k]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Sản phẩm</Label>
+          <Select
+            value={skuFilter}
+            onValueChange={(v) => setParam('sku_id', v === ALL_SKUS ? undefined : v)}
+          >
+            <SelectTrigger className="mt-1 w-56">
+              <SelectValue placeholder="Tất cả SKU" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_SKUS}>Tất cả SKU</SelectItem>
+              {skus.map((sku) => (
+                <SelectItem key={sku.id} value={sku.id}>
+                  {sku.code ?? sku.id.slice(0, 8)}
+                  {sku.name ? ` — ${sku.name}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Ngày tạo</Label>
+          <div className="mt-1 flex items-center gap-1.5">
+            <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo || today}
+              aria-label="Từ ngày"
+              onChange={(e) => {
+                const val = e.target.value
+                setParams({ from: val || undefined, to: dateTo || undefined })
+              }}
+              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <span className="text-muted-foreground text-sm" aria-hidden="true">–</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              max={today}
+              aria-label="Đến ngày"
+              onChange={(e) => {
+                const val = e.target.value
+                setParams({ from: dateFrom || undefined, to: val || undefined })
+              }}
+              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+        </div>
+
+        {hasAnyFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAllFilters}
+            className="gap-1"
+          >
+            <X className="size-3" />
+            Xoá bộ lọc
+          </Button>
+        )}
       </div>
 
       {isError ? (
@@ -307,7 +440,11 @@ function CostingContent() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              {isLoading ? 'Đang tải…' : `Tất cả bản ghi (${totalItems})`}
+              {isLoading
+                ? 'Đang tải…'
+                : hasAnyFilter
+                  ? `Kết quả lọc (${filteredRecords.length}${filteredRecords.length !== totalItems ? ` / ${totalItems}` : ''})`
+                  : `Tất cả bản ghi (${totalItems})`}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -328,19 +465,20 @@ function CostingContent() {
               <TableBody>
                 {isLoading ? (
                   <TableSkeleton rows={limit} />
-                ) : records.length === 0 ? (
+                ) : filteredRecords.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
-                      {debouncedSearch
-                        ? `Không tìm thấy kết quả cho "${debouncedSearch}"`
+                      {hasAnyFilter
+                        ? 'Không tìm thấy bản ghi nào khớp bộ lọc hiện tại.'
                         : 'Chưa có bản ghi giá thành nào.'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  records.map((r) => {
+                  filteredRecords.map((r) => {
                     const rowComputing = computePending && computingWorkOrderId === r.work_order_id
                     const rowFinalizing = finalizePending && finalizingWorkOrderId === r.work_order_id
                     const lockByFinalized = r.finalized
+                    const skuLabel = skuLabelById.get(r.sku_id)
 
                     return (
                       <TableRow
@@ -350,8 +488,12 @@ function CostingContent() {
                         <TableCell className="font-mono text-xs">
                           {r.work_order_id.slice(0, 8)}…
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          {r.sku_id.slice(0, 8)}…
+                        <TableCell className="text-xs">
+                          {skuLabel ? (
+                            <span className="font-medium">{skuLabel}</span>
+                          ) : (
+                            <span className="font-mono text-muted-foreground">{r.sku_id.slice(0, 8)}…</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           {fmt(r.material_cost.amount)}
