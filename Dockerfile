@@ -35,7 +35,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 #       process.env.BACKEND_URL at runtime. NEXT_PUBLIC_API_URL can then be
 #       set to the relative path '/api/proxy' — environment-agnostic, no
 #       build ARG needed, one image works across all environments.
-ARG BACKEND_URL=http://10.8.0.1:8080
+ARG BACKEND_URL=http://vwms-be-app-1:8080
 ENV BACKEND_URL=$BACKEND_URL
 ARG NEXT_PUBLIC_API_URL=/api/proxy
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
