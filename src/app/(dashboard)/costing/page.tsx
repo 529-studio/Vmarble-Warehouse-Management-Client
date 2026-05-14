@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useSyncExternalStore, useState } from 'react'
 import { toast } from 'sonner'
-import { Calendar, X } from 'lucide-react'
+import { Calendar, RotateCcw, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -62,9 +62,20 @@ const FINALIZED_LABELS: Record<FinalizedFilter, string> = {
 
 const ALL_SKUS = '__all__'
 
-function isoToday(): string {
-  const d = new Date()
+const DEFAULT_RANGE_DAYS = 30
+
+function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function isoToday(): string {
+  return isoDate(new Date())
+}
+
+function defaultFromIso(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - DEFAULT_RANGE_DAYS)
+  return isoDate(d)
 }
 
 function computeDisabledReason(
@@ -223,16 +234,20 @@ function CostingContent() {
 
   // URL-driven filters mirror /work-orders so accountants can deep-link reports
   // (#190 DoD §3). 'finalized', 'sku_id', 'from', 'to' all live in the query
-  // string; defaults are blank (no constraint) rather than today's date so the
-  // costing page surfaces all historical records by default.
+  // string. Date range defaults to the last 30 days so the page lands on a
+  // useful slice instead of dumping every historical record.
   const finalizedFilter = (getParam('finalized') ?? 'ALL') as FinalizedFilter
   const skuFilter = getParam('sku_id') ?? ALL_SKUS
-  const dateFrom = getParam('from') ?? ''
-  const dateTo = getParam('to') ?? ''
   const today = isoToday()
-  const hasDateFilter = !!(dateFrom || dateTo)
+  const defaultFrom = useMemo(() => defaultFromIso(), [])
+  const dateFrom = getParam('from') ?? defaultFrom
+  const dateTo = getParam('to') ?? today
+  const isDefaultRange = dateFrom === defaultFrom && dateTo === today
   const hasAnyFilter =
-    !!normalizedSearch || finalizedFilter !== 'ALL' || skuFilter !== ALL_SKUS || hasDateFilter
+    !!normalizedSearch ||
+    finalizedFilter !== 'ALL' ||
+    skuFilter !== ALL_SKUS ||
+    !isDefaultRange
 
   const [adjustmentOpen, setAdjustmentOpen] = useState(false)
   const [adjustmentRecord, setAdjustmentRecord] = useState<CostingRecord | null>(null)
@@ -317,6 +332,8 @@ function CostingContent() {
 
   function clearAllFilters() {
     setInputValue('')
+    // Date range resets to the default 30-day window, not blank — that is the
+    // baseline view operators expect to land on.
     setParams({
       search: undefined,
       finalized: undefined,
@@ -324,6 +341,10 @@ function CostingContent() {
       from: undefined,
       to: undefined,
     })
+  }
+
+  function resetDateRange() {
+    setParams({ from: undefined, to: undefined })
   }
 
   return (
@@ -418,6 +439,12 @@ function CostingContent() {
               }}
               className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
+            {!isDefaultRange && (
+              <Button variant="outline" size="sm" onClick={resetDateRange} className="gap-1">
+                <RotateCcw className="size-3" />
+                30 ngày
+              </Button>
+            )}
           </div>
         </div>
 
