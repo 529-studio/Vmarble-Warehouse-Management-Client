@@ -439,12 +439,17 @@ function CostingContent() {
               }}
               className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            {!isDefaultRange && (
-              <Button variant="outline" size="sm" onClick={resetDateRange} className="gap-1">
-                <RotateCcw className="size-3" />
-                30 ngày
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetDateRange}
+              disabled={isDefaultRange}
+              className="gap-1"
+              title={isDefaultRange ? 'Đang ở mặc định 30 ngày gần nhất' : 'Đặt lại 30 ngày gần nhất'}
+            >
+              <RotateCcw className="size-3" />
+              30 ngày
+            </Button>
           </div>
         </div>
 
