@@ -173,14 +173,30 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
     <Dialog open onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{isReassign ? 'Phân công lại lệnh cắt' : 'Phân công lệnh cắt'}</DialogTitle>
+          <DialogTitle>
+            {isReassign ? 'Phân công lại lệnh cắt' : 'Phân công lệnh cắt'}
+            <span className="ml-2 font-mono text-sm text-muted-foreground">{shortId(wo.id)}</span>
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-1">
-          {/* WO summary */}
+          {/* WO summary — highlights the target so bulk-dispatch can't mis-assign */}
           <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm space-y-1">
             <p><span className="text-muted-foreground">Mã lệnh:</span> <span className="font-mono font-medium">{shortId(wo.id)}</span></p>
-            <p><span className="text-muted-foreground">SKU:</span> <span className="font-medium">{wo.sku_code ?? '—'}</span></p>
+            <p><span className="text-muted-foreground">SKU:</span> <span className="font-medium">{wo.sku_code ?? '—'}</span>{wo.sku_name ? <span className="text-muted-foreground"> · {wo.sku_name}</span> : null}</p>
+            <p>
+              <span className="text-muted-foreground">Số lượng:</span>{' '}
+              <span className="font-medium">{wo.quantity.toLocaleString('vi-VN')}</span>
+              {wo.sku_dimensions && (
+                <>
+                  <span className="mx-1 text-muted-foreground">·</span>
+                  <span className="text-muted-foreground">KT:</span>{' '}
+                  <span className="font-medium">
+                    {wo.sku_dimensions.length_mm} × {wo.sku_dimensions.width_mm} mm
+                  </span>
+                </>
+              )}
+            </p>
             {isReassign && currentWorker && (
               <p>
                 <span className="text-muted-foreground">Đang phân công:</span>{' '}
@@ -234,7 +250,11 @@ function AssignDialog({ wo, onClose }: AssignDialogProps) {
             Hủy
           </Button>
           <Button onClick={handleAssign} disabled={assigning || !userId}>
-            {assigning ? 'Đang phân công…' : isReassign ? 'Phân công lại' : 'Phân công'}
+            {assigning
+              ? 'Đang phân công…'
+              : isReassign
+                ? `Phân công lại ${shortId(wo.id)}`
+                : `Phân công ${shortId(wo.id)}`}
           </Button>
         </DialogFooter>
       </DialogContent>
