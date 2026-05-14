@@ -58,6 +58,38 @@ const FINALIZED_LABELS: Record<FinalizedFilter, string> = {
   DRAFT: 'Nháp',
 }
 
+function computeDisabledReason(
+  canCompute: boolean,
+  locked: boolean,
+  computing: boolean,
+  finalizing: boolean,
+): string | null {
+  if (!canCompute) return 'Không đủ quyền tính giá thành.'
+  if (locked) return 'Giá thành đã chốt, không thể tính lại.'
+  if (computing) return 'Đang tính giá thành cho lệnh khác.'
+  if (finalizing) return 'Đang chốt giá thành cho lệnh khác.'
+  return null
+}
+
+function finalizeDisabledReason(
+  canFinalize: boolean,
+  locked: boolean,
+  computing: boolean,
+  finalizing: boolean,
+): string | null {
+  if (!canFinalize) return 'Không đủ quyền chốt giá thành.'
+  if (locked) return 'Giá thành đã chốt trước đó.'
+  if (computing) return 'Đang tính lại — chờ xong rồi chốt.'
+  if (finalizing) return 'Đang chốt giá thành cho lệnh khác.'
+  return null
+}
+
+function adjustDisabledReason(canAdjust: boolean, finalized: boolean): string | null {
+  if (!canAdjust) return 'Không đủ quyền điều chỉnh giá thành (chỉ kế toán / admin).'
+  if (!finalized) return 'Chỉ điều chỉnh được sau khi đã chốt giá thành.'
+  return null
+}
+
 function useCurrentRole() {
   return useSyncExternalStore(
     () => () => {},
@@ -350,6 +382,7 @@ function CostingContent() {
                                 type="button"
                                 size="sm"
                                 variant="outline"
+                                title={computeDisabledReason(canComputeCosting, lockByFinalized, rowComputing, rowFinalizing) ?? undefined}
                                 disabled={
                                   !canComputeCosting
                                   || lockByFinalized
@@ -358,11 +391,12 @@ function CostingContent() {
                                 }
                                 onClick={() => handleCompute(r.work_order_id)}
                               >
-                                {rowComputing ? 'Đang tính...' : 'Compute'}
+                                {rowComputing ? 'Đang tính...' : 'Tính lại giá'}
                               </Button>
                               <Button
                                 type="button"
                                 size="sm"
+                                title={finalizeDisabledReason(canFinalizeCosting, lockByFinalized, rowComputing, rowFinalizing) ?? undefined}
                                 disabled={
                                   !canFinalizeCosting
                                   || lockByFinalized
@@ -371,12 +405,13 @@ function CostingContent() {
                                 }
                                 onClick={() => handleFinalize(r.work_order_id)}
                               >
-                                {rowFinalizing ? 'Đang chốt...' : 'Finalize'}
+                                {rowFinalizing ? 'Đang chốt...' : 'Chốt giá thành'}
                               </Button>
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="secondary"
+                                title={adjustDisabledReason(canAdjustCosting, r.finalized) ?? 'Tạo bản điều chỉnh giá thành cho WO này'}
                                 disabled={!canAdjustCosting || !r.finalized}
                                 onClick={() => openAdjustment(r)}
                               >
