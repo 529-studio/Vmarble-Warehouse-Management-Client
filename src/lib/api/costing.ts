@@ -11,6 +11,14 @@ import type {
 export interface CostingFilter extends PageParams {
   finalized?: boolean
   work_order_id?: string
+  /** SKU id filter — passed through to BE; FE also applies a defensive filter. */
+  sku_id?: string
+  /** Inclusive ISO date (YYYY-MM-DD) lower bound on `created_at`. */
+  from?: string
+  /** Inclusive ISO date (YYYY-MM-DD) upper bound on `created_at`. */
+  to?: string
+  /** Free-text search — currently scopes to WO id / SKU id substring. */
+  search?: string
 }
 
 function buildApiUrl(path: string) {
@@ -35,6 +43,10 @@ export const costingApi = {
         order: filter.order,
         finalized: filter.finalized,
         work_order_id: filter.work_order_id,
+        sku_id: filter.sku_id,
+        from: filter.from,
+        to: filter.to,
+        search: filter.search,
       },
     }),
 
