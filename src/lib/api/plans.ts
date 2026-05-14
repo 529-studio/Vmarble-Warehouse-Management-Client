@@ -8,6 +8,14 @@ export interface PlanFilter {
   limit?: number
   sort_by?: 'created_at' | 'deadline'
   order?: 'asc' | 'desc'
+  /** PO id filter — narrows the plan list to a single PO. */
+  po_id?: string
+  /** SKU id filter — narrows to plans that contain at least one row of this SKU. */
+  sku_id?: string
+  /** Inclusive ISO date (YYYY-MM-DD) lower bound on `created_at`. */
+  from?: string
+  /** Inclusive ISO date (YYYY-MM-DD) upper bound on `created_at`. */
+  to?: string
 }
 
 export const plansApi = {

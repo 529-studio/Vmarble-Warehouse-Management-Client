@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ClipboardList, Plus } from 'lucide-react'
+import { Calendar, ClipboardList, Plus, RotateCcw, X } from 'lucide-react'
 import { mapApiErrorVi } from '@/lib/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,8 @@ import {
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SearchInput } from '@/components/ui/search-input'
+import { DataPagination } from '@/components/ui/data-pagination'
 import {
   Select,
   SelectContent,
@@ -41,6 +43,8 @@ import {
 } from '@/lib/hooks/use-plans'
 import { usePOs, usePOLineItems } from '@/lib/hooks/use-pos'
 import { useSKUs } from '@/lib/hooks/use-skus'
+import { useDebounce } from '@/lib/hooks/use-debounce'
+import { usePageParams } from '@/lib/hooks/use-page-params'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import type { PlanStatus, ProductionPlan, CreatePlanInput, LineItem } from '@/types/api'
 
@@ -341,30 +345,132 @@ function TableSkeleton() {
 
 // ── Main list content ─────────────────────────────────────────────────────────
 
+const ALL_PLAN_STATUSES = '__all__'
+const ALL_SKUS = '__all__'
+const ALL_POS = '__all__'
+
+const DEFAULT_RANGE_DAYS = 30
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function isoToday(): string {
+  return isoDate(new Date())
+}
+
+function defaultFromIso(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - DEFAULT_RANGE_DAYS)
+  return isoDate(d)
+}
+
 function PlansContent() {
   const role = useCurrentRole()
   const canCreatePlan = can(role, 'create', 'plans')
   const canApprovePlan = can(role, 'approve', 'plans')
   const canCancelPlan = can(role, 'cancel', 'plans')
 
-  const [statusFilter, setStatusFilter] = useState<PlanStatus | 'ALL'>('ALL')
   const [createOpen, setCreateOpen] = useState(false)
   const [approveTarget, setApproveTarget] = useState<ProductionPlan | null>(null)
   const [cancelTarget, setCancelTarget] = useState<ProductionPlan | null>(null)
 
-  const filter = statusFilter === 'ALL' ? {} : { status: statusFilter }
-  const { data, isLoading, isError } = usePlans(filter)
-  const plans = data?.items ?? []
-  const totalItems = data?.total_items ?? 0
+  const { page, search, limit, getParam, setPage, setSearch, setParam, setParams } =
+    usePageParams(15)
+
+  const [inputValue, setInputValue] = useState(search)
+  const debouncedSearch = useDebounce(inputValue, 400)
+  const normalizedSearch = useMemo(
+    () => debouncedSearch.trim() || undefined,
+    [debouncedSearch],
+  )
+
+  useEffect(() => {
+    if (search === debouncedSearch) return
+    setSearch(debouncedSearch)
+  }, [debouncedSearch, search, setSearch])
+
+  // URL-driven filters mirror /work-orders + /costing so planners can deep-link
+  // (#183 DoD §3). Date range defaults to last 30 days.
+  const statusFilter = (getParam('status') ?? ALL_PLAN_STATUSES) as PlanStatus | typeof ALL_PLAN_STATUSES
+  const poFilter = getParam('po_id') ?? ALL_POS
+  const skuFilter = getParam('sku_id') ?? ALL_SKUS
+  const today = isoToday()
+  const defaultFrom = useMemo(() => defaultFromIso(), [])
+  const dateFrom = getParam('from') ?? defaultFrom
+  const dateTo = getParam('to') ?? today
+  const isDefaultRange = dateFrom === defaultFrom && dateTo === today
+  const hasAnyFilter =
+    !!normalizedSearch ||
+    statusFilter !== ALL_PLAN_STATUSES ||
+    poFilter !== ALL_POS ||
+    skuFilter !== ALL_SKUS ||
+    !isDefaultRange
+
+  const filter = {
+    page,
+    limit,
+    ...(statusFilter !== ALL_PLAN_STATUSES ? { status: statusFilter as PlanStatus } : {}),
+    ...(normalizedSearch ? { search: normalizedSearch } : {}),
+    ...(poFilter !== ALL_POS ? { po_id: poFilter } : {}),
+    ...(skuFilter !== ALL_SKUS ? { sku_id: skuFilter } : {}),
+    from: dateFrom,
+    to: dateTo,
+  }
+
+  const { data, isLoading, isFetching, isError } = usePlans(filter)
+  const isPending = isFetching && inputValue !== debouncedSearch
 
   const { data: posData } = usePOs({ limit: 200 })
   const poMap = useMemo(
     () => new Map((posData?.items ?? []).map((p) => [p.id, p.code])),
     [posData],
   )
+  const poList = useMemo(() => posData?.items ?? [], [posData?.items])
+
+  const { data: skusData } = useSKUs({ limit: 200 })
+  const skus = useMemo(() => skusData?.items ?? [], [skusData?.items])
+
+  // Defensive client-side filter: if BE silently drops po_id / sku_id / date
+  // params (the FE landed before BE confirmation), the toolbar should still
+  // narrow the visible page. Mirrors the fallback used in /cutting-dispatch
+  // and /costing.
+  const filteredPlans = useMemo(() => {
+    const items = data?.items ?? []
+    return items.filter((plan) => {
+      if (poFilter !== ALL_POS && plan.po_id !== poFilter) return false
+      if (skuFilter !== ALL_SKUS) {
+        const hasSku = (plan.items ?? []).some((it) => it.sku_id === skuFilter)
+        if (!hasSku) return false
+      }
+      const created = (plan.created_at ?? '').slice(0, 10)
+      if (dateFrom && created < dateFrom) return false
+      if (dateTo && created > dateTo) return false
+      return true
+    })
+  }, [data?.items, poFilter, skuFilter, dateFrom, dateTo])
+
+  const totalItems = data?.total_items ?? 0
+  const totalPages = data?.total_pages ?? 1
 
   const { mutate: approve, isPending: approving } = useApprovePlan()
   const { mutate: cancel, isPending: canceling } = useCancelPlan()
+
+  function clearAllFilters() {
+    setInputValue('')
+    setParams({
+      search: undefined,
+      status: undefined,
+      po_id: undefined,
+      sku_id: undefined,
+      from: undefined,
+      to: undefined,
+    })
+  }
+
+  function resetDateRange() {
+    setParams({ from: undefined, to: undefined })
+  }
 
   function handleApprove() {
     if (!approveTarget) return
@@ -395,36 +501,146 @@ function PlansContent() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v as PlanStatus | 'ALL')}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
-            <SelectItem value="DRAFT">Nháp</SelectItem>
-            <SelectItem value="APPROVED">Đã duyệt</SelectItem>
-            <SelectItem value="CANCELED">Đã hủy</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-60">
+          <Label className="text-xs text-muted-foreground">Tìm kiếm</Label>
+          <SearchInput
+            value={inputValue}
+            onChange={(v) => setInputValue(v)}
+            isPending={isPending}
+            placeholder="Tìm theo mã đơn hàng, ghi chú…"
+            containerClassName="mt-1 w-full max-w-sm"
+          />
+        </div>
 
-        {canCreatePlan ? (
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            Tạo kế hoạch
+        <div>
+          <Label className="text-xs text-muted-foreground">Trạng thái</Label>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setParam('status', v === ALL_PLAN_STATUSES ? undefined : v)}
+          >
+            <SelectTrigger className="mt-1 w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_PLAN_STATUSES}>Tất cả trạng thái</SelectItem>
+              <SelectItem value="DRAFT">Nháp</SelectItem>
+              <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+              <SelectItem value="CANCELED">Đã hủy</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Đơn hàng</Label>
+          <Select
+            value={poFilter}
+            onValueChange={(v) => setParam('po_id', v === ALL_POS ? undefined : v)}
+          >
+            <SelectTrigger className="mt-1 w-44">
+              <SelectValue placeholder="Tất cả" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_POS}>Tất cả đơn hàng</SelectItem>
+              {poList.map((po) => (
+                <SelectItem key={po.id} value={po.id}>
+                  {po.code ?? po.id.slice(0, 8)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Sản phẩm</Label>
+          <Select
+            value={skuFilter}
+            onValueChange={(v) => setParam('sku_id', v === ALL_SKUS ? undefined : v)}
+          >
+            <SelectTrigger className="mt-1 w-56">
+              <SelectValue placeholder="Tất cả SKU" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_SKUS}>Tất cả SKU</SelectItem>
+              {skus.map((sku) => (
+                <SelectItem key={sku.id} value={sku.id}>
+                  {sku.code ?? sku.id.slice(0, 8)}
+                  {sku.name ? ` — ${sku.name}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Ngày tạo</Label>
+          <div className="mt-1 flex items-center gap-1.5">
+            <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo || today}
+              aria-label="Từ ngày"
+              onChange={(e) => {
+                const val = e.target.value
+                setParams({ from: val || undefined, to: dateTo || undefined })
+              }}
+              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <span className="text-muted-foreground text-sm" aria-hidden="true">–</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              max={today}
+              aria-label="Đến ngày"
+              onChange={(e) => {
+                const val = e.target.value
+                setParams({ from: dateFrom || undefined, to: val || undefined })
+              }}
+              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetDateRange}
+              disabled={isDefaultRange}
+              className="gap-1"
+              title={isDefaultRange ? 'Đang ở mặc định 30 ngày gần nhất' : 'Đặt lại 30 ngày gần nhất'}
+            >
+              <RotateCcw className="size-3" />
+              30 ngày
+            </Button>
+          </div>
+        </div>
+
+        {hasAnyFilter && (
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1">
+            <X className="size-3" />
+            Xoá bộ lọc
           </Button>
-        ) : (
-          <p className="text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách kế hoạch.</p>
         )}
+
+        <div className="ml-auto">
+          {canCreatePlan ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              Tạo kế hoạch
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách kế hoạch.</p>
+          )}
+        </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border">
+      <div className={`rounded-lg border transition-opacity ${isFetching && !isLoading ? 'opacity-60' : ''}`}>
         <div className="border-b px-4 py-3 text-sm font-medium text-muted-foreground">
-          {isLoading ? 'Đang tải…' : `Tất cả kế hoạch (${totalItems})`}
+          {isLoading
+            ? 'Đang tải…'
+            : hasAnyFilter
+              ? `Kết quả lọc (${filteredPlans.length}${filteredPlans.length !== totalItems ? ` / ${totalItems}` : ''})`
+              : `Tất cả kế hoạch (${totalItems})`}
         </div>
 
         {isError ? (
@@ -443,14 +659,16 @@ function PlansContent() {
             <TableBody>
               {isLoading ? (
                 <TableSkeleton />
-              ) : plans.length === 0 ? (
+              ) : filteredPlans.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                    Chưa có kế hoạch nào. Nhấn &quot;Tạo kế hoạch&quot; để bắt đầu.
+                    {hasAnyFilter
+                      ? 'Không tìm thấy kế hoạch nào khớp bộ lọc hiện tại.'
+                      : 'Chưa có kế hoạch nào. Nhấn "Tạo kế hoạch" để bắt đầu.'}
                   </TableCell>
                 </TableRow>
               ) : (
-                plans.map((plan) => (
+                filteredPlans.map((plan) => (
                   <TableRow key={plan.id}>
                     <TableCell className="font-medium">
                       <Link
@@ -501,6 +719,16 @@ function PlansContent() {
         )}
       </div>
 
+      {!isLoading && !isError && (
+        <DataPagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          limit={limit}
+          onPageChange={setPage}
+        />
+      )}
+
       {canCreatePlan && <CreatePlanDialog open={createOpen} onOpenChange={setCreateOpen} />}
 
       <ConfirmModal
@@ -536,7 +764,9 @@ export default function PlansPage() {
         <ClipboardList className="size-6 text-muted-foreground" aria-hidden="true" />
         <h1 className="text-2xl font-bold">Kế hoạch sản xuất</h1>
       </div>
-      <PlansContent />
+      <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>
+        <PlansContent />
+      </Suspense>
     </div>
   )
 }
