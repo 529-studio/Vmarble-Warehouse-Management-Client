@@ -22,9 +22,10 @@ import { StatCard } from '@/components/dashboard/stat-card'
 import { AlertBanner } from '@/components/dashboard/alert-banner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardOverview, useWIPPipeline } from '@/lib/hooks/use-dashboard'
+import { useSKUs } from '@/lib/hooks/use-skus'
 import { getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { formatVND } from '@/lib/format'
-import type { RecentCutItem, RecentWorkOrderItem, RecentCostingFinalizationItem, WholeSheetsByMaterialItem, WorkOrderStatus, WIPPipelineEntry } from '@/types/api'
+import type { RecentCutItem, RecentWorkOrderItem, RecentCostingFinalizationItem, WholeSheetsByMaterialItem, WorkOrderStatus, WIPPipelineEntry, MaterialType } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,18 @@ const WIP_STATUS_ORDER: WorkOrderStatus[] = ['PLANNED', 'IN_CUTTING', 'IN_PROCES
 
 const WIP_VISIBLE_ROLES = new Set(['admin', 'planner', 'cnc_manager'])
 
+const MATERIAL_TYPE_LABEL: Record<string, string> = {
+  PLYWOOD: 'Gỗ ép',
+  GLUE: 'Keo',
+  METAL: 'Kim loại',
+  ACCESSORY: 'Phụ kiện',
+  OTHER: 'Khác',
+}
+
+function materialTypeLabel(type: MaterialType | string): string {
+  return MATERIAL_TYPE_LABEL[type] ?? type
+}
+
 // ── WIP Pipeline widget ───────────────────────────────────────────────────────
 
 function WIPPipelineWidget() {
@@ -112,7 +125,7 @@ function WIPPipelineWidget() {
     <div className="rounded-xl border bg-card p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
         <Scissors className="size-4 text-muted-foreground" />
-        <p className="text-sm font-semibold">WIP Pipeline</p>
+        <p className="text-sm font-semibold">Pipeline lệnh cắt</p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {WIP_STATUS_ORDER.map((status) => {
@@ -211,7 +224,7 @@ function RecentWorkOrders({ items }: { items: RecentWorkOrderItem[] }) {
 }
 
 function RecentCosting({ items }: { items: RecentCostingFinalizationItem[] }) {
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">Chưa có costing nào.</p>
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">Chưa có lần tính giá thành nào.</p>
   return (
     <ul className="space-y-2">
       {items.map((item) => (
@@ -249,7 +262,7 @@ function WholeSheetsByMaterial({ items }: { items: WholeSheetsByMaterialItem[] }
         {items.map((item) => (
           <tr key={item.material_id} className="border-b last:border-0">
             <td className="py-2 font-medium">{item.material_name}</td>
-            <td className="py-2 text-muted-foreground">{item.material_type}</td>
+            <td className="py-2 text-muted-foreground">{materialTypeLabel(item.material_type)}</td>
             <td className="py-2 text-right font-semibold tabular-nums">{item.available_count}</td>
           </tr>
         ))}
@@ -262,6 +275,14 @@ function WholeSheetsByMaterial({ items }: { items: WholeSheetsByMaterialItem[] }
 
 export default function OverviewPage() {
   const { data, isLoading, isError, refetch } = useDashboardOverview()
+  // Pulled alongside the overview so the pie chart can render the SKU name
+  // next to the SKU code (the backend dashboard payload only includes the code).
+  const { data: skusData } = useSKUs({ limit: 200 })
+  const skuNameByCode = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const sku of skusData?.items ?? []) map.set(sku.code, sku.name)
+    return map
+  }, [skusData?.items])
 
   if (isLoading) return <OverviewSkeleton />
 
@@ -290,10 +311,13 @@ export default function OverviewPage() {
     date: formatDate(p.date),
   }))
 
-  const pieData = (charts.cost_allocation ?? []).map((p) => ({
-    name: p.sku_code,
-    value: p.cost,
-  }))
+  const pieData = (charts.cost_allocation ?? []).map((p) => {
+    const name = skuNameByCode.get(p.sku_code)
+    return {
+      name: name ? `${p.sku_code} — ${name}` : p.sku_code,
+      value: p.cost,
+    }
+  })
 
   const barData = (charts.material_usage ?? []).map((p) => ({
     ...p,
@@ -334,13 +358,13 @@ export default function OverviewPage() {
         <StatCard
           title="Lệnh cắt đang chạy"
           value={kpi.active_work_orders.toString()}
-          description="trạng thái IN_CUTTING / IN_PROCESSING"
+          description="trạng thái Đang cắt / Đang xử lý"
           icon={Scissors}
         />
         <StatCard
           title="Chờ tính giá thành"
           value={kpi.pending_costing.toString()}
-          description={kpi.pending_costing > 0 ? 'Cần finalize costing' : 'Đã cập nhật đầy đủ'}
+          description={kpi.pending_costing > 0 ? 'Cần chốt giá thành' : 'Đã cập nhật đầy đủ'}
           icon={DollarSign}
           trend={kpi.pending_costing > 0 ? 'down' : 'up'}
         />
@@ -374,7 +398,7 @@ export default function OverviewPage() {
 
         {/* Cost allocation pie chart */}
         <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <p className="mb-4 text-sm font-semibold">Chi phí theo SKU (top 5)</p>
+          <p className="mb-4 text-sm font-semibold">Chi phí theo sản phẩm (top 10)</p>
           {pieData.length === 0 ? (
             <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">Chưa có dữ liệu</div>
           ) : (
