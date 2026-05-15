@@ -3,7 +3,7 @@
 import { Suspense, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Loader2, Printer, QrCode, X } from 'lucide-react'
+import { Loader2, Printer, QrCode, RotateCcw, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,6 +56,21 @@ const FILTER_PENDING = 'PENDING'
 const FILTER_ALL = 'ALL'
 
 const PAGE_SIZE = 20
+const DEFAULT_RANGE_DAYS = 30
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function isoToday(): string {
+  return isoDate(new Date())
+}
+
+function defaultFromIso(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - DEFAULT_RANGE_DAYS)
+  return isoDate(d)
+}
 
 function shortId(id: string) {
   return id.slice(0, 8).toUpperCase()
@@ -91,6 +106,8 @@ interface FilterBarProps {
   dateTo: string
   onDateFromChange: (v: string) => void
   onDateToChange: (v: string) => void
+  isDefaultRange: boolean
+  onResetRange: () => void
   hasFilters: boolean
   onReset: () => void
 }
@@ -100,6 +117,7 @@ function FilterBar({
   workOrderId, onWorkOrderChange, workOrders, workOrdersLoading,
   checkpoint, onCheckpointChange,
   dateFrom, dateTo, onDateFromChange, onDateToChange,
+  isDefaultRange, onResetRange,
   hasFilters, onReset,
 }: FilterBarProps) {
   return (
@@ -145,14 +163,24 @@ function FilterBar({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Từ ngày</label>
-            <Input type="date" value={dateFrom} onChange={(e) => onDateFromChange(e.target.value)} />
+        <div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-xs font-medium text-muted-foreground">
+              Ngày sản xuất {isDefaultRange && <span className="text-muted-foreground/70">(30 ngày gần nhất)</span>}
+            </label>
+            <button
+              type="button"
+              onClick={onResetRange}
+              disabled={isDefaultRange}
+              title={isDefaultRange ? 'Đang ở mặc định 30 ngày gần nhất' : 'Đặt lại 30 ngày gần nhất'}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RotateCcw className="size-3" /> 30 ngày
+            </button>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Đến ngày</label>
-            <Input type="date" value={dateTo} onChange={(e) => onDateToChange(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Input type="date" value={dateFrom} max={dateTo || undefined} aria-label="Từ ngày" onChange={(e) => onDateFromChange(e.target.value)} />
+            <Input type="date" value={dateTo} min={dateFrom || undefined} aria-label="Đến ngày" onChange={(e) => onDateToChange(e.target.value)} />
           </div>
         </div>
       </div>
@@ -194,8 +222,11 @@ function BarcodesContent() {
 
   const workOrderId = params.getParam('wo') ?? ''
   const checkpointFilter = params.getParam('cp') ?? ''
-  const dateFrom = params.getParam('from') ?? ''
-  const dateTo = params.getParam('to') ?? ''
+  const today = isoToday()
+  const defaultFrom = useMemo(() => defaultFromIso(), [])
+  const dateFrom = params.getParam('from') ?? defaultFrom
+  const dateTo = params.getParam('to') ?? today
+  const isDefaultRange = dateFrom === defaultFrom && dateTo === today
 
   // Fan in: pull recent WOs (any status) so the user can scan their list.
   // We don't have a "list all barcodes" endpoint, so the user must pick a WO.
@@ -283,11 +314,15 @@ function BarcodesContent() {
 
   const clearSelection = () => setSelectedIds(new Set())
 
-  const hasFilters = !!(workOrderId || debouncedSearch || checkpointFilter || dateFrom || dateTo)
+  const hasFilters = !!(workOrderId || debouncedSearch || checkpointFilter || !isDefaultRange)
 
   const resetFilters = () => {
     params.setParams({ wo: undefined, cp: undefined, from: undefined, to: undefined, search: undefined })
     clearSelection()
+  }
+
+  const resetRange = () => {
+    params.setParams({ from: undefined, to: undefined })
   }
 
   // ── Print actions ────────────────────────────────────────────────────────
@@ -332,6 +367,8 @@ function BarcodesContent() {
         dateTo={dateTo}
         onDateFromChange={(v) => params.setParam('from', v || undefined)}
         onDateToChange={(v) => params.setParam('to', v || undefined)}
+        isDefaultRange={isDefaultRange}
+        onResetRange={resetRange}
         hasFilters={hasFilters}
         onReset={resetFilters}
       />
