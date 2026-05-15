@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users, Truck, Trash2, QrCode } from 'lucide-react'
+import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users, Truck, Trash2, QrCode, HardHat } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ const MANAGEMENT_NAV = [
   { href: '/plans', label: 'Kế hoạch SX', icon: ClipboardList, resource: 'plans' },
   { href: '/work-orders', label: 'Lệnh sản xuất', icon: ClipboardCheck, resource: 'work_orders' },
   { href: '/cutting-dispatch', label: 'Điều phối cắt', icon: Scissors, resource: 'cutting_dispatch' },
+  { href: '/assembly', label: 'Xưởng gia công', icon: HardHat, resource: 'assembly' },
   { href: '/remnants', label: 'Kho tấm lẻ', icon: Package, resource: 'remnants' },
   { href: '/barcodes', label: 'Barcode', icon: QrCode, resource: 'barcodes' },
   { href: '/costing', label: 'Giá thành', icon: DollarSign, resource: 'costing' },
