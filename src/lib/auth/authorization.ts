@@ -16,6 +16,7 @@ export type AppResource =
   | 'work_orders'
   | 'barcodes'
   | 'cutting_dispatch'
+  | 'assembly'
   | 'scan'
   | 'cutting_orders'
   | 'report_cut'
@@ -53,6 +54,7 @@ const DASHBOARD_PATHS = [
   '/work-orders',
   '/barcodes',
   '/cutting-dispatch',
+  '/assembly',
   '/users',
   '/profile',
   '/purchasing',
@@ -72,6 +74,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/work-orders', resource: 'work_orders' },
   { path: '/barcodes', resource: 'barcodes' },
   { path: '/cutting-dispatch', resource: 'cutting_dispatch' },
+  { path: '/assembly', resource: 'assembly' },
   { path: '/users', resource: 'users' },
   { path: '/profile', resource: 'profile' },
   { path: '/purchasing', resource: 'purchasing' },
@@ -95,6 +98,7 @@ const DASHBOARD_RESOURCES: AppResource[] = [
   'work_orders',
   'barcodes',
   'cutting_dispatch',
+  'assembly',
   'profile',
   'purchasing',
 ]
@@ -140,6 +144,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     ...readOnly(['profile']),
     work_orders: ['read', 'advance', 'consume', 'generate', 'record_labor'],
     barcodes: ['read'],
+    assembly: ['read'],
   },
   cnc_manager: {
     ...readOnly(['profile']),
@@ -189,7 +194,7 @@ export function getDefaultRouteForRole(role: string): string {
     case 'warehouse':
       return '/materials'
     case 'foreman':
-      return '/work-orders'
+      return '/assembly'
     case 'cnc_manager':
       return '/cutting-dispatch'
     case 'cnc':
