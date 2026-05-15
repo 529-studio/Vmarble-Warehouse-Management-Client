@@ -118,6 +118,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     costing: ['read', 'compute', 'finalize', 'adjust'],
     purchasing: ['read', 'create', 'cancel'],
     waste_report: ['read', 'generate'],
+    barcodes: ['read', 'generate'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
@@ -133,6 +134,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
   warehouse: {
     ...readOnly(DASHBOARD_RESOURCES),
     purchasing: ['read', 'create', 'cancel'],
+    barcodes: ['read', 'generate'],
   },
   foreman: {
     ...readOnly(['profile']),
@@ -143,6 +145,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     ...readOnly(['profile']),
     work_orders: ['read', 'record_labor'],
     cutting_dispatch: ['read', 'assign'],
+    barcodes: ['read', 'generate'],
   },
   cnc: {
     scan: ['read'],

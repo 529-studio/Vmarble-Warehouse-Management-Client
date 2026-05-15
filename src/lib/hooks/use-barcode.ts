@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { barcodeApi } from '@/lib/api/barcode'
 import { mapApiErrorVi } from '@/lib/api/client'
-import type { GenerateBarcodeInput, BarcodeRecord } from '@/types/api'
+import type { BatchPrintInput, GenerateBarcodeInput, BarcodeRecord, ScanEvent } from '@/types/api'
 
 export const BARCODES_KEY = 'barcodes'
 export const SCAN_EVENTS_KEY = 'scan-events'
@@ -20,6 +20,23 @@ export function useBarcodesForWorkOrder(workOrderId: string) {
     queryKey: [BARCODES_KEY, 'by-work-order', workOrderId],
     queryFn: () => barcodeApi.listByWorkOrder(workOrderId),
     enabled: !!workOrderId,
+  })
+}
+
+/**
+ * Fan-out parallel scan-event queries — one per barcode.
+ * The /barcodes management screen needs the latest checkpoint per row, but the
+ * BE has no aggregated endpoint yet, so we fetch them in parallel and let
+ * TanStack Query dedupe and cache each barcode's scans individually.
+ */
+export function useBarcodeScansBatch(barcodeIds: string[]) {
+  return useQueries({
+    queries: barcodeIds.map((id) => ({
+      queryKey: [SCAN_EVENTS_KEY, id],
+      queryFn: () => barcodeApi.listScans(id),
+      enabled: !!id,
+      staleTime: 30_000,
+    })),
   })
 }
 
@@ -56,3 +73,28 @@ export function useOpenBarcodeLabelPdf() {
     },
   })
 }
+
+/**
+ * Open a single combined PDF for multiple barcodes.
+ * Caller is responsible for revoking the returned object URL after print.
+ */
+export function useBatchPrintBarcodeLabels() {
+  return useMutation({
+    mutationFn: async (input: BatchPrintInput) => {
+      const blob = await barcodeApi.batchLabelPdfBlob(input)
+      return URL.createObjectURL(blob)
+    },
+    onError: (err: unknown) => {
+      toast.error(mapApiErrorVi(err, 'In hàng loạt thất bại'))
+    },
+  })
+}
+
+/** Last scan event per barcode, or null if not scanned yet. */
+export function pickLatestScan(events: ScanEvent[] | undefined): ScanEvent | null {
+  if (!events?.length) return null
+  return events.reduce((latest, e) =>
+    new Date(e.scanned_at) > new Date(latest.scanned_at) ? e : latest,
+  )
+}
+

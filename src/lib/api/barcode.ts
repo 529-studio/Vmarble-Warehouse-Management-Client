@@ -1,5 +1,5 @@
 import { normalizeAuthToken } from '@/lib/auth/token'
-import type { BarcodeRecord, ScanEvent, ScanResult, ScanCheckpoint, GenerateBarcodeInput } from '@/types/api'
+import type { BarcodeRecord, BatchPrintInput, ScanEvent, ScanResult, ScanCheckpoint, GenerateBarcodeInput } from '@/types/api'
 import { ApiClientError, apiClient } from './client'
 
 function buildApiUrl(path: string) {
@@ -7,6 +7,32 @@ function buildApiUrl(path: string) {
     typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1'
   return new URL(`${baseUrl}${path}`, base).toString()
+}
+
+async function fetchPdfBlob(path: string, init?: RequestInit) {
+  const token =
+    typeof window !== 'undefined'
+      ? normalizeAuthToken(localStorage.getItem('auth_token'))
+      : null
+
+  const response = await fetch(buildApiUrl(path), {
+    ...init,
+    headers: {
+      Accept: 'application/pdf',
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init?.headers,
+    },
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    const code: string = body?.code ?? 'UNKNOWN'
+    const message: string = body?.message ?? body?.error ?? `HTTP ${response.status}`
+    throw new ApiClientError(response.status, code, message, body?.details)
+  }
+
+  return response.blob()
 }
 
 export const barcodeApi = {
@@ -41,28 +67,15 @@ export const barcodeApi = {
       ...(input.shift ? { shift: input.shift } : {}),
     }),
 
-  getLabelPdfBlob: async (barcodeId: string) => {
-    const token =
-      typeof window !== 'undefined'
-        ? normalizeAuthToken(localStorage.getItem('auth_token'))
-        : null
+  getLabelPdfBlob: (barcodeId: string) =>
+    fetchPdfBlob(`/barcodes/${barcodeId}/label.pdf`, { method: 'GET' }),
 
-    const response = await fetch(buildApiUrl(`/barcodes/${barcodeId}/label.pdf`), {
-      method: 'GET',
-      headers: {
-        Accept: 'application/pdf',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    })
-
-    if (!response.ok) {
-      const body = await response.json().catch(() => null)
-      const code: string = body?.code ?? 'UNKNOWN'
-      const message: string = body?.message ?? body?.error ?? `HTTP ${response.status}`
-      throw new ApiClientError(response.status, code, message, body?.details)
-    }
-
-    return response.blob()
-  },
+  /** POST /api/proxy/barcodes/batch-print — returns a single combined PDF. */
+  batchLabelPdfBlob: (input: BatchPrintInput) =>
+    fetchPdfBlob('/barcodes/batch-print', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
 }
+
 

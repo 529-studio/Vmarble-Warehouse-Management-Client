@@ -438,6 +438,15 @@ export interface ScanResult extends ScanEvent {
   scanned_by_name: string
 }
 
+/** Mirrors backend barcode.LabelSize. */
+export type LabelSize = '50x30' | '100x70'
+
+/** POST /api/proxy/barcodes/batch-print — mirrors backend barcode.BatchPrintInput */
+export interface BatchPrintInput {
+  barcode_ids: string[]
+  size?: LabelSize
+}
+
 // ── Dashboard — GET /api/v1/dashboard/overview (mirrors Go dashboard.iface.go) ─
 
 export interface RemnantKPIOutput {
