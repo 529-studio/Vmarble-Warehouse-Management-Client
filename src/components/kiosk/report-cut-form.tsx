@@ -488,12 +488,17 @@ export function ReportCutForm() {
           length_mm: parseFloat(data.usedLength),
           width_mm: parseFloat(data.usedWidth),
         },
-        remnant_dimension: hasRemnant && data.remnantLength && data.remnantWidth
+        // BR-K02 (BE #247): send remnant_dimension XOR is_waste=true. Picking
+        // "Hao hụt toàn bộ" → omit remnant_dimension and flip the flag so BE
+        // can distinguish an intentional waste cut from a malformed payload.
+        ...(hasRemnant && data.remnantLength && data.remnantWidth
           ? {
-              length_mm: parseFloat(data.remnantLength),
-              width_mm: parseFloat(data.remnantWidth),
+              remnant_dimension: {
+                length_mm: parseFloat(data.remnantLength),
+                width_mm: parseFloat(data.remnantWidth),
+              },
             }
-          : undefined,
+          : { is_waste: true }),
       },
       {
         onSuccess: (res) => {

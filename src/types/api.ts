@@ -355,6 +355,13 @@ export interface RecordCutInput {
   used_dimension: { length_mm: number; width_mm: number }
   /** Omit entirely when the cut produces no remnant (waste). */
   remnant_dimension?: { length_mm: number; width_mm: number }
+  /**
+   * BR-K02 (BE #247 / #263): exactly one of `remnant_dimension` or
+   * `is_waste: true` must be present. Send `is_waste: true` when the worker
+   * picks "Hao hụt toàn bộ" so BE knows the cut intentionally produced no
+   * remnant — without this the request is rejected with 400.
+   */
+  is_waste?: boolean
   /** Optional usable-area override (e.g. chipped corner). Both or neither. */
   bounding_box_length_mm?: number
   bounding_box_width_mm?: number
