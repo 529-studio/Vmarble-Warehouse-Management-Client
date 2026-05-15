@@ -98,6 +98,7 @@ const DASHBOARD_RESOURCES: AppResource[] = [
   'work_orders',
   'barcodes',
   'cutting_dispatch',
+  'assembly',
   'profile',
   'purchasing',
 ]
