@@ -182,9 +182,9 @@ function AssemblyCard({ wo }: AssemblyCardProps) {
               </Badge>
             )}
           </div>
-          <p className="mt-1 truncate text-sm font-medium">
-            {skuLoading ? <Skeleton className="h-4 w-40 inline-block" /> : (sku?.name ?? wo.sku_code ?? '—')}
-          </p>
+          <div className="mt-1 truncate text-sm font-medium">
+            {skuLoading ? <Skeleton className="h-4 w-40" /> : (sku?.name ?? wo.sku_code ?? '—')}
+          </div>
           <p className="text-xs text-muted-foreground">
             {wo.sku_code ?? '—'} · Số lượng: <span className="font-semibold">{wo.quantity}</span>
             {wo.estimated_hours ? ` · Ước tính: ${wo.estimated_hours}h` : null}
