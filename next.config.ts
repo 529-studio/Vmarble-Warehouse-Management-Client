@@ -4,6 +4,9 @@ import path from 'node:path'
 const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:8080'
 
 const nextConfig: NextConfig = {
+  // Enable standalone output for Docker optimization
+  output: 'standalone',
+
   // Pin Turbopack's workspace root to this project. Without this, Turbopack
   // walks up and picks /Users/.../Vmarble-project (which contains a stray
   // package-lock.json) as the root, which then fails to resolve `tailwindcss`.
