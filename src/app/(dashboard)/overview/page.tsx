@@ -20,6 +20,7 @@ import {
 import { Layers, TrendingUp, Scissors, DollarSign, AlertTriangle, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { AlertBanner } from '@/components/dashboard/alert-banner'
+import { CncQueueDepthWidget } from '@/components/dashboard/cnc-queue-depth-widget'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardOverview, useWIPPipeline } from '@/lib/hooks/use-dashboard'
 import { useSKUs } from '@/lib/hooks/use-skus'
@@ -372,6 +373,9 @@ export default function OverviewPage() {
 
       {/* WIP Pipeline */}
       <WIPPipelineWidget />
+
+      {/* CNC queue depth — visible to admin + cnc_manager */}
+      <CncQueueDepthWidget />
 
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-3">
