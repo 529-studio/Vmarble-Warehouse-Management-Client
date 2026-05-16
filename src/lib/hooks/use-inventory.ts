@@ -6,15 +6,16 @@ export const OVERFLOW_KEY = 'inventory-overflow-status'
 export const AUDIT_LOG_KEY = 'inventory-audit-log'
 
 /**
- * Polls `GET /inventory/overflow-status` every 30s. The hook is used both by
- * the global red banner and by every "Issue new sheet" button to gate UI.
+ * Polls `GET /inventory/overflow-status` as a fallback. SSE (#194) refreshes
+ * the gauge whenever a CUTTING_RECORDED event arrives — the 120 s interval
+ * here is the safety net for when the EventSource is offline.
  */
 export function useOverflowStatus() {
   return useQuery({
     queryKey: [OVERFLOW_KEY],
     queryFn: inventoryApi.getOverflowStatus,
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 120_000,
     refetchOnWindowFocus: true,
   })
 }
