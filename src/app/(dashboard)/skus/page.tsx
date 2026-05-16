@@ -45,6 +45,7 @@ import {
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
 import { cn } from '@/lib/utils'
 import type { SKU, CreateSKUInput, BOMItem, BOMVariant } from '@/types/api'
 
@@ -788,10 +789,13 @@ function SKUsContent() {
           placeholder="Tìm theo mã hoặc tên sản phẩm…"
           containerClassName="w-full sm:max-w-sm"
         />
-        <Button className="sm:ml-auto" onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" />
-          Tạo sản phẩm
-        </Button>
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <ExportExcelButton report="skus" />
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            Tạo sản phẩm
+          </Button>
+        </div>
       </div>
 
       {isError ? (

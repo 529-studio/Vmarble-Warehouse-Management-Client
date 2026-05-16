@@ -37,6 +37,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
 import { formatVND } from '@/lib/format'
 import type { CostingAdjustment, CostingRecord, Money } from '@/types/api'
 
@@ -600,6 +601,11 @@ function CostingContent() {
             Xoá bộ lọc
           </Button>
         )}
+
+        <ExportExcelButton
+          report="costings"
+          filter={{ from: dateFrom, to: dateTo }}
+        />
       </div>
 
       {isError ? (
