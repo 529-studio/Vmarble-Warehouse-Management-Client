@@ -1,7 +1,6 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useSyncExternalStore, useState } from 'react'
-import { toast } from 'sonner'
 import { Calendar, RotateCcw, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -33,13 +32,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useComputeCosting, useCosting, useFinalizeCosting } from '@/lib/hooks/use-costing'
+import { useComputeCosting, useCosting, useCostingDetail, useCreateCostingAdjustment, useFinalizeCosting } from '@/lib/hooks/use-costing'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { formatVND } from '@/lib/format'
-import type { CostingRecord } from '@/types/api'
+import type { CostingAdjustment, CostingRecord, Money } from '@/types/api'
 
 const fmt = formatVND
 
@@ -144,68 +143,209 @@ function AdjustmentDialog({
   record: CostingRecord | null
   onClose: () => void
 }) {
+  const workOrderId = record?.work_order_id ?? null
+  const { data: detail, isLoading: detailLoading } = useCostingDetail(open ? workOrderId : null)
+  const { mutate: createAdjustment, isPending: submitting } = useCreateCostingAdjustment()
+
+  // The 3 delta inputs are signed strings so the user can type "-50000" to
+  // reverse a charge. Empty string => 0 delta.
   const [reason, setReason] = useState('')
+  const [deltaMaterial, setDeltaMaterial] = useState('')
+  const [deltaAuxiliary, setDeltaAuxiliary] = useState('')
+  const [deltaLabor, setDeltaLabor] = useState('')
 
   useEffect(() => {
     if (!open) {
-      queueMicrotask(() => setReason(''))
+      // queueMicrotask so the dialog close animation reads the old values.
+      queueMicrotask(() => {
+        setReason('')
+        setDeltaMaterial('')
+        setDeltaAuxiliary('')
+        setDeltaLabor('')
+      })
     }
   }, [open])
 
+  const parsedMaterial = Number(deltaMaterial) || 0
+  const parsedAuxiliary = Number(deltaAuxiliary) || 0
+  const parsedLabor = Number(deltaLabor) || 0
+  const previewDeltaTotal = parsedMaterial + parsedAuxiliary + parsedLabor
+  const allZero = parsedMaterial === 0 && parsedAuxiliary === 0 && parsedLabor === 0
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!reason.trim()) return
+    if (!record || !reason.trim() || allZero || submitting) return
 
-    toast.error('Backend chưa hỗ trợ API Costing Adjustment trên môi trường hiện tại.')
+    const currency = record.total_cost.currency
+    const money = (amount: number): Money => ({ amount, currency })
+
+    createAdjustment(
+      {
+        workOrderId: record.work_order_id,
+        input: {
+          reason: reason.trim(),
+          delta_material: money(parsedMaterial),
+          delta_auxiliary: money(parsedAuxiliary),
+          delta_labor: money(parsedLabor),
+        },
+      },
+      { onSuccess: () => onClose() },
+    )
   }
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Tạo điều chỉnh giá thành</DialogTitle>
         </DialogHeader>
 
         {!record ? null : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1 rounded-lg border bg-muted/30 p-3 text-sm">
-              <p>
-                <span className="text-muted-foreground">WO:</span>{' '}
+            {/* Effective totals panel — read from /detail so FE never does
+                money arithmetic. Falls back to record.total_cost while loading. */}
+            <div className="space-y-1.5 rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">WO</span>
                 <span className="font-mono">{record.work_order_id.slice(0, 8).toUpperCase()}</span>
-              </p>
-              <p>
-                <span className="text-muted-foreground">Tổng hiện tại:</span>{' '}
-                <span className="font-semibold">{fmt(record.total_cost.amount)}</span>
-              </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Tổng gốc</span>
+                <span>{fmt(record.total_cost.amount)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Tổng hiệu lực hiện tại</span>
+                <span className="font-semibold">
+                  {detailLoading ? <Skeleton className="inline-block h-4 w-24" /> :
+                    detail ? fmt(detail.effective_total.amount) : fmt(record.total_cost.amount)}
+                </span>
+              </div>
+              {!allZero && (
+                <div className="flex items-center justify-between border-t pt-1.5">
+                  <span className="text-muted-foreground">Tổng sau điều chỉnh (xem trước)</span>
+                  <span className={`font-semibold ${previewDeltaTotal < 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                    {fmt((detail?.effective_total.amount ?? record.total_cost.amount) + previewDeltaTotal)}
+                  </span>
+                </div>
+              )}
             </div>
 
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="adj-mat" className="text-xs">Δ Vật liệu</Label>
+                <Input
+                  id="adj-mat"
+                  type="number"
+                  step="any"
+                  inputMode="numeric"
+                  value={deltaMaterial}
+                  onChange={(e) => setDeltaMaterial(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="adj-aux" className="text-xs">Δ Phụ liệu</Label>
+                <Input
+                  id="adj-aux"
+                  type="number"
+                  step="any"
+                  inputMode="numeric"
+                  value={deltaAuxiliary}
+                  onChange={(e) => setDeltaAuxiliary(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="adj-lab" className="text-xs">Δ Nhân công</Label>
+                <Input
+                  id="adj-lab"
+                  type="number"
+                  step="any"
+                  inputMode="numeric"
+                  value={deltaLabor}
+                  onChange={(e) => setDeltaLabor(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Nhập số dương để cộng thêm, số âm (vd <span className="font-mono">-50000</span>) để giảm trừ.
+            </p>
+
             <div className="space-y-1.5">
-              <Label htmlFor="adjustment-reason">Lý do điều chỉnh</Label>
+              <Label htmlFor="adjustment-reason">Lý do điều chỉnh *</Label>
               <Input
                 id="adjustment-reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Nhập lý do bắt buộc"
+                placeholder="VD: bù vật tư bị tính thiếu, miễn giảm cho khách…"
                 required
+                maxLength={500}
               />
             </div>
 
-            <p className="rounded border border-dashed px-3 py-2 text-xs text-muted-foreground">
-              Lịch sử điều chỉnh sẽ hiển thị tại đây sau khi backend cung cấp API adjustments.
-            </p>
+            <AdjustmentHistory adjustments={detail?.adjustments} loading={detailLoading} />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
                 Huỷ
               </Button>
-              <Button type="submit" disabled={!reason.trim()}>
-                Lưu điều chỉnh
+              <Button
+                type="submit"
+                disabled={submitting || !reason.trim() || allZero}
+                title={allZero ? 'Cần nhập ít nhất một delta khác 0' : undefined}
+              >
+                {submitting ? 'Đang lưu…' : 'Lưu điều chỉnh'}
               </Button>
             </DialogFooter>
           </form>
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+function AdjustmentHistory({
+  adjustments,
+  loading,
+}: {
+  adjustments: CostingAdjustment[] | undefined
+  loading: boolean
+}) {
+  if (loading) {
+    return (
+      <div className="rounded border p-3">
+        <Skeleton className="mb-2 h-4 w-32" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    )
+  }
+  if (!adjustments || adjustments.length === 0) {
+    return (
+      <p className="rounded border border-dashed px-3 py-2 text-xs text-muted-foreground">
+        Chưa có điều chỉnh nào cho WO này.
+      </p>
+    )
+  }
+  return (
+    <div className="rounded border">
+      <div className="border-b bg-muted/30 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+        Lịch sử điều chỉnh ({adjustments.length})
+      </div>
+      <ul className="max-h-40 divide-y overflow-auto text-sm">
+        {adjustments.map((a) => (
+          <li key={a.id} className="flex items-center justify-between gap-3 px-3 py-2">
+            <div className="min-w-0">
+              <p className="truncate">{a.reason || <span className="italic text-muted-foreground">không có lý do</span>}</p>
+              <p className="text-xs text-muted-foreground">{formatDate(a.created_at)}</p>
+            </div>
+            <span className={`shrink-0 font-mono text-sm ${a.delta_total.amount < 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+              {a.delta_total.amount > 0 ? '+' : ''}{fmt(a.delta_total.amount)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -354,10 +494,6 @@ function CostingContent() {
         record={adjustmentRecord}
         onClose={() => setAdjustmentOpen(false)}
       />
-
-      <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-        Màn hình đã hỗ trợ workflow Compute → Finalize. API Costing Adjustment chưa có trên backend dev nên tạm thời hiển thị form và validate lý do.
-      </div>
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-60">

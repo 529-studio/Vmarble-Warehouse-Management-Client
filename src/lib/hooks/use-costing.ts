@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { costingApi, type CostingFilter } from '@/lib/api/costing'
 import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
+import type { CreateAdjustmentInput } from '@/types/api'
 
 export const COSTING_KEY = 'costing'
 
@@ -53,6 +54,41 @@ export function useFinalizeCosting() {
     },
     onError: (err) => {
       toast.error(mapApiErrorVi(err, 'Chốt giá thành thất bại'))
+    },
+  })
+}
+
+/**
+ * Bundles record + adjustments[] + running effective totals (#178). Lazy
+ * — only enabled when the dialog opens, so list rows pay no cost.
+ */
+export function useCostingDetail(workOrderId: string | null) {
+  return useQuery({
+    queryKey: [COSTING_KEY, 'detail', workOrderId],
+    queryFn: () => costingApi.getDetail(workOrderId!),
+    enabled: !!workOrderId,
+    staleTime: 15_000,
+    retry: (failureCount, err) => {
+      if (err instanceof ApiClientError && err.status === 404) return false
+      return failureCount < 2
+    },
+  })
+}
+
+export function useCreateCostingAdjustment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ workOrderId, input }: { workOrderId: string; input: CreateAdjustmentInput }) =>
+      costingApi.createAdjustment(workOrderId, input),
+    onSuccess: (_, { workOrderId }) => {
+      // Refresh both the list (effective totals show on row) and the detail
+      // panel that the dialog reads from.
+      queryClient.invalidateQueries({ queryKey: [COSTING_KEY] })
+      queryClient.invalidateQueries({ queryKey: [COSTING_KEY, 'detail', workOrderId] })
+      toast.success('Đã ghi nhận điều chỉnh')
+    },
+    onError: (err) => {
+      toast.error(mapApiErrorVi(err, 'Tạo điều chỉnh thất bại'))
     },
   })
 }

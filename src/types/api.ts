@@ -308,6 +308,48 @@ export interface CostingRecord {
 }
 
 /**
+ * One adjustment row applied to a finalized costing record (BR-C04).
+ * Mirrors backend `costing.CostingAdjustment` exactly.
+ *
+ * Adjustments never mutate the underlying record — the record numbers stay
+ * immutable; effective totals = record + Σ deltas.
+ */
+export interface CostingAdjustment {
+  id: string
+  costing_record_id: string
+  reason: string
+  delta_material: Money
+  delta_auxiliary: Money
+  delta_labor: Money
+  delta_total: Money
+  /** UUID of the user who created the adjustment (auditor field). */
+  created_by: string
+  created_at: string
+}
+
+/**
+ * GET /api/v1/costing/:workOrderID/detail — bundles the immutable record with
+ * its adjustments and the running effective totals (record + Σ deltas).
+ * Mirrors backend `costing.CostingRecordDetail`.
+ */
+export interface CostingRecordDetail {
+  record: CostingRecord
+  adjustments: CostingAdjustment[]
+  effective_material: Money
+  effective_auxiliary: Money
+  effective_labor: Money
+  effective_total: Money
+}
+
+/** POST /api/v1/costing/:workOrderID/adjustments */
+export interface CreateAdjustmentInput {
+  reason: string
+  delta_material: Money
+  delta_auxiliary: Money
+  delta_labor: Money
+}
+
+/**
  * GET /api/v1/costing/waste-report — one row per material aggregated over the
  * filter range. Mirrors backend `costing.WasteReportRow` (BR-C03 ledger).
  */
