@@ -1,7 +1,10 @@
 import { ApiClientError, apiClient } from '@/lib/api/client'
 import { normalizeAuthToken } from '@/lib/auth/token'
 import type {
+  CostingAdjustment,
   CostingRecord,
+  CostingRecordDetail,
+  CreateAdjustmentInput,
   PageParams,
   PagedResult,
   WasteReportFilter,
@@ -52,6 +55,22 @@ export const costingApi = {
 
   getByWorkOrder: (workOrderId: string) =>
     apiClient.get<CostingRecord>(`/costing/${workOrderId}`),
+
+  /**
+   * GET /api/v1/costing/:workOrderID/detail — record + adjustments[] +
+   * running effective totals. Used by the adjustment dialog so the FE never
+   * does money arithmetic itself.
+   */
+  getDetail: (workOrderId: string) =>
+    apiClient.get<CostingRecordDetail>(`/costing/${workOrderId}/detail`),
+
+  /** POST /api/v1/costing/:workOrderID/adjustments — BR-C04 (#178). */
+  createAdjustment: (workOrderId: string, input: CreateAdjustmentInput) =>
+    apiClient.post<CostingAdjustment>(`/costing/${workOrderId}/adjustments`, input),
+
+  /** GET /api/v1/costing/:workOrderID/adjustments — full audit list. */
+  listAdjustments: (workOrderId: string) =>
+    apiClient.get<CostingAdjustment[]>(`/costing/${workOrderId}/adjustments`),
 
   compute: (workOrderId: string) =>
     apiClient.post<CostingRecord>(`/costing/${workOrderId}/compute`),
