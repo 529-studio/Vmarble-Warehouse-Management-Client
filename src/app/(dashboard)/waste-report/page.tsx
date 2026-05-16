@@ -34,6 +34,7 @@ import {
 import { mapApiErrorVi } from '@/lib/api/client'
 import { costingApi } from '@/lib/api/costing'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
 import { formatVND } from '@/lib/format'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useWasteReport } from '@/lib/hooks/use-waste-report'
@@ -242,14 +243,21 @@ function WasteReportContent() {
         </div>
 
         {canExport && (
-          <Button onClick={handleDownloadCsv} disabled={downloading || isLoading}>
-            {downloading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Download className="size-4" />
-            )}
-            Tải CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExportExcelButton
+              report="waste"
+              filter={{ from, to }}
+              disabled={isLoading}
+            />
+            <Button onClick={handleDownloadCsv} disabled={downloading || isLoading}>
+              {downloading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              Tải CSV
+            </Button>
+          </div>
         )}
       </div>
 

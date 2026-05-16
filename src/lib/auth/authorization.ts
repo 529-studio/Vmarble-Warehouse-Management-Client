@@ -27,6 +27,7 @@ export type AppResource =
   | 'profile'
   | 'purchasing'
   | 'waste_report'
+  | 'reports'
 
 export type AppAction =
   | 'read'
@@ -123,12 +124,14 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     purchasing: ['read', 'create', 'cancel'],
     waste_report: ['read', 'generate'],
     barcodes: ['read', 'generate'],
+    reports: ['read', 'generate'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
     pos: ['read', 'create'],
     costing: ['read', 'compute', 'finalize', 'adjust'],
     waste_report: ['read', 'generate'],
+    reports: ['read', 'generate'],
   },
   planner: {
     ...readOnly(DASHBOARD_RESOURCES),

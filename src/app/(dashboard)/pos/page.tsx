@@ -31,6 +31,7 @@ import { usePOs, useCreatePO } from '@/lib/hooks/use-pos'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
 import type { CreatePOInput, CreateLineItemInput, SKU } from '@/types/api'
 
 // ── Helpers
@@ -373,14 +374,15 @@ function POsContent() {
 
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
+        <ExportExcelButton report="purchase-orders" className="ml-auto" />
         {canCreatePO ? (
-          <Button className="ml-auto" onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             Tạo đơn hàng
           </Button>
         ) : (
-          <p className="ml-auto text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách đơn hàng.</p>
+          <p className="text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách đơn hàng.</p>
         )}
       </div>
 

@@ -64,6 +64,7 @@ import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { evaluateStartCutGate, startCutTooltip } from '@/lib/auth/work-order-gate'
 import { useMe } from '@/lib/hooks/use-auth'
 import { useRemnantBypassedWorkOrders } from '@/lib/hooks/use-inventory'
+import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
 import type {
   WorkOrderStatus,
   WorkOrder,
@@ -1135,12 +1136,24 @@ function WorkOrdersContent() {
         </div>
 
         {canCreateWorkOrder ? (
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            Tạo lệnh
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExportExcelButton
+              report="work-orders"
+              filter={{ from: dateFrom, to: dateTo }}
+            />
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              Tạo lệnh
+            </Button>
+          </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách lệnh cắt.</p>
+          <div className="flex items-center gap-2">
+            <ExportExcelButton
+              report="work-orders"
+              filter={{ from: dateFrom, to: dateTo }}
+            />
+            <p className="text-xs text-muted-foreground">Bạn chỉ có quyền xem danh sách lệnh cắt.</p>
+          </div>
         )}
       </div>
 
