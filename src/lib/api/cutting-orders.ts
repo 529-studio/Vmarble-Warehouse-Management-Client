@@ -7,6 +7,12 @@ export interface WorkOrdersFilter {
   date?: string
   from?: string
   to?: string
+  /**
+   * Assignee filter. Pass a user id to scope to that worker; pass `'null'` to
+   * fetch only WOs with `assigned_to IS NULL`. Callers should still apply a
+   * client-side fallback because some BE deploys may ignore the param.
+   */
+  assigned?: 'null' | string
   page?: number
   pageSize?: number
 }

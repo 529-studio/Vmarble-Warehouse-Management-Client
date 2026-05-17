@@ -17,12 +17,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { BigButton } from '@/components/kiosk/big-button'
-import { useCuttingOrder, useRecordCut } from '@/lib/hooks/use-cutting-orders'
+import { CuttingOrderCard } from '@/components/kiosk/cutting-order-card'
+import { useCuttingOrder, useCuttingOrders, useRecordCut } from '@/lib/hooks/use-cutting-orders'
 import { useGenerateBarcode, useOpenBarcodeLabelPdf } from '@/lib/hooks/use-barcode'
+import { useMe } from '@/lib/hooks/use-auth'
 import { usePlan } from '@/lib/hooks/use-plans'
 import { useAvailableSheets, useRemnant } from '@/lib/hooks/use-remnants'
 import { ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
+import type { WorkOrder } from '@/types/api'
 
 // ── Error message map ─────────────────────────────────────────────────────────
 // Maps API error codes (from the Go backend BizError) to Vietnamese strings
@@ -530,15 +533,12 @@ export function ReportCutForm() {
     )
   }
 
-  // ── Missing wo_id guard ───────────────────────────────────────────────────
+  // ── Missing wo_id: show a picker of the worker's IN_CUTTING WOs ──────────
+  // Worker reaches /report-cut directly via the bottom-nav tab — no wo_id in
+  // the URL. Instead of bouncing back to /cutting-orders, render the same
+  // list scoped to `assigned_to = me` so they can pick which WO to report on.
   if (!woId) {
-    return (
-      <div className="p-4">
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-          Thiếu mã lệnh cắt (wo_id). Quay lại danh sách lệnh cắt.
-        </div>
-      </div>
-    )
+    return <ReportCutWorkOrderPicker />
   }
 
   const missingMaterialSelection = needsBoardSheetInput && !selectedMaterialId
@@ -854,5 +854,88 @@ export function ReportCutForm() {
         {isPending ? 'Đang gửi…' : 'Báo cáo kết quả'}
       </BigButton>
     </form>
+  )
+}
+
+// ── ReportCutWorkOrderPicker ─────────────────────────────────────────────────
+// Rendered when the worker lands on /report-cut without a wo_id (i.e. tapped
+// the bottom-nav "Báo cáo" tab directly). Shows the same IN_CUTTING WOs from
+// /cutting-orders, but scoped to `assigned_to = current user` so the worker
+// can only pick from their own active cuts. Tapping a card forwards to
+// /report-cut?wo_id=<id> which re-enters this component on the happy path.
+
+function ReportCutWorkOrderPicker() {
+  const router = useRouter()
+  const { data: me, isLoading: isLoadingMe } = useMe()
+
+  // BE filter `assigned=<id>` is honored by /work-orders. We also apply a
+  // defensive client-side filter in case BE doesn't (e.g. older deploys),
+  // and so the empty state never accidentally shows another worker's WOs.
+  const {
+    data: woData,
+    isLoading: isLoadingWOs,
+    isError,
+  } = useCuttingOrders(
+    me?.id ? { status: 'IN_CUTTING', assigned: me.id } : { status: 'IN_CUTTING' },
+  )
+
+  const myWOs = useMemo<WorkOrder[]>(() => {
+    const items = woData?.items ?? []
+    if (!me?.id) return []
+    return items.filter((wo) => wo.assigned_to === me.id)
+  }, [woData?.items, me?.id])
+
+  const isLoading = isLoadingMe || isLoadingWOs
+
+  return (
+    <div className="space-y-4 p-4 pb-6">
+      <div>
+        <h1 className="text-xl font-bold leading-tight">Báo cáo kết quả cắt</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Chọn lệnh cắt bạn muốn báo cáo.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-[120px] animate-pulse rounded-2xl border bg-muted/40"
+            />
+          ))}
+        </div>
+      ) : isError ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+        >
+          Không thể tải lệnh cắt. Kiểm tra kết nối mạng và thử lại.
+        </div>
+      ) : myWOs.length === 0 ? (
+        <div className="rounded-2xl border bg-muted/30 p-6 text-center">
+          <p className="text-base font-semibold">Bạn chưa có lệnh nào đang cắt</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Vào tab Lệnh cắt để bắt đầu một lệnh trước khi báo cáo.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/cutting-orders')}
+            className="mt-4 inline-flex min-h-[48px] items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm active:bg-muted"
+          >
+            Mở danh sách lệnh cắt
+          </button>
+        </div>
+      ) : (
+        myWOs.map((wo) => (
+          <CuttingOrderCard
+            key={wo.id}
+            order={wo}
+            actionLabel="Báo cáo kết quả →"
+            onStartCutting={() => router.push(`/report-cut?wo_id=${wo.id}`)}
+          />
+        ))
+      )}
+    </div>
   )
 }

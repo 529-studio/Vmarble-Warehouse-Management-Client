@@ -8,8 +8,10 @@ import type { WorkOrder } from '@/types/api'
 interface CuttingOrderCardProps {
   order: WorkOrder
   className?: string
-  /** Called when the worker taps the action button — opens the remnant suggestion modal. */
+  /** Called when the worker taps the action button. */
   onStartCutting: (order: WorkOrder) => void
+  /** Override the default "Bắt đầu cắt →" label. */
+  actionLabel?: string
 }
 
 /**
@@ -18,7 +20,7 @@ interface CuttingOrderCardProps {
  * Touch-target height is guaranteed ≥ 48px by the card layout; the
  * "Báo cáo kết quả" button enforces its own min-h-[48px].
  */
-export function CuttingOrderCard({ order, className, onStartCutting }: CuttingOrderCardProps) {
+export function CuttingOrderCard({ order, className, onStartCutting, actionLabel }: CuttingOrderCardProps) {
   const skuDisplay = order.sku_code ?? `${order.sku_id.slice(0, 8)}\u2026`
   const skuName = order.sku_name ?? 'Chưa có tên SKU'
   const hasDim = !!order.sku_dimensions
@@ -70,7 +72,7 @@ export function CuttingOrderCard({ order, className, onStartCutting }: CuttingOr
           'transition-colors active:bg-primary/10',
         )}
       >
-        Bắt đầu cắt →
+        {actionLabel ?? 'Bắt đầu cắt →'}
       </button>
     </article>
   )
