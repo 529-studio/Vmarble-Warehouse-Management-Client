@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight, Boxes, CheckCircle2, ClipboardList, HardHat, Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -26,6 +26,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  DateRangeFilter,
+  defaultFromIso,
+  isoToday,
+} from '@/components/dashboard/date-range-filter'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useSKU } from '@/lib/hooks/use-skus'
 import {
@@ -37,6 +42,7 @@ import {
   useWorkOrders,
 } from '@/lib/hooks/use-work-orders'
 import { useMe } from '@/lib/hooks/use-auth'
+import { usePageParams } from '@/lib/hooks/use-page-params'
 import type { LaborStage, MaterialType, WorkOrder } from '@/types/api'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -354,12 +360,22 @@ function AssemblyCard({ wo }: AssemblyCardProps) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function AssemblyPage() {
+function AssemblyContent() {
   const { data: me } = useMe()
+  const { getParam, setParams } = usePageParams(100)
+
+  const dateFrom = getParam('from') ?? defaultFromIso()
+  const dateTo = getParam('to') ?? isoToday()
+
   // BE has no team / assignee filter on /work-orders for foreman yet — pull all
   // IN_PROCESSING work orders for now. When BE adds ?foreman_id, switch to a
   // server-side filter so foremen don't see other shops' lists.
-  const { data, isLoading, isError } = useWorkOrders({ status: 'IN_PROCESSING', limit: 100 })
+  const { data, isLoading, isError } = useWorkOrders({
+    status: 'IN_PROCESSING',
+    from: dateFrom,
+    to: dateTo,
+    limit: 100,
+  })
   const workOrders = useMemo(() => data?.items ?? [], [data?.items])
 
   return (
@@ -375,9 +391,16 @@ export default function AssemblyPage() {
             quản lý các lệnh đang gia công — ghi nhận vật tư, công lao động và đánh dấu hoàn thành.
           </p>
         </div>
-        <Link href="/work-orders" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-          Tất cả lệnh sản xuất <ArrowRight className="size-4" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <DateRangeFilter
+            from={dateFrom}
+            to={dateTo}
+            onChange={({ from, to }) => setParams({ from, to })}
+          />
+          <Link href="/work-orders" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+            Tất cả lệnh sản xuất <ArrowRight className="size-4" />
+          </Link>
+        </div>
       </header>
 
       {isLoading ? (
@@ -417,5 +440,13 @@ export default function AssemblyPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function AssemblyPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>
+      <AssemblyContent />
+    </Suspense>
   )
 }

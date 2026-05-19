@@ -6,6 +6,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SearchInput } from '@/components/ui/search-input'
 import { DataPagination } from '@/components/ui/data-pagination'
 import {
+  DateRangeFilter,
+  defaultFromIso,
+  isoToday,
+} from '@/components/dashboard/date-range-filter'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -58,7 +63,7 @@ function TableSkeleton({ rows = 8 }: { rows?: number }) {
 // ── Inner component — uses useSearchParams (must be inside <Suspense>) ────────
 
 function RemnantsContent() {
-  const { page, search, limit, setPage, setSearch } = usePageParams(10)
+  const { page, search, limit, setPage, setSearch, getParam, setParams } = usePageParams(10)
 
   const [inputValue, setInputValue] = useState(search)
   const debouncedSearch = useDebounce(inputValue, 400)
@@ -71,11 +76,16 @@ function RemnantsContent() {
 
   const [statusFilter, setStatusFilter] = useState<RemnantStatus | 'ALL'>('ALL')
 
+  const dateFrom = getParam('from') ?? defaultFromIso()
+  const dateTo = getParam('to') ?? isoToday()
+
   const { data, isLoading, isFetching, isError } = useRemnants({
     page,
     limit,
     search: debouncedSearch || undefined,
     status: statusFilter === 'ALL' ? undefined : statusFilter,
+    from: dateFrom,
+    to: dateTo,
   })
 
   const isPending = isFetching && inputValue !== debouncedSearch
@@ -114,6 +124,13 @@ function RemnantsContent() {
             ))}
           </SelectContent>
         </Select>
+
+        <DateRangeFilter
+          from={dateFrom}
+          to={dateTo}
+          onChange={({ from, to }) => setParams({ from, to })}
+          className="sm:ml-auto"
+        />
       </div>
 
       {/* Table */}

@@ -30,6 +30,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DataPagination } from '@/components/ui/data-pagination'
+import {
+  DateRangeFilter,
+  defaultFromIso,
+  isoToday,
+} from '@/components/dashboard/date-range-filter'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { useWorkOrders,
   useAssignWorkOrder,
@@ -289,11 +294,16 @@ function CuttingDispatchContent() {
   const [pulseIds, setPulseIds] = useState<Set<string>>(() => new Set())
   const [recentIds, setRecentIds] = useState<Set<string>>(() => new Set())
 
-  const { page, limit, setPage } = usePageParams(15)
+  const { page, limit, setPage, getParam, setParams } = usePageParams(15)
+
+  const dateFrom = getParam('from') ?? defaultFromIso()
+  const dateTo = getParam('to') ?? isoToday()
 
   const filter = {
     ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
     ...(assignmentFilter === 'unassigned' ? { assigned: 'null' as const } : {}),
+    from: dateFrom,
+    to: dateTo,
     page,
     limit,
   }
@@ -393,6 +403,13 @@ function CuttingDispatchContent() {
             <SelectItem value="all">Tất cả phân công</SelectItem>
           </SelectContent>
         </Select>
+
+        <DateRangeFilter
+          from={dateFrom}
+          to={dateTo}
+          onChange={({ from, to }) => setParams({ from, to })}
+          className="ml-auto"
+        />
       </div>
 
       {/* Table */}
