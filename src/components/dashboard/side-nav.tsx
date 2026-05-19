@@ -77,8 +77,9 @@ export function SideNav() {
 
       <Separator />
 
-      {/* Nav links */}
-      <nav className="flex flex-col gap-1 p-3">
+      {/* Nav links — flex-1 + overflow-y-auto + min-h-0 so the list scrolls
+          and the footer below stays anchored even on short viewports. */}
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
         {navItemsForRole(role).map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href)
           return (
@@ -99,7 +100,7 @@ export function SideNav() {
         })}
       </nav>
 
-      <div className="mt-auto space-y-1 p-3 border-t">
+      <div className="space-y-1 border-t p-3">
         {/* Identity chip */}
         {role && (
           <Link
