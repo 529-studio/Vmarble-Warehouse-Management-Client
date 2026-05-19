@@ -7,6 +7,10 @@ export interface RemnantsFilter extends PageParams {
   status?: string
   min_length_mm?: number
   min_width_mm?: number
+  /** Inclusive ISO date (YYYY-MM-DD) lower bound on `created_at`. */
+  from?: string
+  /** Inclusive ISO date (YYYY-MM-DD) upper bound on `created_at`. */
+  to?: string
 }
 
 // ── Remnants API ──────────────────────────────────────────────────────────────
@@ -27,6 +31,8 @@ export const remnantsApi = {
         status: filter.status,
         min_length_mm: filter.min_length_mm,
         min_width_mm: filter.min_width_mm,
+        from: filter.from,
+        to: filter.to,
       },
     }),
 
