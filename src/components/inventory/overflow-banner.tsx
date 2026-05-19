@@ -5,6 +5,21 @@ import { cn } from '@/lib/utils'
 import { useOverflowStatus } from '@/lib/hooks/use-inventory'
 
 /**
+ * When the BE returns nonsensical ratios (e.g. corrupted seed data inflating
+ * remnant_area beyond every sheet ever produced), the raw percentage becomes
+ * a meaningless 6-digit number that blows up the layout. Cap the displayed
+ * value at 4 digits so the banner stays readable while still flagging that
+ * the inventory is far past the threshold.
+ */
+const DISPLAY_CAP_PCT = 9999
+
+export function formatOverflowPct(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  if (value >= DISPLAY_CAP_PCT) return `≥ ${DISPLAY_CAP_PCT}`
+  return value.toFixed(1)
+}
+
+/**
  * Sticky red banner shown across kiosk + dashboard layouts when remnant
  * inventory exceeds the overflow threshold (BR-K05). The banner forces the
  * shop floor to consume remnants before issuing a new whole sheet.
@@ -15,7 +30,7 @@ export function OverflowBanner({ className }: { className?: string }) {
   const { data } = useOverflowStatus()
   if (!data || !data.block_new_sheet_issue) return null
 
-  const pct = Number.isFinite(data.overflow_pct) ? data.overflow_pct.toFixed(1) : '—'
+  const pct = formatOverflowPct(data.overflow_pct)
   const threshold = Number.isFinite(data.threshold_pct) ? data.threshold_pct.toFixed(0) : '15'
 
   return (

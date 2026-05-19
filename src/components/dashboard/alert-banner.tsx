@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { formatOverflowPct } from '@/components/inventory/overflow-banner'
 
 type OverflowStatus = 'GREEN' | 'YELLOW' | 'RED'
 
@@ -9,6 +10,15 @@ interface AlertBannerProps {
   utilizationPct: number
   message: string
   className?: string
+  /**
+   * Live overflow ratio from /inventory/overflow-status. When provided and
+   * `drivenByOverflow` is true, we show this metric instead of the dashboard
+   * utilization so the banner agrees with the sticky red OverflowBanner.
+   */
+  overflowPct?: number
+  thresholdPct?: number
+  /** True when status was bumped to RED by the overflow query (BR-K05). */
+  drivenByOverflow?: boolean
 }
 
 const STATUS_CONFIG: Record<
@@ -41,16 +51,25 @@ export function AlertBanner({
   utilizationPct,
   message,
   className,
+  overflowPct,
+  thresholdPct,
+  drivenByOverflow,
 }: AlertBannerProps) {
   const config = STATUS_CONFIG[status]
   const Icon = config.icon
+
+  // When the red status comes from the overflow query, show the same metric
+  // as the sticky banner so the two never disagree on screen.
+  const detail = drivenByOverflow && overflowPct != null
+    ? `Tỷ lệ tràn: ${formatOverflowPct(overflowPct)}% (ngưỡng ${thresholdPct?.toFixed(0) ?? 15}%)`
+    : `${utilizationPct.toFixed(1)}% tận dụng`
 
   return (
     <Alert className={cn(config.className, className)}>
       <Icon className="size-4" />
       <AlertTitle>{config.title}</AlertTitle>
       <AlertDescription>
-        {message} ({utilizationPct.toFixed(1)}% tận dụng)
+        {message} ({detail})
       </AlertDescription>
     </Alert>
   )

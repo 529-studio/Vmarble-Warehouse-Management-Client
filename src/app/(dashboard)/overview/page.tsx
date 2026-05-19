@@ -23,6 +23,7 @@ import { AlertBanner } from '@/components/dashboard/alert-banner'
 import { CncQueueDepthWidget } from '@/components/dashboard/cnc-queue-depth-widget'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardOverview, useWIPPipeline } from '@/lib/hooks/use-dashboard'
+import { useOverflowStatus } from '@/lib/hooks/use-inventory'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { formatVND } from '@/lib/format'
@@ -276,6 +277,7 @@ function WholeSheetsByMaterial({ items }: { items: WholeSheetsByMaterialItem[] }
 
 export default function OverviewPage() {
   const { data, isLoading, isError, refetch } = useDashboardOverview()
+  const { data: overflow } = useOverflowStatus()
   // Pulled alongside the overview so the pie chart can render the SKU name
   // next to the SKU code (the backend dashboard payload only includes the code).
   const { data: skusData } = useSKUs({ limit: 200 })
@@ -304,8 +306,18 @@ export default function OverviewPage() {
 
   const { kpi, charts, recent_activity } = data
   const utilizationPct = Math.round(kpi.utilization_pct)
-  const alertStatus: 'RED' | 'YELLOW' | 'GREEN' =
+  // Take the worst of (a) dashboard utilization buckets and (b) the live
+  // overflow-status — they query different things and used to disagree
+  // on screen (e.g. red sticky banner over a green "bình thường" pill).
+  const utilizationStatus: 'RED' | 'YELLOW' | 'GREEN' =
     utilizationPct >= 90 ? 'RED' : utilizationPct >= 70 ? 'YELLOW' : 'GREEN'
+  const overflowStatus = overflow?.status ?? 'GREEN'
+  const alertStatus: 'RED' | 'YELLOW' | 'GREEN' =
+    overflowStatus === 'RED' || utilizationStatus === 'RED'
+      ? 'RED'
+      : overflowStatus === 'YELLOW' || utilizationStatus === 'YELLOW'
+        ? 'YELLOW'
+        : 'GREEN'
 
   const trendData = (charts.remnant_trend_7d ?? []).map((p) => ({
     ...p,
@@ -332,6 +344,9 @@ export default function OverviewPage() {
       <AlertBanner
         status={alertStatus}
         utilizationPct={utilizationPct}
+        overflowPct={overflow?.overflow_pct}
+        thresholdPct={overflow?.threshold_pct}
+        drivenByOverflow={overflowStatus === 'RED'}
         message={
           alertStatus === 'RED'
             ? 'Kho tấm lẻ quá tải — tạm ngừng xuất tấm nguyên'
