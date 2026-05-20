@@ -2,7 +2,20 @@
 
 > **Woodworking furniture workshop** — plywood cutting, intelligent remnant tracking, production planning, QR labelling, costing, and a warehouse dashboard.
 
-**Stack:** [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/) [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/) [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/) [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/) [![TanStack Query](https://img.shields.io/badge/TanStack_Query-5-FF4154?logo=react-query)](https://tanstack.com/query) [![shadcn/ui](https://img.shields.io/badge/shadcn/ui-black?logo=shadcnui)](https://ui.shadcn.com/) [![Zustand](https://img.shields.io/badge/Zustand-orange)](https://github.com/pmndrs/zustand) [![Playwright](https://img.shields.io/badge/Playwright-green?logo=playwright)](https://playwright.dev/) [![Vitest](https://img.shields.io/badge/Vitest-yellow?logo=vitest)](https://vitest.dev/)
+**Stack:** [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/) [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/) [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/) [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/) [![TanStack Query](https://img.shields.io/badge/TanStack_Query-5-FF4154?logo=react-query)](https://tanstack.com/query) [![shadcn/ui](https://img.shields.io/badge/shadcn/ui-black?logo=shadcnui)](https://ui.shadcn.com/) [![Zustand](https://img.shields.io/badge/Zustand-orange)](https://github.com/pmndrs/zustand) [![Playwright](https://img.shields.io/badge/Playwright-green?logo=playwright)](https://playwright.dev/) [![Vitest](https://img.shields.io/badge/Vitest-yellow?logo=vitest)](https://vitest.dev/) [![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
+
+## License
+
+This project is licensed under the **PolyForm Noncommercial License 1.0.0**.
+
+**What this means:**
+- ✅ Free for personal use, research, and education
+- ✅ You can fork, modify, and study the code
+- ❌ Commercial use requires a separate commercial license
+
+**For commercial licensing:** Contact giangdq202@gmail.com
+
+See [LICENSE](./LICENSE) for full terms.
 
 ---
 
