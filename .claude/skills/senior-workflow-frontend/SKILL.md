@@ -275,11 +275,11 @@ Before marking the task done, open the page and verify:
 
 - bullet detail 1
 - bullet detail 2
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 `area` is one of: `kiosk`, `dashboard`, `api`, `hooks`, `types`, or the feature name.
+
+**Do NOT add `Co-Authored-By: Claude …` or `🤖 Generated with Claude Code` lines** to commit messages or PR descriptions. The user does not want them.
 
 Example:
 ```
@@ -288,8 +288,6 @@ Example:
 - Detect NotAllowedError, NotFoundError, insecure context separately
 - Show Vietnamese error banner with actionable instructions per error type
 - Move lineItems → rows sync into useEffect to prevent infinite re-render
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 ### Branch rules
