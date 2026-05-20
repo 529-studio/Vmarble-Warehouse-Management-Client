@@ -13,7 +13,9 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:unit": "vitest run --project unit",
-    "test:unit:watch": "vitest --project unit"
+    "test:unit:watch": "vitest --project unit",
+    "gen:api": "bash scripts/gen-api.sh",
+    "gen:api:check": "bash scripts/gen-api.sh --check"
   },
   "dependencies": {
     "@microsoft/fetch-event-source": "^2.0.1",
@@ -61,8 +63,10 @@
     "eslint-config-next": "^16.2.6",
     "eslint-plugin-storybook": "^10.3.3",
     "jsdom": "^29.0.2",
+    "openapi-typescript": "^7.13.0",
     "playwright": "^1.58.2",
     "storybook": "^10.3.3",
+    "swagger2openapi": "^7.0.8",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^8.0.2",
