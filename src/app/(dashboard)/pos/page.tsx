@@ -32,6 +32,11 @@ import { useSKUs } from '@/lib/hooks/use-skus'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
+import {
+  DateRangeFilter,
+  defaultFromIso,
+  isoToday,
+} from '@/components/dashboard/date-range-filter'
 import type { CreatePOInput, CreateLineItemInput, SKU } from '@/types/api'
 
 // ── Helpers
@@ -362,11 +367,14 @@ function POsContent() {
   const role = useCurrentRole()
   const canCreatePO = can(role, 'create', 'pos')
 
-  const { page, limit, setPage } = usePageParams(10)
+  const { page, limit, setPage, getParam, setParams } = usePageParams(10)
   const [createOpen, setCreateOpen] = useState(false)
   const router = useRouter()
 
-  const { data, isLoading, isFetching, isError } = usePOs({ page, limit })
+  const dateFrom = getParam('from') ?? defaultFromIso()
+  const dateTo = getParam('to') ?? isoToday()
+
+  const { data, isLoading, isFetching, isError } = usePOs({ page, limit, from: dateFrom, to: dateTo })
 
   const pos = data?.items ?? []
   const totalItems = data?.total_items ?? 0
@@ -374,7 +382,12 @@ function POsContent() {
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <DateRangeFilter
+          from={dateFrom}
+          to={dateTo}
+          onChange={({ from, to }) => setParams({ from, to })}
+        />
         <ExportExcelButton report="purchase-orders" className="ml-auto" />
         {canCreatePO ? (
           <Button onClick={() => setCreateOpen(true)}>

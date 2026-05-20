@@ -34,6 +34,11 @@ import { DataPagination } from '@/components/ui/data-pagination'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { useMPOs, useCreateMPO } from '@/lib/hooks/use-purchasing'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import {
+  DateRangeFilter,
+  defaultFromIso,
+  isoToday,
+} from '@/components/dashboard/date-range-filter'
 import type { MPOStatus, CreateMPOInput } from '@/types/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -192,10 +197,15 @@ function PurchasingContent() {
   const [statusFilter, setStatusFilter] = useState<MPOStatus | 'ALL'>('ALL')
   const [createOpen, setCreateOpen] = useState(false)
 
-  const { page, limit, setPage } = usePageParams(15)
+  const { page, limit, setPage, getParam, setParams } = usePageParams(15)
+
+  const dateFrom = getParam('from') ?? defaultFromIso()
+  const dateTo = getParam('to') ?? isoToday()
 
   const filter = {
     ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+    from: dateFrom,
+    to: dateTo,
     page,
     limit,
   }
@@ -209,20 +219,28 @@ function PurchasingContent() {
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => { setStatusFilter(v as MPOStatus | 'ALL'); setPage(1) }}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
-            {(Object.keys(STATUS_LABEL) as MPOStatus[]).map((s) => (
-              <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v as MPOStatus | 'ALL'); setPage(1) }}
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
+              {(Object.keys(STATUS_LABEL) as MPOStatus[]).map((s) => (
+                <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <DateRangeFilter
+            from={dateFrom}
+            to={dateTo}
+            onChange={({ from, to }) => setParams({ from, to })}
+          />
+        </div>
 
         {canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
