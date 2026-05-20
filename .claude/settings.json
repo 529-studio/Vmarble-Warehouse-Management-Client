@@ -9,6 +9,15 @@
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/check-commit-message.sh"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/check-swagger-drift.sh"
+          }
+        ]
       }
     ]
   }
