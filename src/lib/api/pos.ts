@@ -4,6 +4,8 @@ import type { PO, CreatePOInput, LineItem, PagedResult } from '@/types/api'
 export interface POFilter {
   page?: number
   limit?: number
+  /** Free-text search — BE matches against PO `code` (and notes when present). */
+  search?: string
   /** Inclusive ISO date (YYYY-MM-DD) lower bound on `created_at`. */
   from?: string
   /** Inclusive ISO date (YYYY-MM-DD) upper bound on `created_at`. */
