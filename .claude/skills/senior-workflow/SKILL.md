@@ -216,8 +216,8 @@ If `tsc --noEmit` finds errors, fix all of them.
 
 - bullet point detail 1
 - bullet point detail 2
-
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 ```
 
 Where `area` is: `kiosk`, `dashboard`, `api`, `hooks`, `types`, or the feature name.
+
+**Do NOT add `Co-Authored-By: Claude …` or `🤖 Generated with Claude Code` lines** to commit messages or PR descriptions. The user does not want them.
