@@ -798,6 +798,10 @@ export interface AddMPOItemInput {
 export interface MPOFilter extends PageParams {
   status?: MPOStatus
   material_id?: string
+  /** Inclusive ISO date (YYYY-MM-DD) lower bound on `created_at`. */
+  from?: string
+  /** Inclusive ISO date (YYYY-MM-DD) upper bound on `created_at`. */
+  to?: string
 }
 
 // ── WIP Pipeline (dashboard) ─────────────────────────────────────────────────

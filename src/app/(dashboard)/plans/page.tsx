@@ -509,7 +509,7 @@ function PlansContent() {
             onChange={(v) => setInputValue(v)}
             isPending={isPending}
             placeholder="Tìm theo mã đơn hàng, ghi chú…"
-            containerClassName="mt-1 w-full max-w-sm"
+            containerClassName="mt-1 w-full"
           />
         </div>
 

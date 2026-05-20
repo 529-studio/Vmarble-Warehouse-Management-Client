@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SearchInput } from '@/components/ui/search-input'
 import { DataPagination } from '@/components/ui/data-pagination'
 import {
   Dialog,
@@ -28,10 +29,16 @@ import {
 } from '@/components/ui/table'
 import { mapApiErrorVi } from '@/lib/api/client'
 import { usePOs, useCreatePO } from '@/lib/hooks/use-pos'
+import { useDebounce } from '@/lib/hooks/use-debounce'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
+import {
+  DateRangeFilter,
+  defaultFromIso,
+  isoToday,
+} from '@/components/dashboard/date-range-filter'
 import type { CreatePOInput, CreateLineItemInput, SKU } from '@/types/api'
 
 // ── Helpers
@@ -362,11 +369,30 @@ function POsContent() {
   const role = useCurrentRole()
   const canCreatePO = can(role, 'create', 'pos')
 
-  const { page, limit, setPage } = usePageParams(10)
+  const { page, limit, search, setPage, setSearch, getParam, setParams } = usePageParams(10)
   const [createOpen, setCreateOpen] = useState(false)
   const router = useRouter()
 
-  const { data, isLoading, isFetching, isError } = usePOs({ page, limit })
+  const [inputValue, setInputValue] = useState(search)
+  const debouncedSearch = useDebounce(inputValue, 400)
+  const [prevDebounced, setPrevDebounced] = useState(debouncedSearch)
+  if (prevDebounced !== debouncedSearch) {
+    setPrevDebounced(debouncedSearch)
+    setSearch(debouncedSearch)
+  }
+
+  const dateFrom = getParam('from') ?? defaultFromIso()
+  const dateTo = getParam('to') ?? isoToday()
+
+  const { data, isLoading, isFetching, isError } = usePOs({
+    page,
+    limit,
+    search: debouncedSearch || undefined,
+    from: dateFrom,
+    to: dateTo,
+  })
+
+  const isSearchPending = isFetching && inputValue !== debouncedSearch
 
   const pos = data?.items ?? []
   const totalItems = data?.total_items ?? 0
@@ -374,7 +400,19 @@ function POsContent() {
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <SearchInput
+          value={inputValue}
+          onChange={setInputValue}
+          isPending={isSearchPending}
+          placeholder="Tìm theo mã PO…"
+          containerClassName="w-full sm:max-w-xs"
+        />
+        <DateRangeFilter
+          from={dateFrom}
+          to={dateTo}
+          onChange={({ from, to }) => setParams({ from, to })}
+        />
         <ExportExcelButton report="purchase-orders" className="ml-auto" />
         {canCreatePO ? (
           <Button onClick={() => setCreateOpen(true)}>
