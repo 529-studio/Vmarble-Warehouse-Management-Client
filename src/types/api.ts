@@ -723,6 +723,16 @@ export interface PagedResult<T> {
   limit: number
 }
 
+/**
+ * Matches the Go backend httpkit.CursorResult[T] envelope (keyset pagination).
+ * `next_cursor` is opaque — FE round-trips it as `?cursor=...` and never parses.
+ */
+export interface CursorResult<T> {
+  items: T[]
+  next_cursor: string
+  has_more: boolean
+}
+
 /** @deprecated use PagedResult instead */
 export interface PaginatedResponse<T> {
   data: T[]
