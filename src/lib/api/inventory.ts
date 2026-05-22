@@ -1,4 +1,4 @@
-import type { AuditLogAction, AuditLogEntry, OverflowStatus } from '@/types/api'
+import type { AuditLogAction, AuditLogEntry, CursorResult, OverflowStatus } from '@/types/api'
 import { apiClient } from './client'
 
 export interface PreAssignSheetInput {
@@ -32,11 +32,15 @@ export const inventoryApi = {
 
   /**
    * GET /api/v1/inventory/audit-log?action=REMNANT_BYPASSED
-   * Returns audit-log entries filtered by action — used by the WO list to
-   * badge work orders the planner created via remnant bypass (BR-K05).
+   * BE returns the cursor envelope; this caller only needs to badge bypassed
+   * WOs in the visible list, so we fetch the first page (limit=100) and
+   * surface a flat array. Migrate to useCursorList when the audit-log gets
+   * its own viewer page.
    */
-  listAuditLogByAction: (action: AuditLogAction) =>
-    apiClient.get<AuditLogEntry[]>('/inventory/audit-log', {
-      params: { action },
-    }),
+  listAuditLogByAction: async (action: AuditLogAction): Promise<AuditLogEntry[]> => {
+    const res = await apiClient.get<CursorResult<AuditLogEntry>>('/inventory/audit-log', {
+      params: { action, limit: 100 },
+    })
+    return res.items
+  },
 }

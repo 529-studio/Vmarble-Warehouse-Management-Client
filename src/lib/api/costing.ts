@@ -5,13 +5,15 @@ import type {
   CostingRecord,
   CostingRecordDetail,
   CreateAdjustmentInput,
-  PageParams,
-  PagedResult,
+  CursorResult,
   WasteReportFilter,
   WasteReportRow,
 } from '@/types/api'
 
-export interface CostingFilter extends PageParams {
+export interface CostingFilter {
+  /** Opaque cursor token from the previous page; absent for the first page. */
+  cursor?: string | null
+  limit?: number
   finalized?: boolean
   work_order_id?: string
   /** SKU id filter — passed through to BE; FE also applies a defensive filter. */
@@ -39,11 +41,10 @@ function applyWasteReportParams(url: URL, filter: WasteReportFilter) {
 
 export const costingApi = {
   list: (filter: CostingFilter = {}) =>
-    apiClient.get<PagedResult<CostingRecord>>('/costing', {
+    apiClient.get<CursorResult<CostingRecord>>('/costing', {
       params: {
-        page: filter.page,
+        cursor: filter.cursor ?? undefined,
         limit: filter.limit,
-        order: filter.order,
         finalized: filter.finalized,
         work_order_id: filter.work_order_id,
         sku_id: filter.sku_id,

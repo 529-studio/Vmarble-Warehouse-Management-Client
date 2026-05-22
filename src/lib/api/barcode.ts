@@ -1,5 +1,5 @@
 import { normalizeAuthToken } from '@/lib/auth/token'
-import type { BarcodeRecord, BatchPrintInput, ScanEvent, ScanResult, ScanCheckpoint, GenerateBarcodeInput } from '@/types/api'
+import type { BarcodeRecord, BatchPrintInput, CursorResult, ScanEvent, ScanResult, ScanCheckpoint, GenerateBarcodeInput } from '@/types/api'
 import { ApiClientError, apiClient } from './client'
 
 function buildApiUrl(path: string) {
@@ -45,9 +45,20 @@ export const barcodeApi = {
   listByWorkOrder: (workOrderId: string) =>
     apiClient.get<BarcodeRecord[]>('/barcodes', { params: { work_order_id: workOrderId } }),
 
-  /** GET /api/proxy/barcodes/:id/scans */
-  listScans: (barcodeId: string) =>
-    apiClient.get<ScanEvent[]>(`/barcodes/${barcodeId}/scans`),
+  /**
+   * GET /api/proxy/barcodes/:id/scans
+   * BE returns the cursor envelope; consumers (work-order detail tab, /barcodes
+   * latest-checkpoint badge) only need a flat list of recent scans, so we
+   * fetch the first page (limit=100) and unwrap. Migrate to useCursorList if
+   * a dedicated full-history viewer page is added.
+   */
+  listScans: async (barcodeId: string): Promise<ScanEvent[]> => {
+    const res = await apiClient.get<CursorResult<ScanEvent>>(
+      `/barcodes/${barcodeId}/scans`,
+      { params: { limit: 100 } },
+    )
+    return res.items
+  },
 
   /** POST /api/proxy/barcodes/:id/scans
    * scanned_by UUID is extracted server-side from the JWT — do not send it.
