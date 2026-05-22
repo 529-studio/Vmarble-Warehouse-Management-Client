@@ -688,10 +688,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List scan events */
+        /** List scan events (keyset paginated) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description opaque cursor token returned in next_cursor; omit for first page */
+                    cursor?: string;
+                    /** @description page size (default 50, max 200) */
+                    limit?: number;
+                };
                 header?: never;
                 path: {
                     /** @description barcode id (uuid) */
@@ -707,7 +712,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_module_barcode.ScanEvent"][];
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_barcode_ScanEvent"];
                     };
                 };
                 /** @description Bad Request */
@@ -832,18 +837,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List costing records */
+        /** List costing records (keyset pagination) */
         get: {
             parameters: {
                 query?: {
-                    /** @description page number (default 1) */
-                    page?: number;
+                    /** @description opaque keyset cursor from a previous response (omit for first page) */
+                    cursor?: string;
                     /** @description items per page (default 10, max 100) */
                     limit?: number;
                     /** @description filter by finalized: true or false (omit for all) */
                     finalized?: boolean;
-                    /** @description sort direction: asc, desc (default asc) */
-                    order?: string;
                 };
                 header?: never;
                 path?: never;
@@ -857,7 +860,18 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_costing_CostingRecord"];
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_costing_CostingRecord"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1650,7 +1664,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List audit log entries by action across all entities
+         * List audit log entries by action across all entities (keyset paginated)
          * @description Useful for accountant/admin review (e.g. action=REMNANT_BYPASSED,
          *     OVERFLOW_BYPASSED). Restricted to accountant + admin roles.
          */
@@ -1659,6 +1673,10 @@ export interface paths {
                 query: {
                     /** @description audit action (REMNANT_BYPASSED, OVERFLOW_BYPASSED, TRANSFER, ADJUSTMENT) */
                     action: string;
+                    /** @description opaque cursor token returned in next_cursor; omit for first page */
+                    cursor?: string;
+                    /** @description page size (default 50, max 200) */
+                    limit?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1672,7 +1690,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_module_inventory.AuditLogEntry"][];
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_AuditLogEntry"];
                     };
                 };
                 /** @description Bad Request */
@@ -1703,10 +1721,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List audit log entries for an inventory entity */
+        /** List audit log entries for an inventory entity (keyset paginated) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description opaque cursor token returned in next_cursor; omit for first page */
+                    cursor?: string;
+                    /** @description page size (default 50, max 200) */
+                    limit?: number;
+                };
                 header?: never;
                 path: {
                     /** @description entity type: REMNANT or BOARD_SHEET */
@@ -1724,7 +1747,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_module_inventory.AuditLogEntry"][];
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_AuditLogEntry"];
                     };
                 };
                 /** @description Bad Request */
@@ -1819,8 +1842,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List cutting records (history report)
-         * @description Returns a paginated history of cut events enriched with SKU code/name and the work-order assignee. Ordered by created_at DESC. Optional filters: user_id (maps to work_orders.assigned_to), work_order_id, from/to (RFC3339).
+         * List cutting records (history report, keyset paginated)
+         * @description Returns a keyset-paginated history of cut events enriched with SKU code/name and the work-order assignee. Ordered by created_at DESC. Optional filters: user_id (maps to work_orders.assigned_to), work_order_id, from/to (RFC3339).
          */
         get: {
             parameters: {
@@ -1833,9 +1856,9 @@ export interface paths {
                     from?: string;
                     /** @description end of date range (RFC3339) */
                     to?: string;
-                    /** @description page number (default 1) */
-                    page?: number;
-                    /** @description items per page (default 10, max 100) */
+                    /** @description opaque cursor token returned in next_cursor; omit for first page */
+                    cursor?: string;
+                    /** @description page size (default 50, max 200) */
                     limit?: number;
                 };
                 header?: never;
@@ -1850,7 +1873,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_inventory_CuttingRecordReport"];
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_CuttingRecordReport"];
                     };
                 };
                 /** @description Bad Request */
@@ -7137,10 +7160,31 @@ export interface components {
         "github_com_vmarble_warehouse-management-service_internal_domain.RemnantStatus": "AVAILABLE" | "ALLOCATED" | "CONSUMED" | "WASTE";
         /** @enum {string} */
         "github_com_vmarble_warehouse-management-service_internal_domain.WorkOrderStatus": "PLANNED" | "IN_CUTTING" | "IN_PROCESSING" | "COMPLETED" | "COSTED" | "CANCELED";
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_barcode_ScanEvent": {
+            has_more?: boolean;
+            items?: components["schemas"]["internal_module_barcode.ScanEvent"][];
+            next_cursor?: string;
+        };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_costing_CostingRecord": {
+            has_more?: boolean;
+            items?: components["schemas"]["internal_module_costing.CostingRecord"][];
+            next_cursor?: string;
+        };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_AuditLogEntry": {
+            has_more?: boolean;
+            items?: components["schemas"]["internal_module_inventory.AuditLogEntry"][];
+            next_cursor?: string;
+        };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_CuttingRecordReport": {
+            has_more?: boolean;
+            items?: components["schemas"]["internal_module_inventory.CuttingRecordReport"][];
+            next_cursor?: string;
+        };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_authn_UserDetail": {
             current_page?: number;
             items?: components["schemas"]["internal_module_authn.UserDetail"][];
             limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7148,6 +7192,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_catalog.Material"][];
             limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7155,13 +7200,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_catalog.SKU"][];
             limit?: number;
-            total_items?: number;
-            total_pages?: number;
-        };
-        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_costing_CostingRecord": {
-            current_page?: number;
-            items?: components["schemas"]["internal_module_costing.CostingRecord"][];
-            limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7169,13 +7208,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_inventory.BoardSheet"][];
             limit?: number;
-            total_items?: number;
-            total_pages?: number;
-        };
-        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_inventory_CuttingRecordReport": {
-            current_page?: number;
-            items?: components["schemas"]["internal_module_inventory.CuttingRecordReport"][];
-            limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7183,6 +7216,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_inventory.InventoryLot"][];
             limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7190,6 +7224,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_inventory.Remnant"][];
             limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7197,6 +7232,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_order.PO"][];
             limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7204,6 +7240,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_planning.Plan"][];
             limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7211,6 +7248,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_planning.PlanLookupItem"][];
             limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7218,6 +7256,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_production.WorkOrder"][];
             limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
@@ -7225,6 +7264,7 @@ export interface components {
             current_page?: number;
             items?: components["schemas"]["internal_module_purchasing.PurchaseOrder"][];
             limit?: number;
+            total_is_estimate?: boolean;
             total_items?: number;
             total_pages?: number;
         };
