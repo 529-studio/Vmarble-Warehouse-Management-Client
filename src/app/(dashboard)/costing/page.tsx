@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SearchInput } from '@/components/ui/search-input'
-import { DataPagination } from '@/components/ui/data-pagination'
+import { LoadMoreButton } from '@/components/ui/load-more-button'
 import {
   Dialog,
   DialogContent,
@@ -357,8 +357,7 @@ function CostingContent() {
   const canAdjustCosting = can(role, 'adjust', 'costing')
   const canWriteCosting = canComputeCosting || canFinalizeCosting || canAdjustCosting
 
-  const { page, search, limit, getParam, setPage, setSearch, setParam, setParams } =
-    usePageParams(10)
+  const { search, getParam, setSearch, setParam, setParams } = usePageParams(10)
 
   const [inputValue, setInputValue] = useState(search)
   const debouncedSearch = useDebounce(inputValue, 400)
@@ -396,9 +395,8 @@ function CostingContent() {
   const [computingWorkOrderId, setComputingWorkOrderId] = useState<string | null>(null)
   const [finalizingWorkOrderId, setFinalizingWorkOrderId] = useState<string | null>(null)
 
-  const { data, isLoading, isFetching, isError } = useCosting({
-    page,
-    limit,
+  const list = useCosting({
+    limit: 20,
     search: normalizedSearch,
     finalized:
       finalizedFilter === 'ALL' ? undefined : finalizedFilter === 'FINALIZED',
@@ -406,6 +404,7 @@ function CostingContent() {
     from: dateFrom || undefined,
     to: dateTo || undefined,
   })
+  const { items, hasMore, fetchNextPage, isFetchingNextPage, isLoading, isFetching, isError } = list
 
   // SKU lookup — used both for the dropdown and to render readable names in
   // the table once #190 lands.
@@ -451,10 +450,9 @@ function CostingContent() {
 
   // Defensive client-side filter: if BE silently drops sku_id/from/to params
   // (#190 says these may not be wired yet), the toolbar still narrows the
-  // visible page so the user trusts what they see. Mirrors the same fallback
+  // visible list so the user trusts what they see. Mirrors the same fallback
   // we use on /cutting-dispatch for `assigned`.
   const filteredRecords = useMemo(() => {
-    const items = data?.items ?? []
     return items.filter((r) => {
       if (skuFilter !== ALL_SKUS && r.sku_id !== skuFilter) return false
       if (dateFrom) {
@@ -467,9 +465,7 @@ function CostingContent() {
       }
       return true
     })
-  }, [data?.items, skuFilter, dateFrom, dateTo])
-  const totalItems = data?.total_items ?? 0
-  const totalPages = data?.total_pages ?? 1
+  }, [items, skuFilter, dateFrom, dateTo])
 
   function clearAllFilters() {
     setInputValue('')
@@ -617,8 +613,8 @@ function CostingContent() {
               {isLoading
                 ? 'Đang tải…'
                 : hasAnyFilter
-                  ? `Kết quả lọc (${filteredRecords.length}${filteredRecords.length !== totalItems ? ` / ${totalItems}` : ''})`
-                  : `Tất cả bản ghi (${totalItems})`}
+                  ? `Kết quả lọc (${filteredRecords.length}${hasMore ? '+' : ''})`
+                  : `Đã tải (${items.length}${hasMore ? '+' : ''})`}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -638,7 +634,7 @@ function CostingContent() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableSkeleton rows={limit} />
+                  <TableSkeleton rows={10} />
                 ) : filteredRecords.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
@@ -747,12 +743,11 @@ function CostingContent() {
       )}
 
       {!isLoading && !isError && (
-        <DataPagination
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={setPage}
+        <LoadMoreButton
+          hasMore={hasMore}
+          isFetching={isFetchingNextPage}
+          onClick={fetchNextPage}
+          itemCount={items.length}
         />
       )}
     </>

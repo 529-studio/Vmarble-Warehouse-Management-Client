@@ -2,16 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { costingApi, type CostingFilter } from '@/lib/api/costing'
 import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
-import type { CreateAdjustmentInput } from '@/types/api'
+import { useCursorList } from '@/lib/hooks/use-cursor-list'
+import type { CostingRecord, CreateAdjustmentInput } from '@/types/api'
 
 export const COSTING_KEY = 'costing'
 
-export function useCosting(filter: CostingFilter = {}) {
-  return useQuery({
-    queryKey: [COSTING_KEY, filter],
-    queryFn: () => costingApi.list(filter),
+/**
+ * Cursor-paginated costing list. Filters (excluding `cursor`) form the cache
+ * key — when any filter changes the cache splits and the list naturally
+ * resets to the first page.
+ */
+export function useCosting(
+  filter: Omit<CostingFilter, 'cursor'> = {},
+) {
+  return useCursorList<CostingRecord>({
+    queryKey: [COSTING_KEY, 'cursor', filter],
+    fetchPage: (cursor) => costingApi.list({ ...filter, cursor }),
     staleTime: 60_000,
-    placeholderData: (prev) => prev,
   })
 }
 
