@@ -1,25 +1,77 @@
 # Vmarble Warehouse Management — Frontend
 
-> **Woodworking furniture workshop** — plywood cutting, intelligent remnant tracking, production planning, QR labelling, costing, and a warehouse dashboard.
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![TanStack Query](https://img.shields.io/badge/TanStack_Query-5-FF4154?logo=react-query)](https://tanstack.com/query)
+[![Playwright](https://img.shields.io/badge/Playwright-green?logo=playwright)](https://playwright.dev/)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
-**Stack:** [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/) [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/) [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/) [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/) [![TanStack Query](https://img.shields.io/badge/TanStack_Query-5-FF4154?logo=react-query)](https://tanstack.com/query) [![shadcn/ui](https://img.shields.io/badge/shadcn/ui-black?logo=shadcnui)](https://ui.shadcn.com/) [![Zustand](https://img.shields.io/badge/Zustand-orange)](https://github.com/pmndrs/zustand) [![Playwright](https://img.shields.io/badge/Playwright-green?logo=playwright)](https://playwright.dev/) [![Vitest](https://img.shields.io/badge/Vitest-yellow?logo=vitest)](https://vitest.dev/) [![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
+> **Production manufacturing execution system (MES) running live at a Vietnam-based stone & wood export factory.**
+> Built end-to-end as the contracted engineer for a real, paying client. Self-funded hosting, real factory staff using it daily, real customer money on the line — not a school project.
 
-## License
+This repo is the frontend. The accompanying [backend](https://github.com/giangdq202/Vmarble-Warehouse-Management-Service) is a Go modular monolith (Gin + pgx/v5 + PostgreSQL 17).
 
-This project is licensed under the **PolyForm Noncommercial License 1.0.0**.
-
-**What this means:**
-- ✅ Free for personal use, research, and education
-- ✅ You can fork, modify, and study the code
-- ❌ Commercial use requires a separate commercial license
-
-**For commercial licensing:** Contact giangdq202@gmail.com
-
-See [LICENSE](./LICENSE) for full terms.
+> **Note on what's open vs. closed**
+> The code is open for technical reference (architecture, patterns, testing, CI/CD). Customer-specific business rules, sales scripts, and operational runbooks live outside this repo by contractual courtesy — code stays public, business stays private.
 
 ---
 
-## Getting Started
+## Production Snapshot
+
+| | |
+|---|---|
+| **Stage** | Live in production with a paying client |
+| **Engagement** | Solo contractor build; full-stack ownership (BE + FE + DB + deploy + on-call) |
+| **Surfaces** | Desktop dashboard (planners, accountants, owner) + mobile kiosk PWA (shop-floor workers) |
+| **Hosting** | Self-funded VPS; Docker compose; HTTPS via reverse proxy |
+| **Operations** | GitHub Actions CD on push to `dev`; rolling restarts; type-checked builds gating merge |
+| **Reliability** | Strict TS, ESLint zero-warning gate, Vitest component tests, Playwright E2E smoke |
+
+Demo / staging URL is shared on request — production URL is held private at the customer's request.
+
+---
+
+## What this app does (high level)
+
+A single Next.js app serving two distinct audiences off the same API contract:
+
+```
+┌─ Desktop dashboard ────────────────────────────────────────────────┐
+│ Planners / accountants / owner                                     │
+│ Catalog · Orders · Plans · Work orders · Costing · Reports · Users │
+└────────────────────────────────────────────────────────────────────┘
+                                 ↓ shared typed API client
+┌─ Mobile kiosk PWA ─────────────────────────────────────────────────┐
+│ Shop-floor workers on tablets at cutting / processing stations     │
+│ Cutting orders · Report cut · Remnant intake · Scan checkpoints    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+Two route groups, one design system, one auth session, one TanStack Query cache. The kiosk is touch-first (≥48 px tap targets, 375 px baseline, wake-lock during scans); the dashboard is information-dense (1280 px baseline, side nav, KPI cards, charts).
+
+> Specific business rules (validation thresholds, allocation strategies, costing formulas) live in private specs by client agreement. The implementation patterns — how those rules are surfaced in the UI — are visible throughout `src/app/(dashboard)` and `src/app/(kiosk)`.
+
+---
+
+## Why this codebase is interesting (engineer-eye view)
+
+| Concern | Choice | Why it matters |
+|---|---|---|
+| **App shell** | Next.js 15 App Router with two route groups (`(dashboard)`, `(kiosk)`) on a single deployment | One auth session, one query cache, one design system across desktop and mobile-PWA personas |
+| **API contract** | DTOs in `src/types/api.ts` are hand-aligned to the Go backend's `iface.go` (snake_case preserved) | No codegen drift; types are the single source of truth between BE and FE |
+| **Data layer** | TanStack Query v5 hooks per domain in `src/lib/hooks/`; thin typed `fetch` wrappers in `src/lib/api/` | Cache invalidation is explicit and colocated with mutations; no global store soup |
+| **State** | Zustand for ephemeral UI state only; server state lives in Query | Rules out the usual Redux-everywhere antipattern; render-correctness comes from invalidation, not selectors |
+| **RBAC** | Central `can(role, action, resource)` policy in `src/lib/auth/`; every gated UI consults it | New screens can't accidentally leak across personas; one place to audit |
+| **Forms & validation** | shadcn/ui + react-hook-form + zod schemas mirroring the backend's domain rules | Inline validation matches what the API would reject anyway — no double-source of truth surprises |
+| **Kiosk UX** | PWA install, wake-lock during scans, tactile vibration on success, BigButton primitives, 48 px touch minimum | Built around real-world tablet use on a factory floor — gloves, glare, dust |
+| **Testing** | Vitest + Testing Library for components; Playwright for end-to-end smoke; Storybook play() interactions | Three layers, none redundant — units catch logic, E2E catches wiring, Storybook catches states |
+| **CI** | `tsc --noEmit` + `next build` + ESLint zero-warning gate on every PR | A failing PR cannot merge; type errors are caught before review |
+
+---
+
+## Quick Start
 
 ```bash
 npm install
@@ -33,21 +85,29 @@ npm run lint         # ESLint (0 warnings enforced)
 Copy `.env.example` to `.env.local` and set:
 
 ```env
-NEXT_PUBLIC_API_URL=/api/proxy    # Next.js rewrite proxy to Go backend
+NEXT_PUBLIC_API_URL=/api/proxy    # Next.js rewrite → Go backend
 BACKEND_URL=http://localhost:8080 # Go backend (server-side only)
 ```
 
+Pair with the [backend](https://github.com/giangdq202/Vmarble-Warehouse-Management-Service) running locally (`docker compose up --build` in that repo) and you have the full stack on one machine.
+
 ---
 
-## Architecture
+## Tech Stack
 
-Two fully separate UI experiences share a single Next.js app:
+| Concern | Choice |
+|---|---|
+| Framework | Next.js 15 (App Router, Turbopack) |
+| UI | React 19, TypeScript 5, Tailwind CSS 4, shadcn/ui |
+| Server state | TanStack Query v5 |
+| Client state | Zustand (ephemeral UI only) |
+| Forms | react-hook-form + zod |
+| Tests | Vitest + Testing Library; Playwright; Storybook play() |
+| CI | GitHub Actions — tsc + ESLint + build |
 
-| Route group | Audience | Baseline |
-|---|---|---|
-| `(kiosk)` | CNC workers — mobile PWA | 375 px, touch ≥ 48 px |
-| `(dashboard)` | Managers / planners / accountants | 1280 px, side nav |
-| `(auth)` | All users | Login page |
+---
+
+## Project Structure
 
 ```
 src/
@@ -60,14 +120,14 @@ src/
 │                          remnants · barcodes · users · purchasing
 │                          waste-report · profile
 ├── components/
-│   ├── ui/                shadcn/ui components
+│   ├── ui/                shadcn/ui primitives
 │   ├── kiosk/             BigButton · ScannerView · LabelPreview · BottomNav
 │   └── dashboard/         StatCard · AlertBanner · SideNav
 ├── lib/
 │   ├── api/               typed fetch wrappers per domain
 │   ├── hooks/             TanStack Query hooks per domain
 │   └── auth/              RBAC — can(role, action, resource)
-└── types/api.ts            DTOs matching Go backend iface.go (snake_case)
+└── types/api.ts           DTOs aligned to Go backend iface.go
 ```
 
 ---
@@ -81,16 +141,64 @@ npm run test:unit:watch    # Watch mode
 npm run test:e2e           # Playwright (requires npm run dev running)
 npm run test:e2e:ui        # Interactive Playwright UI
 
-npx vitest --project storybook  # Storybook interaction tests (play functions)
+npx vitest --project storybook  # Storybook interaction tests
 ```
-
-### Coverage
 
 | Suite | Scope |
 |---|---|
-| Component unit | `CuttingOrderCard`, `SuggestionCard`, `ReportCutForm`, `OverflowBanner`, `work-order-gate` |
-| E2E smoke | Auth redirects, kiosk nav, cutting flow, scan checkpoint, dashboard WO |
+| Component unit | Cutting card, suggestion card, report-cut form, overflow banner, work-order gate |
+| E2E smoke | Auth redirects, kiosk navigation, cutting flow, scan checkpoint, dashboard work order |
 | Storybook interaction | `play()` on Button + Header stories |
+
+---
+
+## Feature Surface
+
+### Kiosk (mobile PWA — shop-floor)
+
+- Cutting orders list with pull-to-refresh
+- Remnant suggestion modal with bypass confirmation
+- Report-cut form: material → lot → sheet cascade
+- Domain-rule gates surfaced inline (the API is authoritative; the UI mirrors it for fast feedback)
+- Remnant intake — QR location scan
+- Browseable remnant inventory
+- QR scan + checkpoint recording with wake-lock, vibration, success screen, resume
+- Label preview + print PDF
+
+### Dashboard (desktop — office)
+
+- Overview: KPI cards, charts, activity feed, whole-sheet stock widget
+- Catalogs: materials, SKUs (with BOM editor)
+- Sales: purchase orders, production plans (create / approve / cancel with reason)
+- Production: work orders with status advance + assignment, cutting dispatch board
+- Inventory: remnants list, filter, allocate, waste; barcode generation + scan history
+- Costing: compute, finalize, adjust; pre-cut start gate; waste cost report with CSV export
+- Purchasing: material purchase orders
+- Admin: user CRUD + active toggle; self-service profile
+
+### Shared / Infrastructure
+
+- Central RBAC policy in `src/lib/auth/`
+- Vietnamese domain terminology standardized across UI
+- Scan metadata (actor / device) attached to every checkpoint
+- CI quality gates — tsc + build + zero-warning lint
+- Playwright E2E + Vitest component + Storybook interaction layered tests
+
+---
+
+## RBAC Roles
+
+| Role | Access |
+|---|---|
+| `admin` | All dashboard modules; user CRUD; create PO/plans/WO; approve/cancel; advance/assign WO; compute & finalize costing; create purchase orders; generate waste report |
+| `accountant` | All dashboard read; create PO; compute, finalize, adjust costing; generate waste cost report |
+| `planner` | All dashboard read; create + approve + cancel plans; create work orders |
+| `warehouse` | All dashboard read; create + cancel material purchase orders |
+| `foreman` | Work orders — advance, consume, generate barcodes; profile |
+| `cnc_manager` | Work orders read; cutting dispatch — assign; profile |
+| `cnc` | Kiosk only — scan, cutting orders, report-cut, remnant list/store, account |
+
+The dashboard groups these into three personas (Worker / Planner / Admin) for nav and route gating; the seven DB roles remain available for finer-grained customer-specific rules.
 
 ---
 
@@ -107,238 +215,34 @@ npx vitest --project storybook  # Storybook interaction tests (play functions)
 
 ---
 
-## Feature Status
+## License
 
-### Kiosk (mobile PWA — CNC worker)
+Licensed under [PolyForm Noncommercial 1.0.0](./LICENSE).
 
-| Feature | Status |
-|---|---|
-| Cutting orders list + pull-to-refresh | Done |
-| Remnant suggestion modal (Best Fit + FIFO) | Done |
-| Report cut form — material → lot → sheet cascade | Done |
-| Area conservation gate (BR-K03) | Done |
-| Remnant store — QR location scan | Done |
-| Remnant list (browse inventory) | Done |
-| QR scan + checkpoint recording | Done |
-| Scan UX — wake lock, vibration, success screen, resume | Done |
-| Label preview + print PDF (in-tem flow) | Done |
-| Mobile UX audit & polish | Done |
-
-### Dashboard (desktop — managers, planners, accountants)
-
-| Feature | Status |
-|---|---|
-| Overview — KPI cards, charts, activity feed | Done |
-| Materials catalog — list & create | Done |
-| SKU catalog — list, create & BOM editor | Done |
-| Purchase Orders — list & create | Done |
-| Production Plans — list, create & approve | Done |
-| Work Orders — list, create, advance status, assign | Done |
-| Cutting Dispatch — default `PLANNED` + unassigned filter | Done |
-| Remnants — list, filter, allocate, waste | Done |
-| Barcodes — generate, scan history | Done |
-| Costing — compute, finalize, adjustment (BR-C01–C04) | Done |
-| Costing pre-cut gate — block start without finalized cost | Done |
-| Waste cost report — filter, chart, CSV export (BR-C03) | Done |
-| Purchasing — material purchase orders list & create | Done |
-| Whole-sheet stock widget on overview | Done |
-| Scan Event History — checkpoint timeline | Done |
-| Remnant suggestions in WO create dialog (BR-K05) | Done |
-| Remnant bypass confirmation modal (BR-K05) | Done |
-| Consumption record per WO — auxiliary/metal (BR-P03/P04) | Done |
-| User profile page (self-service) | Done |
-| Admin — User Management CRUD + active toggle | Done |
-
-### Shared / Infrastructure
-
-| Feature | Status |
-|---|---|
-| RBAC — `can(role, action, resource)` central policy | Done |
-| Kiosk account profile (self-service password change) | Done |
-| Vietnamese domain terminology standardization | Done |
-| Scan metadata (actor / device) attached to scans | Done |
-| CI quality gates — tsc + build | Done |
-| Playwright E2E setup + smoke tests | Done |
-| Component tests — Testing Library + Vitest | Done |
+- Free for personal use, research, and education.
+- Free to fork, modify, and study.
+- Commercial use requires a separate license — contact giangdq202@gmail.com.
 
 ---
 
-## RBAC Roles
+## Tài liệu tiếng Việt
 
-| Role | Access |
-|---|---|
-| `admin` | All dashboard modules; user CRUD; create PO/plans/WO; approve/cancel; advance/assign WO; compute & finalize costing; create purchase orders; generate waste report |
-| `accountant` | All dashboard read; create PO; compute, finalize, adjust costing; generate waste cost report |
-| `planner` | All dashboard read; create + approve + cancel plans; create work orders |
-| `warehouse` | All dashboard read; create + cancel material purchase orders |
-| `foreman` | Work orders — advance, consume, generate barcodes; profile |
-| `cnc_manager` | Work orders read; cutting dispatch — assign; profile |
-| `cnc` | Kiosk only — scan, cutting orders, report-cut, remnant list/store, account |
+Frontend cho hệ thống MES (Manufacturing Execution System) đang chạy production tại nhà máy xuất khẩu đá & gỗ ở Việt Nam. Build end-to-end với vai trò engineer hợp đồng — code mở để tham khảo kỹ thuật, business logic riêng của khách giữ private theo thỏa thuận.
 
----
+Một ứng dụng Next.js phục vụ hai đối tượng:
 
-## Related Repositories
+- **Dashboard** (desktop, 1280 px) cho nhân viên văn phòng — kế hoạch, kế toán, owner.
+- **Kiosk PWA** (mobile, 375 px, touch ≥ 48 px) cho công nhân xưởng cắt / xử lý.
 
-- **Backend (Go):** `giangdq202/Vmarble-Warehouse-Management` — Gin · pgx/v5 · PostgreSQL 17
-
----
-
----
-
-# Vmarble Quản lý Kho — Frontend
-
-> **Xưởng gỗ nội thất** — quản lý cắt ván ép, tái sử dụng tấm lẻ thông minh, lập kế hoạch sản xuất, dán tem QR, tính giá thành và dashboard kho hàng.
-
-**Stack:** [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/) [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/) [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/) [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/) [![TanStack Query](https://img.shields.io/badge/TanStack_Query-5-FF4154?logo=react-query)](https://tanstack.com/query) [![shadcn/ui](https://img.shields.io/badge/shadcn/ui-black?logo=shadcnui)](https://ui.shadcn.com/) [![Zustand](https://img.shields.io/badge/Zustand-orange)](https://github.com/pmndrs/zustand) [![Playwright](https://img.shields.io/badge/Playwright-green?logo=playwright)](https://playwright.dev/) [![Vitest](https://img.shields.io/badge/Vitest-yellow?logo=vitest)](https://vitest.dev/)
-
----
-
-## Khởi động
+### Cài đặt & chạy local
 
 ```bash
 npm install
-npm run dev          # Dev server Turbopack — http://localhost:3000
-npm run build        # Build production
-npm run lint         # ESLint (0 warning)
+npm run dev      # http://localhost:3000
 ```
 
-### Cấu hình môi trường
+Cần backend Go chạy song song — xem [Vmarble-Warehouse-Management-Service](https://github.com/giangdq202/Vmarble-Warehouse-Management-Service).
 
-Sao chép `.env.example` thành `.env.local` và điền:
+### Repository liên quan
 
-```env
-NEXT_PUBLIC_API_URL=/api/proxy    # Proxy Next.js → Go backend
-BACKEND_URL=http://localhost:8080 # Backend Go (chỉ server-side)
-```
-
----
-
-## Kiến trúc
-
-Hai giao diện hoàn toàn độc lập trên cùng một ứng dụng Next.js:
-
-| Route group | Đối tượng | Baseline |
-|---|---|---|
-| `(kiosk)` | Công nhân CNC — mobile PWA | 375 px, touch ≥ 48 px |
-| `(dashboard)` | Quản lý / kế hoạch / kế toán | 1280 px, side nav |
-| `(auth)` | Tất cả | Trang đăng nhập |
-
-```
-src/
-├── app/
-│   ├── (auth)/login/
-│   ├── (kiosk)/           cutting-orders · report-cut · remnant-store
-│   │                      remnant-list · scan · account
-│   └── (dashboard)/       overview · materials · skus · pos · plans
-│                          work-orders · costing · cutting-dispatch
-│                          remnants · barcodes · users · purchasing
-│                          waste-report · profile
-├── components/
-│   ├── ui/                shadcn/ui
-│   ├── kiosk/             BigButton · ScannerView · LabelPreview · BottomNav
-│   └── dashboard/         StatCard · AlertBanner · SideNav
-├── lib/
-│   ├── api/               wrapper fetch có type per domain
-│   ├── hooks/             TanStack Query hooks per domain
-│   └── auth/              RBAC — can(role, action, resource)
-└── types/api.ts            DTOs khớp với Go backend iface.go (snake_case)
-```
-
----
-
-## Kiểm thử
-
-```bash
-npm run test:unit          # Vitest + jsdom — component & util tests
-npm run test:unit:watch    # Watch mode
-
-npm run test:e2e           # Playwright (cần npm run dev đang chạy)
-npm run test:e2e:ui        # Playwright UI mode tương tác
-
-npx vitest --project storybook  # Storybook interaction tests (hàm play)
-```
-
-### Phạm vi kiểm thử
-
-| Bộ test | Phạm vi |
-|---|---|
-| Component unit | `CuttingOrderCard`, `SuggestionCard`, `ReportCutForm`, `OverflowBanner`, `work-order-gate` |
-| E2E smoke | Auth redirect, nav kiosk, luồng cắt, scan checkpoint, dashboard WO |
-| Storybook interaction | `play()` trên Button + Header story |
-
----
-
-## Tính năng theo tiến độ
-
-### Kiosk (PWA mobile — công nhân CNC)
-
-| Tính năng | Trạng thái |
-|---|---|
-| Danh sách lệnh cắt + kéo để làm mới | Hoàn thành |
-| Modal gợi ý tấm lẻ (Best Fit + FIFO) | Hoàn thành |
-| Form báo cáo cắt — cascade vật liệu → lô → tấm | Hoàn thành |
-| Chặn vi phạm bảo toàn diện tích (BR-K03) | Hoàn thành |
-| Nhập kho tấm lẻ — quét QR vị trí kho | Hoàn thành |
-| Danh sách tấm lẻ (duyệt kho) | Hoàn thành |
-| Quét QR + ghi nhận điểm kiểm tra | Hoàn thành |
-| UX quét — wake lock, rung, màn hình thành công, resume | Hoàn thành |
-| Xem trước tem + in PDF (luồng in tem) | Hoàn thành |
-| Kiểm tra UX mobile toàn diện | Hoàn thành |
-
-### Dashboard (desktop — quản lý, kế hoạch, kế toán)
-
-| Tính năng | Trạng thái |
-|---|---|
-| Tổng quan — KPI card, biểu đồ, nhật ký hoạt động | Hoàn thành |
-| Danh mục nguyên liệu — danh sách & tạo mới | Hoàn thành |
-| Danh mục SKU — danh sách, tạo & BOM editor | Hoàn thành |
-| Đơn hàng (PO) — danh sách & tạo | Hoàn thành |
-| Kế hoạch sản xuất — danh sách, tạo & duyệt | Hoàn thành |
-| Lệnh sản xuất — danh sách, tạo, chuyển trạng thái, phân công | Hoàn thành |
-| Điều phối cắt — mặc định lọc `PLANNED` + chưa phân công | Hoàn thành |
-| Tấm lẻ — danh sách, lọc, cấp phát, hủy | Hoàn thành |
-| Mã vạch — tạo tem, lịch sử quét | Hoàn thành |
-| Tính giá thành — tính, chốt, điều chỉnh (BR-C01–C04) | Hoàn thành |
-| Chặn bắt đầu cắt khi chưa chốt giá thành | Hoàn thành |
-| Báo cáo hao hụt — bộ lọc, biểu đồ, xuất CSV (BR-C03) | Hoàn thành |
-| Đơn nhập vật liệu — danh sách & tạo mới | Hoàn thành |
-| Widget tấm nguyên theo vật liệu trên tổng quan | Hoàn thành |
-| Lịch sử quét điểm kiểm tra | Hoàn thành |
-| Gợi ý tấm lẻ trong dialog tạo WO (BR-K05) | Hoàn thành |
-| Modal xác nhận bỏ qua tấm lẻ (BR-K05) | Hoàn thành |
-| Nhập tiêu hao vật tư phụ/metal theo WO (BR-P03/P04) | Hoàn thành |
-| Trang hồ sơ người dùng (tự cập nhật) | Hoàn thành |
-| Admin — Quản lý người dùng CRUD + bật/tắt hoạt động | Hoàn thành |
-
-### Dùng chung / Hạ tầng
-
-| Tính năng | Trạng thái |
-|---|---|
-| RBAC — policy tập trung `can(role, action, resource)` | Hoàn thành |
-| Hồ sơ kiosk (tự đổi mật khẩu) | Hoàn thành |
-| Chuẩn hóa thuật ngữ tiếng Việt theo nghiệp vụ | Hoàn thành |
-| Metadata quét (actor / thiết bị) gắn vào scan | Hoàn thành |
-| CI quality gates — tsc + build | Hoàn thành |
-| Setup Playwright E2E + smoke tests | Hoàn thành |
-| Component tests — Testing Library + Vitest | Hoàn thành |
-
----
-
-## Phân quyền RBAC
-
-| Role | Quyền truy cập |
-|---|---|
-| `admin` | Toàn bộ module dashboard; CRUD người dùng; tạo PO/kế hoạch/WO; duyệt/hủy; chuyển trạng thái & phân công WO; tính & chốt giá thành; tạo đơn nhập vật liệu; xuất báo cáo hao hụt |
-| `accountant` | Đọc toàn bộ dashboard; tạo PO; tính, chốt, điều chỉnh giá thành; xuất báo cáo hao hụt |
-| `planner` | Đọc toàn bộ dashboard; tạo + duyệt + hủy kế hoạch; tạo lệnh sản xuất |
-| `warehouse` | Đọc toàn bộ dashboard; tạo + hủy đơn nhập vật liệu |
-| `foreman` | Lệnh sản xuất — chuyển trạng thái, ghi tiêu hao, in tem; hồ sơ |
-| `cnc_manager` | Đọc lệnh sản xuất; điều phối cắt — phân công; hồ sơ |
-| `cnc` | Chỉ kiosk — quét, lệnh cắt, báo cáo cắt, tấm lẻ, tài khoản |
-
----
-
-## Repository liên quan
-
-- **Backend (Go):** `giangdq202/Vmarble-Warehouse-Management` — Gin · pgx/v5 · PostgreSQL 17
-# Test deployment
+- **Backend (Go):** [`giangdq202/Vmarble-Warehouse-Management-Service`](https://github.com/giangdq202/Vmarble-Warehouse-Management-Service) — Gin · pgx/v5 · PostgreSQL 17
