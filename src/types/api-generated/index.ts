@@ -3913,6 +3913,10 @@ export interface paths {
                     search?: string;
                     /** @description filter by status: DRAFT, APPROVED, CANCELED */
                     status?: string;
+                    /** @description inclusive lower bound on created_at (YYYY-MM-DD) */
+                    from?: string;
+                    /** @description inclusive upper bound on created_at (YYYY-MM-DD) */
+                    to?: string;
                     /** @description sort column: created_at, deadline (default created_at) */
                     sort_by?: string;
                     /** @description sort direction: asc, desc (default desc) */
@@ -3931,6 +3935,17 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_planning_Plan"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
                 /** @description Unauthorized */

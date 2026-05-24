@@ -448,10 +448,11 @@ function CostingContent() {
 
   const isPending = isFetching && inputValue !== debouncedSearch
 
-  // Defensive client-side filter: if BE silently drops sku_id/from/to params
-  // (#190 says these may not be wired yet), the toolbar still narrows the
-  // visible list so the user trusts what they see. Mirrors the same fallback
-  // we use on /cutting-dispatch for `assigned`.
+  // Defensive client-side filter: BE GET /costing currently only accepts
+  // cursor/limit/finalized — it silently drops sku_id / from / to. Until BE
+  // adds parity (tracked alongside FE #251), filter on the client so the
+  // toolbar narrows the visible list. Drop the date branch as soon as BE
+  // ships from/to (same fix shape as /plans after BE #311).
   const filteredRecords = useMemo(() => {
     return items.filter((r) => {
       if (skuFilter !== ALL_SKUS && r.sku_id !== skuFilter) return false
