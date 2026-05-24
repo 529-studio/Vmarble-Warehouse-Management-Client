@@ -431,10 +431,10 @@ function PlansContent() {
   const { data: skusData } = useSKUs({ limit: 200 })
   const skus = useMemo(() => skusData?.items ?? [], [skusData?.items])
 
-  // Defensive client-side filter: if BE silently drops po_id / sku_id / date
-  // params (the FE landed before BE confirmation), the toolbar should still
-  // narrow the visible page. Mirrors the fallback used in /cutting-dispatch
-  // and /costing.
+  // Defensive client-side filter: BE GET /plans currently supports search +
+  // status + from + to + sort, but NOT po_id / sku_id. Keep filtering those
+  // two on the client so the toolbar still narrows the page. Date is BE-side
+  // now (BE #311), so don't double-filter on `created_at` here.
   const filteredPlans = useMemo(() => {
     const items = data?.items ?? []
     return items.filter((plan) => {
@@ -443,12 +443,9 @@ function PlansContent() {
         const hasSku = (plan.items ?? []).some((it) => it.sku_id === skuFilter)
         if (!hasSku) return false
       }
-      const created = (plan.created_at ?? '').slice(0, 10)
-      if (dateFrom && created < dateFrom) return false
-      if (dateTo && created > dateTo) return false
       return true
     })
-  }, [data?.items, poFilter, skuFilter, dateFrom, dateTo])
+  }, [data?.items, poFilter, skuFilter])
 
   const totalItems = data?.total_items ?? 0
   const totalPages = data?.total_pages ?? 1
