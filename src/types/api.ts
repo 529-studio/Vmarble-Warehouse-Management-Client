@@ -828,3 +828,62 @@ export interface WIPPipelineEntry {
 export interface WIPPipelineOutput {
   stages: WIPPipelineEntry[]
 }
+
+// ── Delivery / Containers (pivot Phase A) ────────────────────────────────────
+
+export type ContainerStatus =
+  | 'OPEN'
+  | 'LOADING'
+  | 'SEALED'
+  | 'SHIPPED'
+  | 'CANCELLED'
+
+export const CONTAINER_STATUSES: ContainerStatus[] = [
+  'OPEN',
+  'LOADING',
+  'SEALED',
+  'SHIPPED',
+  'CANCELLED',
+]
+
+/** Mirrors backend `delivery.Container`. */
+export interface Container {
+  id: string
+  code: string
+  container_type: string
+  status: ContainerStatus
+  max_cbm: number
+  max_payload_kg: number
+  used_cbm: number
+  used_weight_kg: number
+  fill_pct_cbm: number
+  fill_pct_mass: number
+  note: string | null
+  sealed_at: string | null
+  sealed_by: string | null
+  created_by: string
+  created_at: string
+  /** Only hydrated by GET /containers/:id, not by list. */
+  lines?: ContainerLine[]
+}
+
+/** Mirrors backend `delivery.ContainerLine`. */
+export interface ContainerLine {
+  id: string
+  container_id: string
+  sales_order_line_id: string
+  sku_id: string
+  sku_code: string
+  sku_name: string
+  qty: number
+  cbm_total: number
+  weight_kg_total: number
+  added_by: string
+  added_at: string
+}
+
+export interface ContainersFilter extends PageParams {
+  search?: string
+  status?: ContainerStatus
+  container_type?: string
+}
