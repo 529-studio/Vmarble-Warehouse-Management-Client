@@ -8686,6 +8686,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders/{id}/partial-complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Partial-complete a work order
+         * @description Closes the WO with an actual_qty < quantity and optionally
+         *     spawns a carry-over WO for the shortfall (#292). Status flips
+         *     IN_PROCESSING → PARTIAL_COMPLETE; the carry-over (when
+         *     requested) starts PLANNED with parent_wo_id pointing at the
+         *     parent. Sales-order line, sku, and plan are inherited so SO
+         *     traceability is preserved.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_production.PartialCompleteInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_production.PartialCompleteResult"];
+                    };
+                };
+                /** @description actual_qty out of range or shortfall_reason invalid */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description wo not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description wo not in IN_PROCESSING */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-orders/{id}/suggest-assignment": {
         parameters: {
             query?: never;
@@ -8899,7 +8995,7 @@ export interface components {
         /** @enum {string} */
         "github_com_vmarble_warehouse-management-service_internal_domain.RemnantStatus": "AVAILABLE" | "ALLOCATED" | "CONSUMED" | "WASTE";
         /** @enum {string} */
-        "github_com_vmarble_warehouse-management-service_internal_domain.WorkOrderStatus": "PLANNED" | "IN_CUTTING" | "IN_PROCESSING" | "COMPLETED" | "COSTED" | "CANCELED";
+        "github_com_vmarble_warehouse-management-service_internal_domain.WorkOrderStatus": "PLANNED" | "IN_CUTTING" | "IN_PROCESSING" | "COMPLETED" | "PARTIAL_COMPLETE" | "COSTED" | "CANCELED";
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_barcode_ScanEvent": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_barcode.ScanEvent"][];
@@ -9777,6 +9873,17 @@ export interface components {
             shift_date?: string;
             shift_name?: string;
         };
+        "internal_module_production.PartialCompleteInput": {
+            actual_qty?: number;
+            carry_over?: boolean;
+            carry_over_plan_id?: string;
+            shortfall_detail?: string;
+            shortfall_reason?: string;
+        };
+        "internal_module_production.PartialCompleteResult": {
+            carry_over_wo?: components["schemas"]["internal_module_production.WorkOrder"];
+            wo_updated?: components["schemas"]["internal_module_production.WorkOrder"];
+        };
         "internal_module_production.RecordConsumptionInput": {
             material_id?: string;
             material_type?: string;
@@ -9803,12 +9910,22 @@ export interface components {
             user_id?: string;
         };
         "internal_module_production.WorkOrder": {
+            /**
+             * @description ActualQty is the produced count when status=PARTIAL_COMPLETE (#292).
+             *     Nil for any other status. Always <= Quantity (chk_actual_qty).
+             */
+            actual_qty?: number;
             assigned_at?: string;
             assigned_to?: string;
             created_at?: string;
             estimated_hours?: number;
             id?: string;
             machine_slot_id?: string;
+            /**
+             * @description ParentWOID, when set, identifies the WO this one carried over from.
+             *     Set on auto-spawned carry-over WOs; nil otherwise.
+             */
+            parent_wo_id?: string;
             plan_id?: string;
             quantity?: number;
             /**
@@ -9816,6 +9933,12 @@ export interface components {
              *     (Phase A pivot). Nullable so legacy/PO-rooted WOs read fine without it.
              */
             sales_order_line_id?: string;
+            /**
+             * @description ShortfallReason explains why the WO came up short. One of
+             *     MATERIAL_SHORTAGE | DEFECT | TIME_SHORTAGE | OTHER. Set together with
+             *     ActualQty; both nil for full COMPLETED transitions.
+             */
+            shortfall_reason?: string;
             sku_code?: string;
             sku_dimensions?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Dimension"];
             sku_id?: string;

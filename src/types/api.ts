@@ -935,3 +935,77 @@ export interface SalesOrdersFilter extends PageParams {
   status?: SalesOrderStatus
   customer_id?: string
 }
+
+// ── Packing (FG pool + defect reporting) ────────────────────────────────────
+
+/** BE FGPool.status enum: AVAILABLE | RESERVED | LOADED | DEFECT. */
+export type FGPoolStatus = 'AVAILABLE' | 'RESERVED' | 'LOADED' | 'DEFECT' | string
+
+/** Mirrors backend `packing.FGPool`. */
+export interface FGPool {
+  id: string
+  barcode_id: string
+  sku_id: string
+  sku_code: string
+  sku_name: string
+  work_order_id: string
+  sales_order_line_id?: string
+  container_line_id?: string
+  status: FGPoolStatus
+  qc_passed_at?: string
+  qc_passed_by?: string
+  created_at: string
+}
+
+/** Suggestion shown after a successful scan — best-fit OPEN/LOADING containers. */
+export interface PackingContainerSuggestion {
+  container_id: string
+  code: string
+  container_type: string
+  status: string
+  fill_pct_cbm: number
+  fill_pct_mass: number
+}
+
+/** Result of POST /packing/scan. */
+export interface PackingScanResult {
+  fg: FGPool
+  suggested_containers?: PackingContainerSuggestion[]
+  /** Status of the parent work order — useful when the FG cannot ship yet. */
+  wo_status?: string
+}
+
+/**
+ * Defect reason. The BE accepts a free-form string; the kiosk pins worker to
+ * a fixed shortlist so reports are aggregable. `OTHER` lets them escape into
+ * `detail` when the shortlist does not fit.
+ */
+export type DefectReason =
+  | 'CRACK'
+  | 'SCRATCH'
+  | 'COLOR_OFF'
+  | 'WRONG_SIZE'
+  | 'OTHER'
+
+/** Body for POST /packing/defect (`packing.ReportDefectInput`). */
+export interface ReportDefectInput {
+  barcode_id: string
+  reason: DefectReason | string
+  detail?: string
+  photo_urls?: string[]
+}
+
+/** Mirrors backend `packing.FGDefect`. */
+export interface FGDefect {
+  id: string
+  fg_pool_id: string
+  reason: string
+  detail?: string
+  photo_urls?: string[]
+  detected_by: string
+  detected_at: string
+  resolution?: string
+  resolved_by?: string
+  resolved_at?: string
+  note?: string
+}

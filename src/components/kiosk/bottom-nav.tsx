@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Scissors, ClipboardList, Package, User, QrCode } from 'lucide-react'
+import { Scissors, ClipboardList, Package, User, QrCode, ScanLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: '/cutting-orders', label: 'Lệnh cắt', icon: Scissors, resource: 'cutting_orders' },
   { href: '/report-cut', label: 'Báo cáo', icon: ClipboardList, resource: 'report_cut' },
   { href: '/scan', label: 'Quét mã', icon: QrCode, resource: 'scan' },
+  { href: '/packing/scan', label: 'Đóng gói', icon: ScanLine, resource: 'packing' },
   { href: '/remnant-store', label: 'Tấm lẻ', icon: Package, resource: 'remnant_store' },
   { href: '/account', label: 'Tài khoản', icon: User, resource: 'account' },
 ] as const
