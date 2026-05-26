@@ -830,6 +830,664 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/containers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List containers */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description page (default 1) */
+                    page?: number;
+                    /** @description limit (default 10, max 100) */
+                    limit?: number;
+                    /** @description ILIKE on container code */
+                    search?: string;
+                    /** @description filter by status */
+                    status?: string;
+                    /** @description 20GP / 40GP / 40HC */
+                    container_type?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_delivery_Container"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create container (OPEN) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_delivery.CreateContainerInput"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get container with lines + fill_pct */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel an OPEN/LOADING container */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: components["requestBodies"]["internal_module_delivery.sealReopenShipRequest"];
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a finished-goods line to a container */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_delivery.AddLineInput"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.ContainerLine"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/lines/{line_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a line from a container */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                    /** @description line id (uuid) */
+                    line_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen sealed container (admin only, requires reason) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload (reason required) */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_delivery.sealReopenShipRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/seal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Seal container (atomically bumps qty_shipped on SO lines) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: components["requestBodies"]["internal_module_delivery.sealReopenShipRequest"];
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/ship": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark container SHIPPED (after seal) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: components["requestBodies"]["internal_module_delivery.sealReopenShipRequest"];
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/status-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Container status transition history */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.ContainerStatusLogEntry"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/transfer-line": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transfer a line (full or partial) to another container */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description source container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_delivery.TransferLineInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.TransferLineResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/costing": {
         parameters: {
             query?: never;
@@ -1438,6 +2096,206 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List customers */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description page number (default 1) */
+                    page?: number;
+                    /** @description items per page (default 10, max 100) */
+                    limit?: number;
+                    /** @description only active customers (default false) */
+                    active_only?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_sales_Customer"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create customer */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_sales.CreateCustomerInput"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.Customer"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch customer */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description customer id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description fields to update */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_sales.patchCustomerRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.Customer"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/dashboard/board-stock-summary": {
@@ -5358,6 +6216,549 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List sales orders */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description page number (default 1) */
+                    page?: number;
+                    /** @description items per page (default 10, max 100) */
+                    limit?: number;
+                    /** @description filter by status (DRAFT, CONFIRMED, IN_PRODUCTION, PARTIALLY_SHIPPED, SHIPPED, CANCELLED) */
+                    status?: string;
+                    /** @description filter by customer uuid */
+                    customer_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_sales_SalesOrder"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create sales order (DRAFT) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_sales.CreateSOInput"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.SalesOrder"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get sales order with lines */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sales order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.SalesOrder"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch sales order (DRAFT only) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sales order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description fields to update */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_sales.patchSORequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.SalesOrder"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel sales order */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sales order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description cancellation reason */
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_sales.cancelSORequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm sales order (DRAFT → CONFIRMED) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sales order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{id}/split-to-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Split sales order lines into a production plan + work orders */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sales order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description allocations + optional deadline */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_sales.splitToPlanRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.SplitToPlanResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skus": {
         parameters: {
             query?: never;
@@ -7219,6 +8620,14 @@ export interface components {
             total_items?: number;
             total_pages?: number;
         };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_delivery_Container": {
+            current_page?: number;
+            items?: components["schemas"]["internal_module_delivery.Container"][];
+            limit?: number;
+            total_is_estimate?: boolean;
+            total_items?: number;
+            total_pages?: number;
+        };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_inventory_BoardSheet": {
             current_page?: number;
             items?: components["schemas"]["internal_module_inventory.BoardSheet"][];
@@ -7278,6 +8687,22 @@ export interface components {
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_purchasing_PurchaseOrder": {
             current_page?: number;
             items?: components["schemas"]["internal_module_purchasing.PurchaseOrder"][];
+            limit?: number;
+            total_is_estimate?: boolean;
+            total_items?: number;
+            total_pages?: number;
+        };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_sales_Customer": {
+            current_page?: number;
+            items?: components["schemas"]["internal_module_sales.Customer"][];
+            limit?: number;
+            total_is_estimate?: boolean;
+            total_items?: number;
+            total_pages?: number;
+        };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_sales_SalesOrder": {
+            current_page?: number;
+            items?: components["schemas"]["internal_module_sales.SalesOrder"][];
             limit?: number;
             total_is_estimate?: boolean;
             total_items?: number;
@@ -7579,6 +9004,79 @@ export interface components {
             oldest_started_at?: string;
             status?: string;
         };
+        "internal_module_delivery.AddLineInput": {
+            cbm_total?: number;
+            qty?: number;
+            sales_order_line_id?: string;
+            sku_id?: string;
+            weight_kg_total?: number;
+        };
+        "internal_module_delivery.Container": {
+            code?: string;
+            container_type?: string;
+            created_at?: string;
+            created_by?: string;
+            fill_pct_cbm?: number;
+            fill_pct_mass?: number;
+            id?: string;
+            /**
+             * @description Computed projections — populated by GetContainer; List does not hydrate
+             *     these to keep the page query a single round-trip.
+             */
+            lines?: components["schemas"]["internal_module_delivery.ContainerLine"][];
+            max_cbm?: number;
+            max_payload_kg?: number;
+            note?: string;
+            sealed_at?: string;
+            sealed_by?: string;
+            status?: string;
+            used_cbm?: number;
+            used_weight_kg?: number;
+        };
+        "internal_module_delivery.ContainerLine": {
+            added_at?: string;
+            added_by?: string;
+            cbm_total?: number;
+            container_id?: string;
+            id?: string;
+            qty?: number;
+            sales_order_line_id?: string;
+            sku_code?: string;
+            sku_id?: string;
+            sku_name?: string;
+            weight_kg_total?: number;
+        };
+        "internal_module_delivery.ContainerStatusLogEntry": {
+            actor_id?: string;
+            container_id?: string;
+            created_at?: string;
+            from_status?: string;
+            id?: string;
+            note?: string;
+            to_status?: string;
+        };
+        "internal_module_delivery.CreateContainerInput": {
+            container_type?: string;
+            max_cbm?: number;
+            max_payload_kg?: number;
+            note?: string;
+        };
+        "internal_module_delivery.TransferLineInput": {
+            cbm_total?: number;
+            line_id?: string;
+            qty?: number;
+            target_container_id?: string;
+            weight_kg_total?: number;
+        };
+        "internal_module_delivery.TransferLineResult": {
+            /** @description nil when the source line was fully consumed */
+            source_line?: components["schemas"]["internal_module_delivery.ContainerLine"];
+            target_line?: components["schemas"]["internal_module_delivery.ContainerLine"];
+        };
+        "internal_module_delivery.sealReopenShipRequest": {
+            note?: string;
+            reason?: string;
+        };
         "internal_module_inventory.AddCountLineInput": {
             counted_location_id?: string;
             counted_status?: string;
@@ -7788,6 +9286,7 @@ export interface components {
             deadline?: string;
             items?: components["schemas"]["internal_module_planning.PlanItemInput"][];
             po_id?: string;
+            sales_order_id?: string;
         };
         "internal_module_planning.Plan": {
             canceled_at?: string;
@@ -7800,6 +9299,8 @@ export interface components {
             items?: components["schemas"]["internal_module_planning.PlanItem"][];
             po_code?: string;
             po_id?: string;
+            sales_order_code?: string;
+            sales_order_id?: string;
             status?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.PlanStatus"];
         };
         "internal_module_planning.PlanItem": {
@@ -7817,6 +9318,7 @@ export interface components {
             deadline?: string;
             id?: string;
             po_code?: string;
+            sales_order_code?: string;
             status?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.PlanStatus"];
         };
         "internal_module_planning.cancelPlanRequest": {
@@ -7924,6 +9426,11 @@ export interface components {
             machine_slot_id?: string;
             plan_id?: string;
             quantity?: number;
+            /**
+             * @description SalesOrderLineID, when set, links the WO back to a sales_order_lines row
+             *     (Phase A pivot). Nullable so legacy/PO-rooted WOs read fine without it.
+             */
+            sales_order_line_id?: string;
             sku_code?: string;
             sku_dimensions?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Dimension"];
             sku_id?: string;
@@ -7967,10 +9474,115 @@ export interface components {
             status?: components["schemas"]["internal_module_purchasing.POStatus"];
             supplier?: string;
         };
+        "internal_module_sales.CreateCustomerInput": {
+            address?: string;
+            code?: string;
+            contact_email?: string;
+            contact_person?: string;
+            contact_phone?: string;
+            country_code?: string;
+            name?: string;
+        };
+        "internal_module_sales.CreateSOInput": {
+            currency?: string;
+            customer_id?: string;
+            expected_ship_date?: string;
+            incoterm?: string;
+            lines?: components["schemas"]["internal_module_sales.CreateSOLineInput"][];
+            note?: string;
+            port_of_discharge?: string;
+            port_of_loading?: string;
+        };
+        "internal_module_sales.CreateSOLineInput": {
+            qty_ordered?: number;
+            sku_id?: string;
+            unit_price?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
+        };
+        "internal_module_sales.Customer": {
+            address?: string;
+            code?: string;
+            contact_email?: string;
+            contact_person?: string;
+            contact_phone?: string;
+            country_code?: string;
+            created_at?: string;
+            id?: string;
+            is_active?: boolean;
+            name?: string;
+        };
+        "internal_module_sales.SalesOrder": {
+            code?: string;
+            created_at?: string;
+            created_by?: string;
+            currency?: string;
+            customer_code?: string;
+            customer_country_code?: string;
+            customer_id?: string;
+            customer_name?: string;
+            expected_ship_date?: string;
+            id?: string;
+            incoterm?: string;
+            lines?: components["schemas"]["internal_module_sales.SalesOrderLine"][];
+            note?: string;
+            port_of_discharge?: string;
+            port_of_loading?: string;
+            status?: string;
+        };
+        "internal_module_sales.SalesOrderLine": {
+            created_at?: string;
+            id?: string;
+            qty_ordered?: number;
+            qty_planned?: number;
+            qty_shipped?: number;
+            sales_order_id?: string;
+            sku_id?: string;
+            unit_price?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
+        };
+        "internal_module_sales.SplitAllocation": {
+            quantity?: number;
+            so_line_id?: string;
+        };
+        "internal_module_sales.SplitToPlanResult": {
+            plan_code?: string;
+            plan_id?: string;
+            work_order_ids?: string[];
+        };
+        "internal_module_sales.cancelSORequest": {
+            reason?: string;
+        };
+        "internal_module_sales.patchCustomerRequest": {
+            address?: string;
+            contact_email?: string;
+            contact_person?: string;
+            contact_phone?: string;
+            country_code?: string;
+            is_active?: boolean;
+            name?: string;
+        };
+        "internal_module_sales.patchSORequest": {
+            clear_expected_ship_date?: boolean;
+            currency?: string;
+            expected_ship_date?: string;
+            incoterm?: string;
+            lines?: components["schemas"]["internal_module_sales.CreateSOLineInput"][];
+            note?: string;
+            port_of_discharge?: string;
+            port_of_loading?: string;
+        };
+        "internal_module_sales.splitToPlanRequest": {
+            allocations?: components["schemas"]["internal_module_sales.SplitAllocation"][];
+            deadline?: string;
+        };
     };
     responses: never;
     parameters: never;
     requestBodies: {
+        /** @description payload */
+        "internal_module_delivery.sealReopenShipRequest": {
+            content: {
+                "application/json": components["schemas"]["internal_module_delivery.sealReopenShipRequest"];
+            };
+        };
         /** @description payload */
         Body: {
             content: {

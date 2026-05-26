@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users, Truck, Trash2, QrCode, HardHat } from 'lucide-react'
+import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users, Truck, Trash2, QrCode, HardHat, Container as ContainerIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 // Full management nav — visible to admin, accountant, planner, warehouse, cnc_manager
 const MANAGEMENT_NAV = [
   { href: '/overview', label: 'Tổng quan', icon: LayoutDashboard, resource: 'overview' },
+  { href: '/containers', label: 'Container', icon: ContainerIcon, resource: 'containers' },
   { href: '/pos', label: 'Đơn hàng', icon: ShoppingCart, resource: 'pos' },
   { href: '/plans', label: 'Kế hoạch SX', icon: ClipboardList, resource: 'plans' },
   { href: '/work-orders', label: 'Lệnh sản xuất', icon: ClipboardCheck, resource: 'work_orders' },

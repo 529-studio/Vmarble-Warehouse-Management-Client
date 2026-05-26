@@ -28,6 +28,7 @@ export type AppResource =
   | 'purchasing'
   | 'waste_report'
   | 'reports'
+  | 'containers'
 
 export type AppAction =
   | 'read'
@@ -60,6 +61,7 @@ const DASHBOARD_PATHS = [
   '/profile',
   '/purchasing',
   '/waste-report',
+  '/containers',
 ]
 
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account']
@@ -86,6 +88,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/remnant-list', resource: 'remnant_list' },
   { path: '/remnant-store', resource: 'remnant_store' },
   { path: '/account', resource: 'account' },
+  { path: '/containers', resource: 'containers' },
 ]
 
 const DASHBOARD_RESOURCES: AppResource[] = [
@@ -102,6 +105,7 @@ const DASHBOARD_RESOURCES: AppResource[] = [
   'assembly',
   'profile',
   'purchasing',
+  'containers',
 ]
 
 function matchPath(pathname: string, path: string): boolean {
@@ -125,6 +129,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     waste_report: ['read', 'generate'],
     barcodes: ['read', 'generate'],
     reports: ['read', 'generate'],
+    containers: ['read', 'create', 'approve', 'cancel'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
@@ -137,6 +142,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     ...readOnly(DASHBOARD_RESOURCES),
     plans: ['read', 'create', 'approve', 'cancel'],
     work_orders: ['read', 'create'],
+    containers: ['read', 'create'],
   },
   warehouse: {
     ...readOnly(DASHBOARD_RESOURCES),

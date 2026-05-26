@@ -13,6 +13,7 @@ export type RealtimeEventType =
   | 'CUTTING_RECORDED'
   | 'SCAN_CHECKPOINT'
   | 'COSTING_COMPUTED'
+  | 'CONTAINER_STATUS_CHANGED'
 
 export interface RealtimeEvent {
   /** Personal target — present on NEW_ASSIGNMENT, blank otherwise. */

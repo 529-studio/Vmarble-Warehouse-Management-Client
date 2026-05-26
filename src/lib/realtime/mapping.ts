@@ -56,6 +56,12 @@ export function eventToQueryKeys(event: RealtimeEvent): QueryKey[] {
       // — invalidating the prefix sweeps both shapes.
       return [['costing']]
 
+    case 'CONTAINER_STATUS_CHANGED':
+      // BE emits this on every seal/ship/reopen/cancel + on the auto OPEN→
+      // LOADING flip. The kanban list, the optional detail drawer, and the
+      // dashboard delivery counters all live under the `containers` prefix.
+      return [['containers']]
+
     default:
       // Unknown event types are tolerated — the BE may add new types ahead of
       // FE handling. Returning `[]` no-ops the invalidation step.
