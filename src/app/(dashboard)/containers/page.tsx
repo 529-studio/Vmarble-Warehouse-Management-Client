@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   DndContext,
   PointerSensor,
@@ -94,11 +95,21 @@ function DraggableCard({
       {...attributes}
       className={isDragging ? 'opacity-50' : ''}
     >
-      <Card
-        className={`transition-shadow hover:shadow-md ${
-          draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
-        }`}
+      <Link
+        href={`/containers/${container.id}/loading`}
+        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+        // Suppress click while dragging — dnd-kit's pointer handler keeps the
+        // cursor down past activation distance, and we don't want the link to
+        // open after a drag-cancel.
+        onClick={(e) => {
+          if (isDragging) e.preventDefault()
+        }}
       >
+        <Card
+          className={`transition-shadow hover:shadow-md ${
+            draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+          }`}
+        >
         <CardContent className="space-y-2 p-3">
           <div className="flex items-start justify-between gap-2">
             <span className="font-mono text-sm font-semibold">{container.code}</span>
@@ -138,6 +149,7 @@ function DraggableCard({
           </div>
         </CardContent>
       </Card>
+      </Link>
     </div>
   )
 }

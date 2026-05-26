@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { containersApi, type LifecycleBody } from '@/lib/api/containers'
+import {
+  containersApi,
+  type AddLineInput,
+  type LifecycleBody,
+  type TransferLineInput,
+} from '@/lib/api/containers'
 import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
 import type { ContainersFilter } from '@/types/api'
+import { SALES_ORDERS_KEY } from '@/lib/hooks/use-sales-orders'
 
 export const CONTAINERS_KEY = 'containers'
 
@@ -89,5 +95,63 @@ export function useCancelContainer() {
       toast.success('Đã huỷ container')
     },
     onError: (err) => toast.error(lifecycleErrorMessage(err, 'Huỷ container thất bại')),
+  })
+}
+
+/**
+ * Maps line-edit failures to friendly Vietnamese. The two BE error paths we
+ * surface specifically are 409 (container not in OPEN/LOADING) and 400 with
+ * an "exceeds" message (qty > qty_ordered). Everything else falls through to
+ * the generic mapApiErrorVi.
+ */
+function lineErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiClientError) {
+    if (err.status === 409)
+      return 'Container không ở trạng thái cho phép chỉnh sửa dòng hàng.'
+    if (err.status === 400 && err.message?.toLowerCase().includes('exceed'))
+      return 'Số lượng vượt quá số lượng còn lại của dòng SO.'
+  }
+  return mapApiErrorVi(err, fallback)
+}
+
+export function useAddContainerLine() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: AddLineInput }) =>
+      containersApi.addLine(id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [CONTAINERS_KEY] })
+      qc.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] })
+      toast.success('Đã thêm dòng hàng vào container')
+    },
+    onError: (err) => toast.error(lineErrorMessage(err, 'Thêm dòng hàng thất bại')),
+  })
+}
+
+export function useRemoveContainerLine() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, lineId }: { id: string; lineId: string }) =>
+      containersApi.removeLine(id, lineId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [CONTAINERS_KEY] })
+      qc.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] })
+      toast.success('Đã xoá dòng hàng')
+    },
+    onError: (err) => toast.error(lineErrorMessage(err, 'Xoá dòng hàng thất bại')),
+  })
+}
+
+export function useTransferContainerLine() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: TransferLineInput }) =>
+      containersApi.transferLine(id, body),
+    onSuccess: () => {
+      // Both source + target containers change; sweep the prefix.
+      qc.invalidateQueries({ queryKey: [CONTAINERS_KEY] })
+      toast.success('Đã chuyển dòng hàng')
+    },
+    onError: (err) => toast.error(lineErrorMessage(err, 'Chuyển dòng hàng thất bại')),
   })
 }

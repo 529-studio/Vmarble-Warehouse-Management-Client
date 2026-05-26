@@ -1,6 +1,7 @@
 import { apiClient } from '@/lib/api/client'
 import type {
   Container,
+  ContainerLine,
   ContainersFilter,
   PagedResult,
 } from '@/types/api'
@@ -10,6 +11,31 @@ export interface LifecycleBody {
   note?: string
   /** Required for reopen (BR-D06). Empty string → BE rejects with 400. */
   reason?: string
+}
+
+/** Body for POST /containers/:id/lines (BE `delivery.AddLineInput`). */
+export interface AddLineInput {
+  sales_order_line_id: string
+  sku_id: string
+  qty: number
+  /** CBM is supplied by the caller — BE does not derive from SKU dims. */
+  cbm_total: number
+  weight_kg_total: number
+}
+
+/** Body for POST /containers/:id/transfer-line (BE `delivery.TransferLineInput`). */
+export interface TransferLineInput {
+  line_id: string
+  target_container_id: string
+  qty: number
+  cbm_total: number
+  weight_kg_total: number
+}
+
+/** BE returns both source (nil if fully consumed) and target lines after transfer. */
+export interface TransferLineResult {
+  source_line: ContainerLine | null
+  target_line: ContainerLine
 }
 
 export const containersApi = {
@@ -41,4 +67,16 @@ export const containersApi = {
   /** POST /api/v1/containers/:id/cancel — OPEN/LOADING → CANCELLED. */
   cancel: (id: string, body: LifecycleBody = {}) =>
     apiClient.post<Container>(`/containers/${id}/cancel`, body),
+
+  /** POST /api/v1/containers/:id/lines — add a finished-goods line. */
+  addLine: (id: string, body: AddLineInput) =>
+    apiClient.post<ContainerLine>(`/containers/${id}/lines`, body),
+
+  /** DELETE /api/v1/containers/:id/lines/:line_id — remove a line. */
+  removeLine: (id: string, lineId: string) =>
+    apiClient.delete<void>(`/containers/${id}/lines/${lineId}`),
+
+  /** POST /api/v1/containers/:id/transfer-line — full or partial transfer. */
+  transferLine: (id: string, body: TransferLineInput) =>
+    apiClient.post<TransferLineResult>(`/containers/${id}/transfer-line`, body),
 }
