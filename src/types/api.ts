@@ -887,3 +887,51 @@ export interface ContainersFilter extends PageParams {
   status?: ContainerStatus
   container_type?: string
 }
+
+// ── Sales Orders ────────────────────────────────────────────────────────────
+
+export type SalesOrderStatus =
+  | 'DRAFT'
+  | 'CONFIRMED'
+  | 'IN_PRODUCTION'
+  | 'PARTIALLY_SHIPPED'
+  | 'SHIPPED'
+  | 'CANCELLED'
+
+/** Mirrors backend `sales.SalesOrderLine`. */
+export interface SalesOrderLine {
+  id: string
+  sales_order_id: string
+  sku_id: string
+  qty_ordered: number
+  qty_planned: number
+  qty_shipped: number
+  unit_price?: Money
+  created_at: string
+}
+
+/** Mirrors backend `sales.SalesOrder`. */
+export interface SalesOrder {
+  id: string
+  code: string
+  status: SalesOrderStatus | string
+  customer_id: string
+  customer_code?: string
+  customer_name?: string
+  customer_country_code?: string
+  currency?: string
+  incoterm?: string
+  port_of_loading?: string
+  port_of_discharge?: string
+  expected_ship_date?: string
+  note?: string
+  created_by?: string
+  created_at: string
+  /** Hydrated by GET /sales-orders/:id and (optionally) by list. */
+  lines?: SalesOrderLine[]
+}
+
+export interface SalesOrdersFilter extends PageParams {
+  status?: SalesOrderStatus
+  customer_id?: string
+}
