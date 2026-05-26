@@ -8686,6 +8686,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders/{id}/partial-complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Partial-complete a work order
+         * @description Closes the WO with an actual_qty < quantity and optionally
+         *     spawns a carry-over WO for the shortfall (#292). Status flips
+         *     IN_PROCESSING → PARTIAL_COMPLETE; the carry-over (when
+         *     requested) starts PLANNED with parent_wo_id pointing at the
+         *     parent. Sales-order line, sku, and plan are inherited so SO
+         *     traceability is preserved.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_production.PartialCompleteInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_production.PartialCompleteResult"];
+                    };
+                };
+                /** @description actual_qty out of range or shortfall_reason invalid */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description wo not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description wo not in IN_PROCESSING */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-orders/{id}/suggest-assignment": {
         parameters: {
             query?: never;
@@ -9776,6 +9872,17 @@ export interface components {
             machine_name?: string;
             shift_date?: string;
             shift_name?: string;
+        };
+        "internal_module_production.PartialCompleteInput": {
+            actual_qty?: number;
+            carry_over?: boolean;
+            carry_over_plan_id?: string;
+            shortfall_detail?: string;
+            shortfall_reason?: string;
+        };
+        "internal_module_production.PartialCompleteResult": {
+            carry_over_wo?: components["schemas"]["internal_module_production.WorkOrder"];
+            wo_updated?: components["schemas"]["internal_module_production.WorkOrder"];
         };
         "internal_module_production.RecordConsumptionInput": {
             material_id?: string;
