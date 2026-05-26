@@ -48,6 +48,11 @@ describe('eventToQueryKeys', () => {
     expect(keys).toEqual([['costing']])
   })
 
+  it('maps CONTAINER_STATUS_CHANGED to the containers prefix only', () => {
+    const keys = eventToQueryKeys(ev('CONTAINER_STATUS_CHANGED'))
+    expect(keys).toEqual([['containers']])
+  })
+
   it('returns [] for an unknown type — tolerated for forward compatibility', () => {
     const keys = eventToQueryKeys(ev('SOMETHING_NEW' as RealtimeEvent['type']))
     expect(keys).toEqual([])
@@ -60,6 +65,7 @@ describe('eventToQueryKeys', () => {
       'CUTTING_RECORDED',
       'SCAN_CHECKPOINT',
       'COSTING_COMPUTED',
+      'CONTAINER_STATUS_CHANGED',
     ]
     for (const t of types) {
       for (const key of eventToQueryKeys(ev(t))) {
