@@ -29,6 +29,7 @@ export type AppResource =
   | 'waste_report'
   | 'reports'
   | 'containers'
+  | 'packing'
 
 export type AppAction =
   | 'read'
@@ -64,7 +65,7 @@ const DASHBOARD_PATHS = [
   '/containers',
 ]
 
-const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account']
+const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account', '/packing']
 
 const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/overview', resource: 'overview' },
@@ -89,6 +90,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/remnant-store', resource: 'remnant_store' },
   { path: '/account', resource: 'account' },
   { path: '/containers', resource: 'containers' },
+  { path: '/packing', resource: 'packing' },
 ]
 
 const DASHBOARD_RESOURCES: AppResource[] = [
@@ -168,6 +170,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     remnant_list: ['read'],
     remnant_store: ['read'],
     account: ['read'],
+    packing: ['read', 'create'],
   },
 }
 

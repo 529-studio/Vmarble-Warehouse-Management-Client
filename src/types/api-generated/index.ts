@@ -2514,6 +2514,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fg-pool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Finished-Goods pool entries */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description page (default 1) */
+                    page?: number;
+                    /** @description limit (default 10, max 100) */
+                    limit?: number;
+                    /** @description AVAILABLE / RESERVED / LOADED / DEFECT / DISPOSED */
+                    status?: string;
+                    /** @description filter by SKU id (uuid) */
+                    sku_id?: string;
+                    /** @description filter by sales order line id (uuid) */
+                    so_line_id?: string;
+                    /** @description filter by work order id (uuid) */
+                    wo_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_packing_FGPool"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fg-pool/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one FG pool entry */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description fg id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_packing.FGPool"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/audit-log": {
         parameters: {
             query?: never;
@@ -4746,6 +4845,231 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing/defect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report defect on a finished good
+         * @description Flips fg_pool.status to DEFECT and records reason/photos. If the
+         *     FG was RESERVED, its container_line is auto-removed first (BR-PK03).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_packing.ReportDefectInput"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_packing.FGDefect"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing/defect/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a reported defect
+         * @description DISCARD/RETURN_NCC → DISPOSED, REWORK → AVAILABLE so the FG can re-enter the pool.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description defect id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_packing.resolveDefectBody"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_packing.FGDefect"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scan FG barcode at packing station
+         * @description Resolves the barcode → FG and returns suggested loadable containers.
+         *     Returns 412 when the underlying WO is not yet COMPLETED (BR-PK01).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_packing.scanRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_packing.ScanResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -8575,7 +8899,7 @@ export interface components {
         /** @enum {string} */
         "github_com_vmarble_warehouse-management-service_internal_domain.RemnantStatus": "AVAILABLE" | "ALLOCATED" | "CONSUMED" | "WASTE";
         /** @enum {string} */
-        "github_com_vmarble_warehouse-management-service_internal_domain.WorkOrderStatus": "PLANNED" | "IN_CUTTING" | "IN_PROCESSING" | "COMPLETED" | "COSTED" | "CANCELED";
+        "github_com_vmarble_warehouse-management-service_internal_domain.WorkOrderStatus": "PLANNED" | "IN_CUTTING" | "IN_PROCESSING" | "COMPLETED" | "PARTIAL_COMPLETE" | "COSTED" | "CANCELED";
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_barcode_ScanEvent": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_barcode.ScanEvent"][];
@@ -8655,6 +8979,14 @@ export interface components {
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_order_PO": {
             current_page?: number;
             items?: components["schemas"]["internal_module_order.PO"][];
+            limit?: number;
+            total_is_estimate?: boolean;
+            total_items?: number;
+            total_pages?: number;
+        };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_packing_FGPool": {
+            current_page?: number;
+            items?: components["schemas"]["internal_module_packing.FGPool"][];
             limit?: number;
             total_is_estimate?: boolean;
             total_items?: number;
@@ -9282,6 +9614,59 @@ export interface components {
             total_quantity?: number;
             total_skus?: number;
         };
+        "internal_module_packing.ContainerSuggestion": {
+            code?: string;
+            container_id?: string;
+            container_type?: string;
+            fill_pct_cbm?: number;
+            fill_pct_mass?: number;
+            status?: string;
+        };
+        "internal_module_packing.FGDefect": {
+            detail?: string;
+            detected_at?: string;
+            detected_by?: string;
+            fg_pool_id?: string;
+            id?: string;
+            note?: string;
+            photo_urls?: string[];
+            reason?: string;
+            resolution?: string;
+            resolved_at?: string;
+            resolved_by?: string;
+        };
+        "internal_module_packing.FGPool": {
+            barcode_id?: string;
+            container_line_id?: string;
+            created_at?: string;
+            id?: string;
+            qc_passed_at?: string;
+            qc_passed_by?: string;
+            sales_order_line_id?: string;
+            sku_code?: string;
+            sku_id?: string;
+            sku_name?: string;
+            status?: string;
+            work_order_id?: string;
+        };
+        "internal_module_packing.ReportDefectInput": {
+            barcode_id?: string;
+            detail?: string;
+            photo_urls?: string[];
+            reason?: string;
+        };
+        "internal_module_packing.ScanResult": {
+            fg?: components["schemas"]["internal_module_packing.FGPool"];
+            suggested_containers?: components["schemas"]["internal_module_packing.ContainerSuggestion"][];
+            wo_status?: string;
+        };
+        "internal_module_packing.resolveDefectBody": {
+            note?: string;
+            resolution: string;
+        };
+        "internal_module_packing.scanRequest": {
+            barcode_id: string;
+        };
         "internal_module_planning.CreatePlanInput": {
             deadline?: string;
             items?: components["schemas"]["internal_module_planning.PlanItemInput"][];
@@ -9418,12 +9803,22 @@ export interface components {
             user_id?: string;
         };
         "internal_module_production.WorkOrder": {
+            /**
+             * @description ActualQty is the produced count when status=PARTIAL_COMPLETE (#292).
+             *     Nil for any other status. Always <= Quantity (chk_actual_qty).
+             */
+            actual_qty?: number;
             assigned_at?: string;
             assigned_to?: string;
             created_at?: string;
             estimated_hours?: number;
             id?: string;
             machine_slot_id?: string;
+            /**
+             * @description ParentWOID, when set, identifies the WO this one carried over from.
+             *     Set on auto-spawned carry-over WOs; nil otherwise.
+             */
+            parent_wo_id?: string;
             plan_id?: string;
             quantity?: number;
             /**
@@ -9431,6 +9826,12 @@ export interface components {
              *     (Phase A pivot). Nullable so legacy/PO-rooted WOs read fine without it.
              */
             sales_order_line_id?: string;
+            /**
+             * @description ShortfallReason explains why the WO came up short. One of
+             *     MATERIAL_SHORTAGE | DEFECT | TIME_SHORTAGE | OTHER. Set together with
+             *     ActualQty; both nil for full COMPLETED transitions.
+             */
+            shortfall_reason?: string;
             sku_code?: string;
             sku_dimensions?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Dimension"];
             sku_id?: string;
