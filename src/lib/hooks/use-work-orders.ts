@@ -7,8 +7,9 @@ import type {
   AssignWorkOrderInput,
   AddConsumptionInput,
   AddLaborEntryInput,
+  PartialCompleteInput,
 } from '@/types/api'
-import { mapApiErrorVi } from '@/lib/api/client'
+import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
 
 export const WORK_ORDERS_KEY = 'work-orders'
 export const CONSUMPTIONS_KEY = 'consumptions'
@@ -143,6 +144,47 @@ export function useAddLaborEntry() {
     },
     onError: (err) => {
       toast.error(mapApiErrorVi(err, 'Ghi nhận công lao động thất bại'))
+    },
+  })
+}
+
+/**
+ * Maps BE 4xx codes from POST /work-orders/:id/report to friendly Vietnamese.
+ *
+ * BE shapes (from production swagger):
+ *   400 — actual_qty out of range or shortfall_reason invalid
+ *   409 — wo not in IN_PROCESSING
+ */
+function partialCompleteErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiClientError) {
+    if (err.status === 409) return 'Lệnh sản xuất phải đang xử lý mới có thể báo cáo hoàn thành một phần.'
+    if (err.status === 400) {
+      const msg = err.message?.toLowerCase() ?? ''
+      if (msg.includes('actual_qty')) return 'Số lượng đạt phải nằm trong khoảng [0, kế hoạch].'
+      if (msg.includes('shortfall_reason')) return 'Lý do thiếu hụt không hợp lệ.'
+    }
+  }
+  return mapApiErrorVi(err, fallback)
+}
+
+export function usePartialCompleteWorkOrder() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: PartialCompleteInput }) =>
+      workOrdersApi.partialComplete(id, input),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+      // Refresh costing — PARTIAL_COMPLETE freezes labor entries (BR-C04).
+      queryClient.invalidateQueries({ queryKey: ['costing'] })
+      const carryNo = result.carry_over_wo?.id?.slice(0, 8).toUpperCase()
+      if (carryNo) {
+        toast.success(`Đã báo cáo hoàn thành. Đã tạo lệnh phát sinh #${carryNo}.`)
+      } else {
+        toast.success('Đã báo cáo hoàn thành.')
+      }
+    },
+    onError: (err) => {
+      toast.error(partialCompleteErrorMessage(err, 'Báo cáo hoàn thành thất bại'))
     },
   })
 }

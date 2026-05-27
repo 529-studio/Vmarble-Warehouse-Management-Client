@@ -8,6 +8,8 @@ import type {
   AddConsumptionInput,
   LaborEntry,
   AddLaborEntryInput,
+  PartialCompleteInput,
+  PartialCompleteResult,
   PagedResult,
 } from '@/types/api'
 import { apiClient } from './client'
@@ -70,4 +72,12 @@ export const workOrdersApi = {
   /** POST /api/v1/work-orders/:id/suggest-assignment */
   suggestAssignment: (id: string) =>
     apiClient.post<SuggestAssignmentResult>(`/work-orders/${id}/suggest-assignment`, {}),
+
+  /**
+   * POST /api/v1/work-orders/:id/report — partial-complete (#292).
+   * Closes the WO with `actual_qty <= quantity` and optionally spawns a
+   * carry-over WO. Source WO must be in IN_PROCESSING.
+   */
+  partialComplete: (id: string, input: PartialCompleteInput) =>
+    apiClient.post<PartialCompleteResult>(`/work-orders/${id}/report`, input),
 }

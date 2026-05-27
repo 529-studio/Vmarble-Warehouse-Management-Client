@@ -31,7 +31,19 @@ export type WorkOrderStatus =
   | 'IN_CUTTING'
   | 'IN_PROCESSING'
   | 'COMPLETED'
+  | 'PARTIAL_COMPLETE'
   | 'COSTED'
+  | 'CANCELED'
+
+/**
+ * Reason a WO came up short. Set together with `actual_qty` when status flips
+ * to PARTIAL_COMPLETE. BE source of truth: `production.PartialCompleteInput`.
+ */
+export type ShortfallReason =
+  | 'MATERIAL_SHORTAGE'
+  | 'DEFECT'
+  | 'TIME_SHORTAGE'
+  | 'OTHER'
 
 export type QualityGrade = 'A' | 'B' | 'C'
 
@@ -204,6 +216,48 @@ export interface WorkOrder {
   estimated_hours?: number | null
   machine_slot_id?: string | null
   created_at: string
+  /**
+   * Produced count when status=PARTIAL_COMPLETE (#292). Always <= quantity.
+   * Nil for any other status.
+   */
+  actual_qty?: number | null
+  /** Why the WO came up short. Set together with actual_qty. */
+  shortfall_reason?: ShortfallReason | string | null
+  /**
+   * When set, identifies the WO this one carried over from. Set on
+   * auto-spawned carry-over WOs; nil otherwise.
+   */
+  parent_wo_id?: string | null
+  /**
+   * Links the WO back to a sales_order_lines row (Phase A pivot). Nullable
+   * so legacy/PO-rooted WOs read fine without it.
+   */
+  sales_order_line_id?: string | null
+}
+
+/**
+ * POST /api/v1/work-orders/:id/report — partial-complete (#292).
+ * Closes the WO with `actual_qty <= quantity` and optionally spawns a
+ * carry-over WO for the shortfall.
+ */
+export interface PartialCompleteInput {
+  /** Produced count. Must satisfy 0 <= actual_qty <= quantity. */
+  actual_qty: number
+  /** Required when actual_qty < quantity. */
+  shortfall_reason?: ShortfallReason
+  /** Free-form notes about the shortfall. */
+  shortfall_detail?: string
+  /** Spawn a carry-over WO for the shortfall (default true on BE). */
+  carry_over?: boolean
+  /** Override plan id for the carry-over WO. Defaults to source WO's plan. */
+  carry_over_plan_id?: string
+}
+
+export interface PartialCompleteResult {
+  /** The updated source WO (now PARTIAL_COMPLETE). */
+  wo_updated?: WorkOrder
+  /** The auto-spawned carry-over WO (PLANNED) when `carry_over` was true. */
+  carry_over_wo?: WorkOrder
 }
 
 /** POST /api/v1/work-orders */

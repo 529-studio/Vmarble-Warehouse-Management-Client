@@ -93,7 +93,9 @@ const STATUS_LABEL: Record<WorkOrderStatus, string> = {
   IN_CUTTING: 'Đang cắt',
   IN_PROCESSING: 'Đang xử lý',
   COMPLETED: 'Hoàn thành',
+  PARTIAL_COMPLETE: 'Hoàn thành một phần',
   COSTED: 'Đã tính giá',
+  CANCELED: 'Đã huỷ',
 }
 
 const STATUS_CLASS: Record<WorkOrderStatus, string> = {
@@ -101,7 +103,16 @@ const STATUS_CLASS: Record<WorkOrderStatus, string> = {
   IN_CUTTING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   IN_PROCESSING: 'bg-orange-100 text-orange-800 border-orange-200',
   COMPLETED: 'bg-green-100 text-green-800 border-green-200',
+  PARTIAL_COMPLETE: 'bg-amber-100 text-amber-800 border-amber-200',
   COSTED: 'bg-purple-100 text-purple-800 border-purple-200',
+  CANCELED: 'bg-gray-100 text-gray-700 border-gray-200',
+}
+
+const SHORTFALL_REASON_LABEL: Record<string, string> = {
+  MATERIAL_SHORTAGE: 'Thiếu nguyên vật liệu',
+  DEFECT: 'Lỗi sản phẩm',
+  TIME_SHORTAGE: 'Thiếu thời gian',
+  OTHER: 'Khác',
 }
 
 function shortId(id: string) {
@@ -780,6 +791,22 @@ function WorkOrderDetail({ id }: { id: string }) {
         />
       )}
 
+      {/* Carry-over banner — this WO was spawned from a parent shortfall (#241). */}
+      {wo.parent_wo_id && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm text-amber-900">
+            Đây là lệnh phát sinh từ{' '}
+            <Link
+              href={`/work-orders/${wo.parent_wo_id}`}
+              className="font-mono font-medium underline"
+            >
+              #{shortId(wo.parent_wo_id)}
+            </Link>
+            {' '}— {wo.quantity} sản phẩm còn thiếu cần sản xuất tiếp.
+          </p>
+        </div>
+      )}
+
       {/* Header card */}
       <div className="rounded-lg border p-6">
         <div className="flex items-start justify-between gap-4">
@@ -790,6 +817,14 @@ function WorkOrderDetail({ id }: { id: string }) {
             <p className="font-mono text-lg font-bold">{shortId(wo.id)}</p>
           </div>
           <div className="flex items-center gap-2">
+            {wo.status === 'IN_PROCESSING' && can(role, 'advance', 'work_orders') && (
+              <Button size="sm" asChild>
+                <Link href={`/work-orders/${wo.id}/report`}>
+                  <ClipboardCheck className="size-4" />
+                  Báo cáo hoàn thành
+                </Link>
+              </Button>
+            )}
             {canGenerateBarcode && (
               hasBarcode ? (
                 <Button
@@ -831,6 +866,25 @@ function WorkOrderDetail({ id }: { id: string }) {
             }
           />
           <Field label="Số lượng" value={wo.quantity.toString()} />
+          {wo.status === 'PARTIAL_COMPLETE' && wo.actual_qty != null && (
+            <Field
+              label="Số lượng đạt"
+              value={
+                <span className="font-medium">
+                  {wo.actual_qty} / {wo.quantity}
+                  <span className="ml-1 text-muted-foreground">
+                    (thiếu {wo.quantity - wo.actual_qty})
+                  </span>
+                </span>
+              }
+            />
+          )}
+          {wo.shortfall_reason && (
+            <Field
+              label="Lý do thiếu hụt"
+              value={SHORTFALL_REASON_LABEL[wo.shortfall_reason] ?? wo.shortfall_reason}
+            />
+          )}
           {wo.sku_dimensions && (
             <Field
               label="Kích thước"

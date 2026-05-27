@@ -60,7 +60,9 @@ const WIP_STATUS_LABEL: Record<WorkOrderStatus, string> = {
   IN_CUTTING: 'Đang cắt',
   IN_PROCESSING: 'Đang xử lý',
   COMPLETED: 'Hoàn thành',
+  PARTIAL_COMPLETE: 'Hoàn thành một phần',
   COSTED: 'Đã tính giá',
+  CANCELED: 'Đã huỷ',
 }
 
 const WIP_STATUS_COLOR: Record<WorkOrderStatus, string> = {
@@ -68,10 +70,19 @@ const WIP_STATUS_COLOR: Record<WorkOrderStatus, string> = {
   IN_CUTTING: 'bg-orange-100 text-orange-700 border-orange-200',
   IN_PROCESSING: 'bg-blue-100 text-blue-700 border-blue-200',
   COMPLETED: 'bg-green-100 text-green-700 border-green-200',
+  PARTIAL_COMPLETE: 'bg-amber-100 text-amber-700 border-amber-200',
   COSTED: 'bg-purple-100 text-purple-700 border-purple-200',
+  CANCELED: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
-const WIP_STATUS_ORDER: WorkOrderStatus[] = ['PLANNED', 'IN_CUTTING', 'IN_PROCESSING', 'COMPLETED', 'COSTED']
+const WIP_STATUS_ORDER: WorkOrderStatus[] = [
+  'PLANNED',
+  'IN_CUTTING',
+  'IN_PROCESSING',
+  'COMPLETED',
+  'PARTIAL_COMPLETE',
+  'COSTED',
+]
 
 const WIP_VISIBLE_ROLES = new Set(['admin', 'planner', 'cnc_manager'])
 
