@@ -1101,6 +1101,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/containers/{id}/lines-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List container_lines_history for a container (#302)
+         * @description Audit trail of every container_lines row that was wiped by a
+         *     v2 supersede. Optionally filter by the plan id that triggered
+         *     the supersede via ?plan_id=<uuid>.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description loading plan id that supersededthis row */
+                    plan_id?: string;
+                };
+                header?: never;
+                path: {
+                    /** @description container id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.ContainerLineHistoryEntry"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/containers/{id}/lines/{line_id}": {
         parameters: {
             query?: never;
@@ -1157,6 +1215,115 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/loading-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the active (non-superseded) loading plan for a container */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.LoadingPlan"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Upload customer packing-list Excel as a loading plan (PARSED) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** @description customer uuid that owns the SKU mappings */
+                        customer_id: string;
+                        /**
+                         * Format: binary
+                         * @description packing-list .xlsx
+                         */
+                        file: string;
+                        /** @description free-form notes */
+                        notes?: string;
+                        /** @description external URL where the file is archived */
+                        excel_url?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.LoadingPlanUploadResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.LoadingPlanUploadResult"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4638,6 +4805,191 @@ export interface paths {
                     };
                     content: {
                         "application/pdf": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loading-plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one loading plan with its lines */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description loading plan id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.LoadingPlan"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loading-plans/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a loading plan (admin) — locks the version
+         * @description When the container already has scanned container_lines, the
+         *     caller MUST set confirm_supersede=true. Without it the
+         *     endpoint returns 412 so the FE can render the confirm dialog.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description loading plan id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description optional notes + confirm_supersede flag */
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_delivery.approveLoadingPlanRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.LoadingPlan"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description container has scanned lines; resubmit with confirm_supersede=true */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loading-plans/{id}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Diff a loading plan against another (added/removed/changed by sku) */
+        get: {
+            parameters: {
+                query: {
+                    /** @description loading plan id to diff against */
+                    against: string;
+                };
+                header?: never;
+                path: {
+                    /** @description loading plan id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.LoadingPlanDiff"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
                             [key: string]: string;
                         };
                     };
@@ -9825,6 +10177,18 @@ export interface components {
             sku_name?: string;
             weight_kg_total?: number;
         };
+        "internal_module_delivery.ContainerLineHistoryEntry": {
+            barcode_id?: string;
+            container_id?: string;
+            id?: string;
+            original_line_id?: string;
+            raw_snapshot?: number[];
+            reason?: string;
+            sku_id?: string;
+            superseded_at?: string;
+            superseded_by_plan?: string;
+            superseded_by_user?: string;
+        };
         "internal_module_delivery.ContainerStatusLogEntry": {
             actor_id?: string;
             container_id?: string;
@@ -9840,6 +10204,60 @@ export interface components {
             max_payload_kg?: number;
             note?: string;
         };
+        "internal_module_delivery.LoadingPlan": {
+            approved_at?: string;
+            approved_by?: string;
+            container_id?: string;
+            created_at?: string;
+            excel_file_url?: string;
+            excel_hash?: string;
+            id?: string;
+            lines?: components["schemas"]["internal_module_delivery.LoadingPlanLine"][];
+            notes?: string;
+            parsed_at?: string;
+            status?: string;
+            superseded_at?: string;
+            superseded_by?: string;
+            uploaded_by?: string;
+            version?: number;
+        };
+        "internal_module_delivery.LoadingPlanDiff": {
+            added?: components["schemas"]["internal_module_delivery.LoadingPlanLine"][];
+            against?: string;
+            changed?: components["schemas"]["internal_module_delivery.LoadingPlanLineDiff"][];
+            new_plan?: string;
+            removed?: components["schemas"]["internal_module_delivery.LoadingPlanLine"][];
+        };
+        "internal_module_delivery.LoadingPlanLine": {
+            created_at?: string;
+            customer_sku_code?: string;
+            excel_row_num?: number;
+            id?: string;
+            loading_plan_id?: string;
+            qty_in_excel?: number;
+            qty_planned_pieces?: number;
+            raw_excel_row?: number[];
+            sku_id?: string;
+            unit_in_excel?: string;
+        };
+        "internal_module_delivery.LoadingPlanLineDiff": {
+            customer_sku_code?: string;
+            new_qty?: number;
+            old_qty?: number;
+            sku_id?: string;
+        };
+        "internal_module_delivery.LoadingPlanRowError": {
+            code?: string;
+            col?: string;
+            message?: string;
+            row?: number;
+        };
+        "internal_module_delivery.LoadingPlanUploadResult": {
+            errors?: components["schemas"]["internal_module_delivery.LoadingPlanRowError"][];
+            lines?: components["schemas"]["internal_module_delivery.LoadingPlanLine"][];
+            plan?: components["schemas"]["internal_module_delivery.LoadingPlan"];
+            warnings?: components["schemas"]["internal_module_delivery.LoadingPlanRowError"][];
+        };
         "internal_module_delivery.TransferLineInput": {
             cbm_total?: number;
             line_id?: string;
@@ -9851,6 +10269,10 @@ export interface components {
             /** @description nil when the source line was fully consumed */
             source_line?: components["schemas"]["internal_module_delivery.ContainerLine"];
             target_line?: components["schemas"]["internal_module_delivery.ContainerLine"];
+        };
+        "internal_module_delivery.approveLoadingPlanRequest": {
+            confirm_supersede?: boolean;
+            notes?: string;
         };
         "internal_module_delivery.sealReopenShipRequest": {
             note?: string;

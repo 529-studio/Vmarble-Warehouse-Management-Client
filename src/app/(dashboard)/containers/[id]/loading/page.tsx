@@ -33,8 +33,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RoleGate } from '@/components/auth/role-gate'
 import { LifecycleDialog } from '@/components/containers/lifecycle-dialog'
+import { LoadingPlanTab } from '@/components/containers/loading-plan-tab'
 import {
   useAddContainerLine,
   useContainer,
@@ -486,8 +488,20 @@ export default function ContainerLoadingPage({
         </p>
       )}
 
-      {/* Split screen */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Tabs: Excel upload (default) + Manual split-screen (legacy fallback) */}
+      <Tabs defaultValue="excel" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="excel">Upload Excel</TabsTrigger>
+          <TabsTrigger value="manual">Xếp thủ công</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="excel" className="space-y-4">
+          <LoadingPlanTab container={container} editable={editable} />
+        </TabsContent>
+
+        <TabsContent value="manual" className="space-y-4">
+          {/* Split screen */}
+          <div className="grid gap-4 lg:grid-cols-2">
         {/* Left — available SO lines */}
         <Card>
           <CardHeader className="space-y-3 pb-3">
@@ -643,6 +657,8 @@ export default function ContainerLoadingPage({
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <AddLineDialog

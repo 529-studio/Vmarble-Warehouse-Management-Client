@@ -62,6 +62,12 @@ export function eventToQueryKeys(event: RealtimeEvent): QueryKey[] {
       // dashboard delivery counters all live under the `containers` prefix.
       return [['containers']]
 
+    case 'LOADING_PLAN_RELOAD':
+      // BE emits this when an admin approves a v2 packing-list, superseding
+      // the previous APPROVED plan. The active-plan-by-container query and
+      // the container detail (lines may have been wiped) both need to refresh.
+      return [['loading-plans'], ['containers']]
+
     default:
       // Unknown event types are tolerated — the BE may add new types ahead of
       // FE handling. Returning `[]` no-ops the invalidation step.
