@@ -16,6 +16,8 @@ Vmarble Warehouse Management System — **Remnant Flow MVP** for a woodworking f
 
 Project-specific skills live in `.claude/skills/`. They are loaded on-demand based on relevance.
 
+**Vmarble-specific** (curated for this project):
+
 | Skill | Trigger |
 |-------|---------|
 | `add-shadcn-component` | Adding UI components, shadcn CLI, CVA variants, wrapper pattern |
@@ -27,10 +29,42 @@ Project-specific skills live in `.claude/skills/`. They are loaded on-demand bas
 | `product-manager` | Backlog management, sprint planning, creating/triaging GitHub issues |
 | `business-auditor` | Task touches business logic, BR-* rules, or requires spec validation against `docs/` |
 | `integration-architect` | New API hook, type change in `types/api.ts`, or contract alignment with backend required |
+| `senior-workflow-frontend` | Full Senior Engineer workflow on the FE — requirements → design → implement → QA → PR |
+
+**General-purpose** (sourced from ECC v2.0.0-rc.1, scoped subset):
+
+| Skill | Trigger |
+|-------|---------|
+| `frontend-patterns` | React/Next.js component composition, hooks, performance |
+| `frontend-design-direction` | UI/UX direction, design system decisions |
+| `golang-patterns` | BE module structure, error handling, pgx patterns |
+| `golang-testing` | BE table-driven unit tests, mock store interface |
+| `postgres-patterns` | SQL design, indexing, locks, transaction patterns |
+| `database-migrations` | Goose migration authoring, rollback safety |
+| `api-design` | REST/RPC contract design, versioning, idempotency |
+| `tdd-workflow` | Red-green-refactor discipline on a single failing case |
+| `e2e-testing` | Playwright spec design, mocking, persona coverage |
+| `security-review` | Authz/authn checks, OWASP top 10 sweep |
+| `code-tour` | Walk a stranger through an unfamiliar module |
+| `recursive-decision-ledger` | Long autonomous loops — record decisions/fork points |
 
 > **Rule for `integration-architect`**: invoke it whenever you touch `src/types/api.ts`, `src/lib/api/*.ts`, or any TanStack Query hook that calls a backend endpoint. It guards DTO alignment with the Go `iface.go` source of truth.
 
 ---
+
+## Claude Hooks
+
+Hooks live in `.claude/hooks/`. Wired in `.claude/settings.json`.
+
+| Hook | Phase | Behavior |
+|------|-------|----------|
+| `check-commit-message.sh` | PreToolUse:Bash | Enforce ASCII English Conventional-Commit subject ≤72 chars |
+| `check-swagger-drift.sh` | PreToolUse:Edit/Write/MultiEdit | Block edits to `src/types/api*.ts` / `src/lib/api/*.ts` if BE swagger digest drifted — forces `npm run gen:api` first |
+| `block-no-verify.js` | PreToolUse:Bash | Block `git commit/push --no-verify` and `-c core.hooksPath=` bypasses |
+| `pre-bash-dev-server-block.js` | PreToolUse:Bash | Block `npm/pnpm/yarn run dev` and `next dev` outside tmux — prevents Claude from holding the foreground shell |
+| `check-console-log.js` | Stop | Warn if any modified `.ts/.tsx/.js/.jsx` (excluding tests/scripts) still contains `console.log` |
+
+
 
 ## Automation Workflow
 
