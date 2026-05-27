@@ -1063,3 +1063,105 @@ export interface FGDefect {
   resolved_at?: string
   note?: string
 }
+
+// ── Customers ────────────────────────────────────────────────────────────────
+
+/** Mirrors backend `sales.Customer`. */
+export interface Customer {
+  id: string
+  code: string
+  name: string
+  contact_person?: string
+  contact_email?: string
+  contact_phone?: string
+  address?: string
+  country_code?: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface CustomersFilter extends PageParams {
+  search?: string
+  is_active?: boolean
+}
+
+// ── Loading Plans (Excel packing-list upload) ────────────────────────────────
+
+/**
+ * Loading plan lifecycle:
+ *   PARSED   → fresh upload, before approve. Container can have at most one.
+ *   APPROVED → version locked, drives reconciliation. Worker scans against this.
+ *   SUPERSEDED → replaced by a newer APPROVED version (v2 re-upload).
+ */
+export type LoadingPlanStatus = 'PARSED' | 'APPROVED' | 'SUPERSEDED'
+
+/** Mirrors backend `delivery.LoadingPlan`. */
+export interface LoadingPlan {
+  id: string
+  container_id: string
+  status: LoadingPlanStatus | string
+  version: number
+  excel_file_url?: string
+  excel_hash?: string
+  notes?: string
+  parsed_at?: string
+  approved_at?: string | null
+  approved_by?: string | null
+  superseded_at?: string | null
+  superseded_by?: string | null
+  uploaded_by?: string
+  created_at: string
+  lines?: LoadingPlanLine[]
+}
+
+/** Mirrors backend `delivery.LoadingPlanLine`. */
+export interface LoadingPlanLine {
+  id: string
+  loading_plan_id: string
+  excel_row_num: number
+  customer_sku_code: string
+  sku_id?: string
+  qty_in_excel: number
+  unit_in_excel: string
+  qty_planned_pieces: number
+  raw_excel_row?: unknown[]
+  created_at: string
+}
+
+/** Mirrors backend `delivery.LoadingPlanRowError`. Used in 400/422 upload responses. */
+export interface LoadingPlanRowError {
+  row: number
+  col?: string
+  code: string
+  message: string
+}
+
+/** Mirrors backend `delivery.LoadingPlanUploadResult`. */
+export interface LoadingPlanUploadResult {
+  plan?: LoadingPlan | null
+  lines?: LoadingPlanLine[]
+  errors?: LoadingPlanRowError[]
+  warnings?: LoadingPlanRowError[]
+}
+
+export interface ApproveLoadingPlanInput {
+  confirm_supersede?: boolean
+  notes?: string
+}
+
+/** Mirrors backend `delivery.LoadingPlanLineDiff`. */
+export interface LoadingPlanLineDiff {
+  sku_id?: string
+  customer_sku_code?: string
+  old_qty: number
+  new_qty: number
+}
+
+/** Mirrors backend `delivery.LoadingPlanDiff`. */
+export interface LoadingPlanDiff {
+  new_plan: string
+  against: string
+  added: LoadingPlanLine[]
+  removed: LoadingPlanLine[]
+  changed: LoadingPlanLineDiff[]
+}

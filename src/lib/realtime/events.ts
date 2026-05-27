@@ -14,6 +14,7 @@ export type RealtimeEventType =
   | 'SCAN_CHECKPOINT'
   | 'COSTING_COMPUTED'
   | 'CONTAINER_STATUS_CHANGED'
+  | 'LOADING_PLAN_RELOAD'
 
 export interface RealtimeEvent {
   /** Personal target — present on NEW_ASSIGNMENT, blank otherwise. */

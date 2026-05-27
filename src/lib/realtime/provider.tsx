@@ -76,6 +76,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       if (event.type === 'NEW_ASSIGNMENT') {
         const sku = event.sku ? ` · ${event.sku}` : ''
         toast.success(`Bạn có lệnh sản xuất mới${sku}`)
+      } else if (event.type === 'LOADING_PLAN_RELOAD') {
+        // Another planner approved a v2 packing-list; everyone watching this
+        // container needs to know their stale view will get refreshed.
+        toast.info('Plan vừa được re-load, vui lòng refresh nếu cần xem v2.')
       }
     }
 
