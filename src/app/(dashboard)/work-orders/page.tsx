@@ -81,7 +81,9 @@ const STATUS_LABEL: Record<WorkOrderStatus, string> = {
   IN_CUTTING: 'Đang cắt',
   IN_PROCESSING: 'Đang xử lý',
   COMPLETED: 'Hoàn thành',
+  PARTIAL_COMPLETE: 'Hoàn thành một phần',
   COSTED: 'Đã tính giá',
+  CANCELED: 'Đã huỷ',
 }
 
 const STATUS_CLASS: Record<WorkOrderStatus, string> = {
@@ -89,7 +91,9 @@ const STATUS_CLASS: Record<WorkOrderStatus, string> = {
   IN_CUTTING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   IN_PROCESSING: 'bg-orange-100 text-orange-800 border-orange-200',
   COMPLETED: 'bg-green-100 text-green-800 border-green-200',
+  PARTIAL_COMPLETE: 'bg-amber-100 text-amber-800 border-amber-200',
   COSTED: 'bg-purple-100 text-purple-800 border-purple-200',
+  CANCELED: 'bg-gray-100 text-gray-700 border-gray-200',
 }
 
 /** Next status in the monotonic state machine, null when terminal. */
@@ -98,7 +102,9 @@ const NEXT_STATUS: Record<WorkOrderStatus, WorkOrderStatus | null> = {
   IN_CUTTING: 'IN_PROCESSING',
   IN_PROCESSING: 'COMPLETED',
   COMPLETED: 'COSTED',
+  PARTIAL_COMPLETE: 'COSTED',
   COSTED: null,
+  CANCELED: null,
 }
 
 /** CTA label for the advance button — describes the action, not the destination. */
@@ -107,7 +113,9 @@ const ADVANCE_LABEL: Record<WorkOrderStatus, string> = {
   IN_CUTTING: 'Hoàn thành cắt',
   IN_PROCESSING: 'Đánh dấu hoàn thành',
   COMPLETED: 'Tính giá',
+  PARTIAL_COMPLETE: 'Tính giá',
   COSTED: '', // terminal — button never shown
+  CANCELED: '', // terminal — button never shown
 }
 
 function StatusBadge({ status }: { status: WorkOrderStatus }) {

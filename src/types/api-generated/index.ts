@@ -1505,6 +1505,14 @@ export interface paths {
                     limit?: number;
                     /** @description filter by finalized: true or false (omit for all) */
                     finalized?: boolean;
+                    /** @description filter by SKU id (uuid) */
+                    sku_id?: string;
+                    /** @description filter created_at >= (Asia/Ho_Chi_Minh, YYYY-MM-DD) */
+                    from?: string;
+                    /** @description filter created_at <= (Asia/Ho_Chi_Minh, YYYY-MM-DD, inclusive end-of-day) */
+                    to?: string;
+                    /** @description ILIKE search on sku code or sku name */
+                    search?: string;
                 };
                 header?: never;
                 path?: never;
@@ -2096,6 +2104,341 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sku-mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List customer SKU mappings */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description page number (default 1) */
+                    page?: number;
+                    /** @description items per page (default 10, max 100) */
+                    limit?: number;
+                    /** @description filter by customer id (uuid); omit for all customers */
+                    customer_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_sales_CustomerSKUMapping"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create customer SKU mapping
+         * @description Bridges a customer-facing SKU code (as it appears in the customer's packing-list Excel) with the internal catalog SKU id. (#304, BR-CSM02)
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_sales.createCustomerSKUMappingRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.CustomerSKUMapping"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sku-mappings/bulk-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk-import customer SKU mappings from CSV
+         * @description Multipart upload with form fields `customer_id` (uuid) and `file` (CSV, UTF-8 with optional BOM). CSV header: `customer_sku_code,sku_id,notes`. Fail-all: any row error rolls the whole batch back and returns 422 with per-row errors.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** @description customer id (uuid) */
+                        customer_id: string;
+                        /**
+                         * Format: binary
+                         * @description CSV file
+                         */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.BulkImportResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.BulkImportResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sku-mappings/{customerID}/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete customer SKU mapping */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description customer id (uuid) */
+                    customerID: string;
+                    /** @description customer SKU code (URL-encoded) */
+                    code: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Update customer SKU mapping
+         * @description Partial update; nil fields leave the column untouched. The (customer_id, customer_sku_code) PK is immutable — to rename the customer code, delete and re-create.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description customer id (uuid) */
+                    customerID: string;
+                    /** @description customer SKU code (URL-encoded) */
+                    code: string;
+                };
+                cookie?: never;
+            };
+            /** @description patch payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_sales.patchCustomerSKUMappingRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_sales.CustomerSKUMapping"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/customers": {
@@ -9128,6 +9471,14 @@ export interface components {
             total_items?: number;
             total_pages?: number;
         };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_sales_CustomerSKUMapping": {
+            current_page?: number;
+            items?: components["schemas"]["internal_module_sales.CustomerSKUMapping"][];
+            limit?: number;
+            total_is_estimate?: boolean;
+            total_items?: number;
+            total_pages?: number;
+        };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_sales_SalesOrder": {
             current_page?: number;
             items?: components["schemas"]["internal_module_sales.SalesOrder"][];
@@ -9982,6 +10333,15 @@ export interface components {
             status?: components["schemas"]["internal_module_purchasing.POStatus"];
             supplier?: string;
         };
+        "internal_module_sales.BulkImportResult": {
+            errors?: components["schemas"]["internal_module_sales.BulkImportRowError"][];
+            inserted?: number;
+        };
+        "internal_module_sales.BulkImportRowError": {
+            code?: string;
+            message?: string;
+            row?: number;
+        };
         "internal_module_sales.CreateCustomerInput": {
             address?: string;
             code?: string;
@@ -10017,6 +10377,15 @@ export interface components {
             id?: string;
             is_active?: boolean;
             name?: string;
+        };
+        "internal_module_sales.CustomerSKUMapping": {
+            created_at?: string;
+            created_by?: string;
+            customer_id?: string;
+            customer_sku_code?: string;
+            notes?: string;
+            sku_id?: string;
+            updated_at?: string;
         };
         "internal_module_sales.SalesOrder": {
             code?: string;
@@ -10058,6 +10427,12 @@ export interface components {
         "internal_module_sales.cancelSORequest": {
             reason?: string;
         };
+        "internal_module_sales.createCustomerSKUMappingRequest": {
+            customer_id: string;
+            customer_sku_code: string;
+            notes?: string;
+            sku_id: string;
+        };
         "internal_module_sales.patchCustomerRequest": {
             address?: string;
             contact_email?: string;
@@ -10066,6 +10441,10 @@ export interface components {
             country_code?: string;
             is_active?: boolean;
             name?: string;
+        };
+        "internal_module_sales.patchCustomerSKUMappingRequest": {
+            notes?: string;
+            sku_id?: string;
         };
         "internal_module_sales.patchSORequest": {
             clear_expected_ship_date?: boolean;

@@ -61,7 +61,9 @@ const STATUS_LABEL: Record<WorkOrderStatus, string> = {
   IN_CUTTING: 'Đang cắt',
   IN_PROCESSING: 'Đang xử lý',
   COMPLETED: 'Hoàn thành',
+  PARTIAL_COMPLETE: 'Hoàn thành một phần',
   COSTED: 'Đã tính giá',
+  CANCELED: 'Đã huỷ',
 }
 
 const STATUS_CLASS: Record<WorkOrderStatus, string> = {
@@ -69,7 +71,9 @@ const STATUS_CLASS: Record<WorkOrderStatus, string> = {
   IN_CUTTING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   IN_PROCESSING: 'bg-orange-100 text-orange-800 border-orange-200',
   COMPLETED: 'bg-green-100 text-green-800 border-green-200',
+  PARTIAL_COMPLETE: 'bg-amber-100 text-amber-800 border-amber-200',
   COSTED: 'bg-purple-100 text-purple-800 border-purple-200',
+  CANCELED: 'bg-gray-100 text-gray-700 border-gray-200',
 }
 
 function shortId(id: string) {
