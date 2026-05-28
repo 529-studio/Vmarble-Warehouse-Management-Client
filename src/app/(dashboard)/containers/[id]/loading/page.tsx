@@ -38,12 +38,24 @@ import { RoleGate } from '@/components/auth/role-gate'
 import { LifecycleDialog } from '@/components/containers/lifecycle-dialog'
 import { LoadingPlanTab } from '@/components/containers/loading-plan-tab'
 import {
+  ReconciliationCounter,
+  ReconciliationMatrix,
+} from '@/components/containers/reconciliation-matrix'
+import { ExceptionPanel } from '@/components/containers/exception-panel'
+import {
   useAddContainerLine,
   useContainer,
   useContainers,
   useRemoveContainerLine,
   useTransferContainerLine,
 } from '@/lib/hooks/use-containers'
+import { useActiveLoadingPlan } from '@/lib/hooks/use-loading-plans'
+import { useContainerExceptions } from '@/lib/hooks/use-loading-exceptions'
+import {
+  computeSealBlockers,
+  reconcile,
+  type SealBlocker,
+} from '@/lib/delivery/reconciliation'
 import { useSalesOrders } from '@/lib/hooks/use-sales-orders'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import type {
@@ -492,11 +504,16 @@ export default function ContainerLoadingPage({
       <Tabs defaultValue="excel" className="space-y-4">
         <TabsList>
           <TabsTrigger value="excel">Upload Excel</TabsTrigger>
+          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
           <TabsTrigger value="manual">Xếp thủ công</TabsTrigger>
         </TabsList>
 
         <TabsContent value="excel" className="space-y-4">
           <LoadingPlanTab container={container} editable={editable} />
+        </TabsContent>
+
+        <TabsContent value="reconciliation" className="space-y-4">
+          <ReconciliationTabContent container={container} />
         </TabsContent>
 
         <TabsContent value="manual" className="space-y-4">
@@ -686,6 +703,76 @@ export default function ContainerLoadingPage({
         onCompleted={() => setSeal(false)}
         onCancel={() => setSeal(false)}
       />
+    </div>
+  )
+}
+
+function ReconciliationTabContent({ container }: { container: Container }) {
+  const { data: plan, isLoading: planLoading } = useActiveLoadingPlan(container.id)
+  const { data: exData, isLoading: exLoading } = useContainerExceptions(container.id, {
+    limit: 100,
+  })
+
+  const reconciliation = useMemo(
+    () => reconcile(plan?.lines ?? [], container.lines ?? []),
+    [plan?.lines, container.lines],
+  )
+  const blockers = useMemo(
+    () => computeSealBlockers(reconciliation, exData?.items ?? []),
+    [reconciliation, exData?.items],
+  )
+
+  if (planLoading || exLoading) {
+    return <Skeleton className="h-64 w-full" />
+  }
+
+  if (!plan) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Container chưa có loading plan — upload Excel ở tab bên trái để bắt đầu.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ReconciliationCounter summary={reconciliation.summary} />
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/containers/${container.id}/reconciliation`}>
+            Xem trang đầy đủ
+          </Link>
+        </Button>
+      </div>
+
+      {blockers.length > 0
+        && container.status !== 'SEALED'
+        && container.status !== 'SHIPPED' && (
+          <Card className="border-amber-300 bg-amber-50">
+            <CardContent className="p-3">
+              <p className="text-xs font-semibold text-amber-900">
+                {blockers.length} điều kiện chưa đạt để niêm phong
+              </p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-amber-900">
+                {blockers.map((b: SealBlocker, i: number) => (
+                  <li key={i}>
+                    {b.kind === 'EXCEPTION_PENDING'
+                      ? `Exception ${b.exception_type} đang chờ duyệt`
+                      : `${b.sku_code} dư ${b.delta} chưa có exception OVER_LOADED approved`}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+      <ReconciliationMatrix reconciliation={reconciliation} limit={20} />
+
+      <ExceptionPanel containerId={container.id} />
     </div>
   )
 }
