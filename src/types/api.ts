@@ -1235,3 +1235,40 @@ export interface ApproveLoadingExceptionInput {
 export interface RejectLoadingExceptionInput {
   reason: string
 }
+
+/** Mirrors backend `loading_exception.bulkApproveRequest`. */
+export interface BulkApproveLoadingExceptionsInput {
+  ids: string[]
+  /**
+   * Per BE: BACKORDER and SUBSTITUTE_ACCEPTED are rejected here because they
+   * require per-row context (parent_so_line_id / substitute_sku_id).
+   */
+  resolution: LoadingExceptionResolution | string
+  resolution_notes?: string
+}
+
+export const BULK_APPROVE_FAILURE_CODES = [
+  'NOT_FOUND',
+  'INVALID_TRANSITION',
+  'INVALID_INPUT',
+  'PRECONDITION_FAILED',
+  'INTERNAL',
+] as const
+export type BulkApproveFailureCode = (typeof BULK_APPROVE_FAILURE_CODES)[number]
+
+export interface BulkApproveFailed {
+  id: string
+  code: BulkApproveFailureCode | string
+  message: string
+}
+
+export interface BulkApproveResult {
+  approved: string[]
+  failed: BulkApproveFailed[]
+}
+
+/** Mirrors backend `loading_exception.CrossContainerSummary`. */
+export interface LoadingExceptionsSummary {
+  pending_count: number
+  blocked_containers: number
+}

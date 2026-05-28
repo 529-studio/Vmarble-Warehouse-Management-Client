@@ -29,6 +29,7 @@ export type AppResource =
   | 'waste_report'
   | 'reports'
   | 'containers'
+  | 'loading_exceptions'
   | 'packing'
 
 export type AppAction =
@@ -63,6 +64,7 @@ const DASHBOARD_PATHS = [
   '/purchasing',
   '/waste-report',
   '/containers',
+  '/loading-exceptions',
 ]
 
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account', '/packing']
@@ -90,6 +92,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/remnant-store', resource: 'remnant_store' },
   { path: '/account', resource: 'account' },
   { path: '/containers', resource: 'containers' },
+  { path: '/loading-exceptions', resource: 'loading_exceptions' },
   { path: '/packing', resource: 'packing' },
 ]
 
@@ -108,6 +111,7 @@ const DASHBOARD_RESOURCES: AppResource[] = [
   'profile',
   'purchasing',
   'containers',
+  'loading_exceptions',
 ]
 
 function matchPath(pathname: string, path: string): boolean {
@@ -132,6 +136,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     barcodes: ['read', 'generate'],
     reports: ['read', 'generate'],
     containers: ['read', 'create', 'approve', 'cancel'],
+    loading_exceptions: ['read', 'approve', 'cancel'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
@@ -145,6 +150,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     plans: ['read', 'create', 'approve', 'cancel'],
     work_orders: ['read', 'create'],
     containers: ['read', 'create'],
+    loading_exceptions: ['read', 'approve', 'cancel'],
   },
   warehouse: {
     ...readOnly(DASHBOARD_RESOURCES),

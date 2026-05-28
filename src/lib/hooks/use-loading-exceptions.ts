@@ -3,10 +3,13 @@ import { toast } from 'sonner'
 import {
   loadingExceptionsApi,
   type ListExceptionsFilter,
+  type ListGlobalExceptionsFilter,
+  type SummaryFilter,
 } from '@/lib/api/loading-exceptions'
 import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
 import type {
   ApproveLoadingExceptionInput,
+  BulkApproveLoadingExceptionsInput,
   CreateLoadingExceptionInput,
   RejectLoadingExceptionInput,
 } from '@/types/api'
@@ -24,6 +27,31 @@ export function useContainerExceptions(
     enabled: !!containerId,
     staleTime: 15_000,
     placeholderData: (prev) => prev,
+  })
+}
+
+/**
+ * Cross-container queue used by `/loading-exceptions`. We poll once a minute
+ * because BE does not expose a `LOADING_EXCEPTION_CREATED` SSE channel; the
+ * planner can also pull-to-refresh on the page.
+ */
+export function useGlobalLoadingExceptions(filter: ListGlobalExceptionsFilter = {}) {
+  return useQuery({
+    queryKey: [LOADING_EXCEPTIONS_KEY, 'global', filter],
+    queryFn: () => loadingExceptionsApi.listGlobal(filter),
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+    placeholderData: (prev) => prev,
+  })
+}
+
+/** Pinned counter — pending exceptions + blocked containers. */
+export function useLoadingExceptionsSummary(filter: SummaryFilter = {}) {
+  return useQuery({
+    queryKey: [LOADING_EXCEPTIONS_KEY, 'summary', filter],
+    queryFn: () => loadingExceptionsApi.getSummary(filter),
+    staleTime: 15_000,
+    refetchInterval: 60_000,
   })
 }
 
@@ -48,6 +76,8 @@ export function useCreateLoadingException() {
       loadingExceptionsApi.create(containerId, body),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: [LOADING_EXCEPTIONS_KEY, 'by-container', vars.containerId] })
+      qc.invalidateQueries({ queryKey: [LOADING_EXCEPTIONS_KEY, 'global'] })
+      qc.invalidateQueries({ queryKey: [LOADING_EXCEPTIONS_KEY, 'summary'] })
       qc.invalidateQueries({ queryKey: [CONTAINERS_KEY, 'detail', vars.containerId] })
       toast.success('Đã ghi nhận exception')
     },
@@ -100,5 +130,30 @@ export function useRejectLoadingException() {
       if (err instanceof ApiClientError && err.status === 409) return
       toast.error(mapApiErrorVi(err, 'Từ chối exception thất bại'))
     },
+  })
+}
+
+interface BulkApproveArgs {
+  body: BulkApproveLoadingExceptionsInput
+  /** Container IDs touched — used to invalidate per-container caches. */
+  containerIds?: string[]
+}
+
+/**
+ * Partial-success mutation. Caller is expected to render the `failed` array
+ * inline; we don't toast a blanket success/error. The summary + global
+ * queue are invalidated regardless.
+ */
+export function useBulkApproveLoadingExceptions() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ body }: BulkApproveArgs) => loadingExceptionsApi.bulkApprove(body),
+    onSuccess: (_result, vars) => {
+      qc.invalidateQueries({ queryKey: [LOADING_EXCEPTIONS_KEY] })
+      for (const cid of vars.containerIds ?? []) {
+        qc.invalidateQueries({ queryKey: [CONTAINERS_KEY, 'detail', cid] })
+      }
+    },
+    onError: (err) => toast.error(mapApiErrorVi(err, 'Duyệt hàng loạt thất bại')),
   })
 }
