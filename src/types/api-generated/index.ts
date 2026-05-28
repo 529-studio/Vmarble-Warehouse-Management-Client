@@ -4035,6 +4035,305 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/lots/{id}/qc-pass": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** QC-pass an inventory lot (transition all PENDING_QC sheets to AVAILABLE) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description lot id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/lots/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject part or all of an inventory lot
+         * @description Transitions up to rejected_qty_sheets PENDING_QC sheets to REJECTED
+         *     and creates a material_rejections row. (BR-INV02/03/04)
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description lot id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_inventory.RejectLotInput"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_inventory.RejectLotResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/material-rejections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List material rejections (keyset paginated) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description filter by claim_status (OPEN|APPROVED|REJECTED|PAID) */
+                    claim_status?: string;
+                    /** @description filter by lot id (uuid) */
+                    lot_id?: string;
+                    /** @description opaque cursor token; omit for first page */
+                    cursor?: string;
+                    /** @description page size (default 50, max 200) */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_MaterialRejection"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/material-rejections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a single material rejection */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description rejection id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_inventory.MaterialRejection"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a material rejection's claim status
+         * @description Allowed transitions: OPEN→APPROVED, OPEN→REJECTED, APPROVED→PAID. (BR-INV05)
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description rejection id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_inventory.UpdateClaimInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_inventory.MaterialRejection"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/inventory/overflow-status": {
         parameters: {
             query?: never;
@@ -4591,6 +4890,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/reports/rejections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate material-rejection totals by supplier (BR-INV06) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description RFC3339 lower bound on reported_at (inclusive) */
+                    from?: string;
+                    /** @description RFC3339 upper bound on reported_at (exclusive) */
+                    to?: string;
+                    /** @description case-insensitive supplier filter */
+                    supplier_ref?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_inventory.RejectionReport"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/sheets": {
         parameters: {
             query?: never;
@@ -4908,6 +5250,170 @@ export interface paths {
                         "application/pdf": {
                             [key: string]: string;
                         };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loading-exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List loading exceptions across containers (#328 — keyset paginated)
+         * @description Cross-container queue used by the planner dashboard. Filters
+         *     by status (pending|approved|rejected|all), container_id,
+         *     customer_id, exception_type, and a created_at date range.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description pending | approved | rejected | all (default all) */
+                    status?: string;
+                    /** @description filter by container id (uuid) */
+                    container_id?: string;
+                    /** @description filter by customer id (uuid) */
+                    customer_id?: string;
+                    /** @description SHORT_SHIPPED | OVER_LOADED | ... */
+                    exception_type?: string;
+                    /** @description RFC3339 lower bound on created_at (inclusive) */
+                    from?: string;
+                    /** @description RFC3339 upper bound on created_at (exclusive) */
+                    to?: string;
+                    /** @description opaque cursor token */
+                    cursor?: string;
+                    /** @description page size (default 50, max 200) */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_loading_exception_LoadingException"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loading-exceptions/bulk-approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve up to 50 loading exceptions in one batch (#330)
+         * @description Partial-success response: every id lands in approved or failed
+         *     with a structured code (NOT_FOUND / INVALID_TRANSITION /
+         *     INVALID_INPUT / PRECONDITION_FAILED / INTERNAL). Resolutions
+         *     BACKORDER and SUBSTITUTE_ACCEPTED are rejected — they require
+         *     per-row context.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_loading_exception.bulkApproveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_loading_exception.BulkApproveResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loading-exceptions/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pinned counter — pending exceptions + blocked containers (#328) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description filter by container id (uuid) */
+                    container_id?: string;
+                    /** @description filter by customer id (uuid) */
+                    customer_id?: string;
+                    /** @description SHORT_SHIPPED | OVER_LOADED | ... */
+                    exception_type?: string;
+                    /** @description RFC3339 lower bound on created_at (inclusive) */
+                    from?: string;
+                    /** @description RFC3339 upper bound on created_at (exclusive) */
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_loading_exception.CrossContainerSummary"];
                     };
                 };
             };
@@ -10028,6 +10534,11 @@ export interface components {
             items?: components["schemas"]["internal_module_inventory.CuttingRecordReport"][];
             next_cursor?: string;
         };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_MaterialRejection": {
+            has_more?: boolean;
+            items?: components["schemas"]["internal_module_inventory.MaterialRejection"][];
+            next_cursor?: string;
+        };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_loading_exception_LoadingException": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_loading_exception.LoadingException"][];
@@ -10689,6 +11200,22 @@ export interface components {
             received_at?: string;
             supplier_ref?: string;
         };
+        "internal_module_inventory.MaterialRejection": {
+            claim_amount?: number;
+            claim_currency?: string;
+            claim_status?: string;
+            id?: string;
+            lot_id?: string;
+            photo_urls?: string[];
+            reason_code?: string;
+            reason_detail?: string;
+            rejected_qty_sheets?: number;
+            reported_at?: string;
+            reported_by?: string;
+            resolution_notes?: string;
+            resolved_at?: string;
+            resolved_by?: string;
+        };
         /** @enum {string} */
         "internal_module_inventory.OverflowLevel": "GREEN" | "RED";
         "internal_module_inventory.OverflowStatus": {
@@ -10731,6 +11258,27 @@ export interface components {
             sku_id?: string;
             used_dimension?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Dimension"];
             work_order_id?: string;
+        };
+        "internal_module_inventory.RejectLotInput": {
+            photo_urls?: string[];
+            reason_code?: string;
+            reason_detail?: string;
+            rejected_qty_sheets?: number;
+        };
+        "internal_module_inventory.RejectLotResult": {
+            rejected_sheet_ids?: string[];
+            rejection?: components["schemas"]["internal_module_inventory.MaterialRejection"];
+        };
+        "internal_module_inventory.RejectionReport": {
+            approved_amount?: number;
+            approved_count?: number;
+            open_amount?: number;
+            open_count?: number;
+            paid_amount?: number;
+            paid_count?: number;
+            rejected_count?: number;
+            supplier_ref?: string;
+            total_rejections?: number;
         };
         "internal_module_inventory.Remnant": {
             allocated_at?: string;
@@ -10777,6 +11325,25 @@ export interface components {
             from_location?: string;
             to_location?: string;
         };
+        "internal_module_inventory.UpdateClaimInput": {
+            claim_amount?: number;
+            claim_currency?: string;
+            claim_status?: string;
+            resolution_notes?: string;
+        };
+        "internal_module_loading_exception.BulkApproveFailed": {
+            code?: string;
+            id?: string;
+            message?: string;
+        };
+        "internal_module_loading_exception.BulkApproveResult": {
+            approved?: string[];
+            failed?: components["schemas"]["internal_module_loading_exception.BulkApproveFailed"][];
+        };
+        "internal_module_loading_exception.CrossContainerSummary": {
+            blocked_containers?: number;
+            pending_count?: number;
+        };
         "internal_module_loading_exception.LoadingException": {
             approved_at?: string;
             approved_by?: string;
@@ -10800,6 +11367,11 @@ export interface components {
             resolution: string;
             resolution_notes?: string;
             substitute_sku_id?: string;
+        };
+        "internal_module_loading_exception.bulkApproveRequest": {
+            ids: string[];
+            resolution: string;
+            resolution_notes?: string;
         };
         "internal_module_loading_exception.createRequest": {
             exception_type: string;
