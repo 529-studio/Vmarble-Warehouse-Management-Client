@@ -1165,3 +1165,73 @@ export interface LoadingPlanDiff {
   removed: LoadingPlanLine[]
   changed: LoadingPlanLineDiff[]
 }
+
+// ── Loading Exceptions (BE #303) ─────────────────────────────────────────────
+
+export const LOADING_EXCEPTION_TYPES = [
+  'SHORT_SHIPPED',
+  'OVER_LOADED',
+  'WRONG_SKU',
+  'SUBSTITUTION',
+  'DAMAGED_AT_LOADING',
+  'UNPLANNED_UNIT',
+  'CUSTOMER_CHANGE',
+] as const
+export type LoadingExceptionType = (typeof LOADING_EXCEPTION_TYPES)[number]
+
+export const LOADING_EXCEPTION_RESOLUTIONS = [
+  'BACKORDER',
+  'CANCEL_FROM_SO',
+  'SUBSTITUTE_ACCEPTED',
+  'WRITE_OFF',
+  'DEFER_TO_NEXT',
+] as const
+export type LoadingExceptionResolution =
+  (typeof LOADING_EXCEPTION_RESOLUTIONS)[number]
+
+/**
+ * Mirrors backend `loading_exception.LoadingException`.
+ *
+ * `approved_by` NULL means the exception is still pending and blocks SEAL
+ * (BR-D17/D18). Once stamped (approve OR reject), SEAL no longer treats it
+ * as a blocker; `resolution` is set on approve and stays NULL on reject.
+ */
+export interface LoadingException {
+  id: string
+  container_id: string
+  loading_plan_id?: string
+  exception_type: LoadingExceptionType | string
+  sku_id?: string
+  qty?: number
+  reason: string
+  photo_urls?: string[]
+  resolution?: LoadingExceptionResolution | string | null
+  resolution_notes?: string | null
+  substitute_sku_id?: string | null
+  carry_over_so_line_id?: string | null
+  approved_at?: string | null
+  approved_by?: string | null
+  created_at: string
+  created_by: string
+}
+
+export interface CreateLoadingExceptionInput {
+  exception_type: LoadingExceptionType | string
+  loading_plan_id?: string
+  sku_id?: string
+  so_line_id?: string
+  qty?: number
+  reason: string
+  photo_urls?: string[]
+}
+
+export interface ApproveLoadingExceptionInput {
+  resolution: LoadingExceptionResolution | string
+  resolution_notes?: string
+  substitute_sku_id?: string
+  parent_so_line_id?: string
+}
+
+export interface RejectLoadingExceptionInput {
+  reason: string
+}

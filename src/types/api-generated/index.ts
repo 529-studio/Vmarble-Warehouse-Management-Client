@@ -1024,6 +1024,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/containers/{id}/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List loading exceptions for a container (keyset paginated) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description pending | approved | all (default all) */
+                    status?: string;
+                    /** @description opaque cursor token */
+                    cursor?: string;
+                    /** @description page size */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_loading_exception_LoadingException"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Raise a loading exception against a container
+         * @description Status starts pending (approved_by NULL). Type must be one of
+         *     SHORT_SHIPPED / OVER_LOADED / WRONG_SKU / SUBSTITUTION /
+         *     DAMAGED_AT_LOADING / UNPLANNED_UNIT / CUSTOMER_CHANGE.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_loading_exception.createRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_loading_exception.LoadingException"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/containers/{id}/lines": {
         parameters: {
             query?: never;
@@ -4817,6 +4918,222 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loading-exceptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one loading exception by id */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description exception id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_loading_exception.LoadingException"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loading-exceptions/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Approve a pending loading exception
+         * @description Resolution must be one of BACKORDER / CANCEL_FROM_SO /
+         *     SUBSTITUTE_ACCEPTED / WRITE_OFF / DEFER_TO_NEXT.
+         *     BR-D17 BACKORDER: parent_so_line_id is required and a
+         *     carry-over sales_order_lines row is created in the same tx.
+         *     BR-D18 SUBSTITUTE_ACCEPTED: substitute_sku_id is required.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description exception id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_loading_exception.approveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_loading_exception.LoadingException"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/loading-exceptions/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Reject a pending loading exception
+         * @description Closes the exception without picking a resolution.
+         *     resolution column stays NULL but approved_by/approved_at are stamped
+         *     so the SEAL guard treats it as resolved.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description exception id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_loading_exception.rejectRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_loading_exception.LoadingException"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/loading-plans/{id}": {
@@ -9711,6 +10028,11 @@ export interface components {
             items?: components["schemas"]["internal_module_inventory.CuttingRecordReport"][];
             next_cursor?: string;
         };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_loading_exception_LoadingException": {
+            has_more?: boolean;
+            items?: components["schemas"]["internal_module_loading_exception.LoadingException"][];
+            next_cursor?: string;
+        };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_authn_UserDetail": {
             current_page?: number;
             items?: components["schemas"]["internal_module_authn.UserDetail"][];
@@ -10454,6 +10776,42 @@ export interface components {
             entity_type?: string;
             from_location?: string;
             to_location?: string;
+        };
+        "internal_module_loading_exception.LoadingException": {
+            approved_at?: string;
+            approved_by?: string;
+            carry_over_so_line_id?: string;
+            container_id?: string;
+            created_at?: string;
+            created_by?: string;
+            exception_type?: string;
+            id?: string;
+            loading_plan_id?: string;
+            photo_urls?: string[];
+            qty?: number;
+            reason?: string;
+            resolution?: string;
+            resolution_notes?: string;
+            sku_id?: string;
+            substitute_sku_id?: string;
+        };
+        "internal_module_loading_exception.approveRequest": {
+            parent_so_line_id?: string;
+            resolution: string;
+            resolution_notes?: string;
+            substitute_sku_id?: string;
+        };
+        "internal_module_loading_exception.createRequest": {
+            exception_type: string;
+            loading_plan_id?: string;
+            photo_urls?: string[];
+            qty?: number;
+            reason: string;
+            sku_id?: string;
+            so_line_id?: string;
+        };
+        "internal_module_loading_exception.rejectRequest": {
+            reason: string;
         };
         "internal_module_order.CreateLineItemInput": {
             quantity?: number;
