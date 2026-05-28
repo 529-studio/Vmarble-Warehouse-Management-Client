@@ -57,3 +57,6 @@ docs/demo-prototype-script.md
 docs/*demo-script*.md
 docs/customer-*.md
 docs/*-customer-*.md
+
+# Local cross-session FE status snapshot — never push (contains internal status notes)
+docs/PROJECT-STATUS.md
