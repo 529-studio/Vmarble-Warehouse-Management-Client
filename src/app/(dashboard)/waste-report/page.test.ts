@@ -10,6 +10,8 @@ function row(overrides: Partial<WasteReportRow> = {}): WasteReportRow {
     waste_area_mm2: 500_000,
     avg_sheet_cost: { amount: 100_000, currency: 'VND' },
     total_waste_cost: { amount: 50_000, currency: 'VND' },
+    scrap_sale_revenue: { amount: 0, currency: 'VND' },
+    net_waste_cost: { amount: 50_000, currency: 'VND' },
     ...overrides,
   }
 }

@@ -6314,7 +6314,74 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update min remnant policy for material (BR-K06/K07/K08)
+         * @description Admin-only endpoint to set the minimum dimension thresholds at
+         *     which a leftover is kept as a remnant. A value of 0 disables
+         *     enforcement on that axis. Threshold change is persisted to the
+         *     inventory audit log (action=MIN_REMNANT_POLICY_UPDATED).
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description material id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_catalog.UpdateMinRemnantPolicyInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_catalog.Material"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/notifications/stream": {
@@ -8601,6 +8668,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scrap-sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List scrap sales (keyset pagination)
+         * @description Returns scrap sales ordered by created_at DESC. Filter by
+         *     sale_date range and/or material_id. Period filter matches
+         *     WasteReport filter (BR-C07).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description opaque keyset cursor from a previous response (omit for first page) */
+                    cursor?: string;
+                    /** @description items per page (default 10, max 100) */
+                    limit?: number;
+                    /** @description from date (Asia/Ho_Chi_Minh, YYYY-MM-DD) */
+                    from?: string;
+                    /** @description to date inclusive (Asia/Ho_Chi_Minh, YYYY-MM-DD) */
+                    to?: string;
+                    /** @description filter by material id (uuid) */
+                    material_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_scrap_ScrapSale"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Record a scrap sale transaction (BR-C05/C08)
+         * @description Records a scrap sale. Phase A: only VND currency is accepted.
+         *     Scrap sales offset waste cost in the WasteReport (BR-C06).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_scrap.CreateScrapSaleInput"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_scrap.ScrapSale"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skus": {
         parameters: {
             query?: never;
@@ -10544,6 +10758,11 @@ export interface components {
             items?: components["schemas"]["internal_module_loading_exception.LoadingException"][];
             next_cursor?: string;
         };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_scrap_ScrapSale": {
+            has_more?: boolean;
+            items?: components["schemas"]["internal_module_scrap.ScrapSale"][];
+            next_cursor?: string;
+        };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_authn_UserDetail": {
             current_page?: number;
             items?: components["schemas"]["internal_module_authn.UserDetail"][];
@@ -10821,6 +11040,8 @@ export interface components {
             created_at?: string;
             id?: string;
             is_active?: boolean;
+            min_remnant_length_mm?: number;
+            min_remnant_width_mm?: number;
             name?: string;
             type?: components["schemas"]["internal_module_catalog.MaterialType"];
             unit?: string;
@@ -10839,6 +11060,10 @@ export interface components {
         "internal_module_catalog.SetBOMInput": {
             components?: components["schemas"]["internal_module_catalog.BOMComponent"][];
             sku_id?: string;
+        };
+        "internal_module_catalog.UpdateMinRemnantPolicyInput": {
+            min_remnant_length_mm?: number;
+            min_remnant_width_mm?: number;
         };
         "internal_module_costing.CostingAdjustment": {
             costing_record_id?: string;
@@ -10885,6 +11110,8 @@ export interface components {
             avg_sheet_cost?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
             material_id?: string;
             material_name?: string;
+            net_waste_cost?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
+            scrap_sale_revenue?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
             sheets_consumed?: number;
             total_waste_cost?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
             waste_area_mm2?: number;
@@ -11154,6 +11381,14 @@ export interface components {
         "internal_module_inventory.CutResult": {
             barcode_ids?: string[];
             cutting_record_id?: string;
+            /**
+             * @description DroppedRemnantCount is 1 when the cut produced a leftover whose length or
+             *     width fell below the material's min_remnant policy (BR-K06) and was
+             *     therefore dropped into waste instead of being persisted as a remnant.
+             *     0 otherwise. Currently 0/1 because RecordCut handles a single cut, but
+             *     the field is typed as int so future bulk-cut endpoints can reuse it.
+             */
+            dropped_remnant_count?: number;
             remnant_id?: string;
         };
         "internal_module_inventory.CuttingRecordReport": {
@@ -11811,6 +12046,30 @@ export interface components {
         "internal_module_sales.splitToPlanRequest": {
             allocations?: components["schemas"]["internal_module_sales.SplitAllocation"][];
             deadline?: string;
+        };
+        "internal_module_scrap.CreateScrapSaleInput": {
+            buyer_name?: string;
+            currency?: string;
+            invoice_number?: string;
+            material_id?: string;
+            notes?: string;
+            quantity_kg?: number;
+            sale_date?: string;
+            unit_price?: number;
+        };
+        "internal_module_scrap.ScrapSale": {
+            buyer_name?: string;
+            created_at?: string;
+            created_by?: string;
+            currency?: string;
+            id?: string;
+            invoice_number?: string;
+            material_id?: string;
+            notes?: string;
+            quantity_kg?: number;
+            sale_date?: string;
+            total_amount?: number;
+            unit_price?: number;
         };
     };
     responses: never;
