@@ -416,6 +416,16 @@ export interface WasteReportRow {
   /** Mean board-sheet cost across the consumed sheets — used by BE to allocate. */
   avg_sheet_cost: Money
   total_waste_cost: Money
+  /**
+   * Revenue collected from scrap sales for this material in the same range
+   * (BR-C06). Subtracted from `total_waste_cost` to produce `net_waste_cost`.
+   */
+  scrap_sale_revenue: Money
+  /**
+   * `total_waste_cost − scrap_sale_revenue`. May be negative when scrap sales
+   * exceed waste — display sign in the UI.
+   */
+  net_waste_cost: Money
 }
 
 export interface WasteReportFilter {
@@ -424,6 +434,108 @@ export interface WasteReportFilter {
   /** Inclusive day; BE adds +1 day server-side to make it half-open. */
   to?: string
   material_id?: string
+}
+
+// ── Scrap sales (BR-C05/C06/C08) ────────────────────────────────────────────
+
+/**
+ * GET /api/v1/scrap-sales item — mirrors backend `scrap.ScrapSale`.
+ * Phase A: BE accepts only VND on create; reads still surface `currency` so
+ * legacy rows stay readable when multi-currency lands (#295).
+ */
+export interface ScrapSale {
+  id: string
+  material_id: string
+  /** Inclusive day in Asia/Ho_Chi_Minh; format YYYY-MM-DD. */
+  sale_date: string
+  /** Kilograms — BE stores as decimal; FE shows ≤ 2 decimal places. */
+  quantity_kg: number
+  /** Per-kg price in the smallest unit of `currency` (VND đồng). */
+  unit_price: number
+  /** Pre-computed `quantity_kg * unit_price` from BE. */
+  total_amount: number
+  currency: string
+  buyer_name: string
+  invoice_number?: string
+  notes?: string
+  created_by: string
+  created_at: string
+}
+
+/** POST /api/v1/scrap-sales — mirrors backend `scrap.CreateScrapSaleInput`. */
+export interface CreateScrapSaleInput {
+  material_id: string
+  /** YYYY-MM-DD; must not be in the future. */
+  sale_date: string
+  quantity_kg: number
+  unit_price: number
+  /** Phase A: must be 'VND'. */
+  currency: string
+  buyer_name: string
+  invoice_number?: string
+  notes?: string
+}
+
+export interface ScrapSalesFilter {
+  cursor?: string | null
+  limit?: number
+  /** YYYY-MM-DD inclusive. */
+  from?: string
+  /** YYYY-MM-DD inclusive (BE adds +1 day server-side). */
+  to?: string
+  material_id?: string
+}
+
+// ── Material rejections (BR-INV02–06) ───────────────────────────────────────
+
+/** Mirrors backend `inventory.MaterialRejection.claim_status`. */
+export type ClaimStatus = 'OPEN' | 'APPROVED' | 'REJECTED' | 'PAID'
+
+export const CLAIM_STATUSES: ClaimStatus[] = ['OPEN', 'APPROVED', 'REJECTED', 'PAID']
+
+/**
+ * GET /api/v1/inventory/material-rejections item — mirrors backend
+ * `inventory.MaterialRejection`. Created by the BE's RejectLot flow; FE only
+ * lists, reads, and patches claim status (BR-INV05 transitions).
+ */
+export interface MaterialRejection {
+  id: string
+  lot_id: string
+  reason_code: string
+  reason_detail?: string
+  rejected_qty_sheets: number
+  photo_urls?: string[]
+  /** Plain number — BE keeps amount and currency separate. */
+  claim_amount: number
+  claim_currency: string
+  claim_status: ClaimStatus | string
+  resolution_notes?: string
+  reported_by: string
+  reported_at: string
+  resolved_by?: string
+  resolved_at?: string
+}
+
+/**
+ * PATCH /api/v1/inventory/material-rejections/:id — mirrors backend
+ * `inventory.UpdateClaimInput`. Allowed transitions per BR-INV05:
+ *   OPEN → APPROVED | REJECTED
+ *   APPROVED → PAID
+ */
+export interface UpdateClaimInput {
+  claim_status: ClaimStatus | string
+  /** Required when transitioning to APPROVED/PAID; ignored on REJECTED. */
+  claim_amount?: number
+  /** Phase A: 'VND'. */
+  claim_currency?: string
+  resolution_notes?: string
+}
+
+export interface MaterialRejectionsFilter {
+  cursor?: string | null
+  limit?: number
+  claim_status?: ClaimStatus
+  lot_id?: string
 }
 
 // ── Cutting ──────────────────────────────────────────────────────────────────

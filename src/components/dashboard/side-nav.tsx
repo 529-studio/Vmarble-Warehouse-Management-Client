@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users, Truck, Trash2, QrCode, HardHat, Container as ContainerIcon, AlertTriangle } from 'lucide-react'
+import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users, Truck, Trash2, QrCode, HardHat, Container as ContainerIcon, AlertTriangle, Recycle, FileWarning } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,8 @@ const MANAGEMENT_NAV = [
   { href: '/barcodes', label: 'Barcode', icon: QrCode, resource: 'barcodes' },
   { href: '/costing', label: 'Giá thành', icon: DollarSign, resource: 'costing' },
   { href: '/waste-report', label: 'Báo cáo hao hụt', icon: Trash2, resource: 'waste_report' },
+  { href: '/scrap-sales', label: 'Bán phế liệu', icon: Recycle, resource: 'scrap_sales' },
+  { href: '/material-rejections', label: 'Khiếu nại NCC', icon: FileWarning, resource: 'material_rejections' },
   { href: '/materials', label: 'Nguyên liệu', icon: Layers, resource: 'materials' },
   { href: '/purchasing', label: 'Đơn nhập VL', icon: Truck, resource: 'purchasing' },
   { href: '/skus', label: 'Sản phẩm', icon: Boxes, resource: 'skus' },

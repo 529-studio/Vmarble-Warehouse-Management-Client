@@ -149,8 +149,10 @@ function WasteReportContent() {
         sheets: acc.sheets + r.sheets_consumed,
         areaMm2: acc.areaMm2 + r.waste_area_mm2,
         cost: acc.cost + r.total_waste_cost.amount,
+        scrapRevenue: acc.scrapRevenue + (r.scrap_sale_revenue?.amount ?? 0),
+        netCost: acc.netCost + (r.net_waste_cost?.amount ?? r.total_waste_cost.amount),
       }),
-      { sheets: 0, areaMm2: 0, cost: 0 },
+      { sheets: 0, areaMm2: 0, cost: 0, scrapRevenue: 0, netCost: 0 },
     )
   }, [reportRows])
 
@@ -283,7 +285,7 @@ function WasteReportContent() {
       </label>
 
       {/* Summary cards */}
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardHeader className="pb-1">
             <CardTitle className="text-xs font-medium text-muted-foreground">Số tấm tiêu thụ</CardTitle>
@@ -311,6 +313,28 @@ function WasteReportContent() {
           <CardContent>
             <div className="text-2xl font-semibold text-red-700">
               {isLoading ? <Skeleton className="h-7 w-32" /> : formatVND(totals.cost)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Doanh thu phế liệu</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold text-emerald-700">
+              {isLoading ? <Skeleton className="h-7 w-28" /> : formatVND(totals.scrapRevenue)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Hao hụt thực (BR-C06)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div
+              className={`text-2xl font-semibold ${totals.netCost > 0 ? 'text-red-700' : 'text-emerald-700'}`}
+            >
+              {isLoading ? <Skeleton className="h-7 w-32" /> : formatVND(totals.netCost)}
             </div>
           </CardContent>
         </Card>
@@ -362,13 +386,15 @@ function WasteReportContent() {
                 <TableHead className="text-right">Hao hụt (m²)</TableHead>
                 <TableHead className="text-right">Chi phí TB / m²</TableHead>
                 <TableHead className="text-right">Tổng chi phí hao hụt</TableHead>
+                <TableHead className="text-right">Doanh thu phế liệu</TableHead>
+                <TableHead className="text-right">Hao hụt thực</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 5 }).map((__, j) => (
+                    {Array.from({ length: 7 }).map((__, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
@@ -377,13 +403,16 @@ function WasteReportContent() {
                 ))
               ) : reportRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                     Không có dữ liệu hao hụt trong khoảng thời gian đã chọn.
                   </TableCell>
                 </TableRow>
               ) : (
                 reportRows.map((r) => {
                   const uncosted = r.total_waste_cost.amount <= 0
+                  const scrapRevenue = r.scrap_sale_revenue?.amount ?? 0
+                  const netCost = r.net_waste_cost?.amount ?? r.total_waste_cost.amount
+                  const stillLosing = netCost > 0
                   return (
                     <TableRow
                       key={r.material_id}
@@ -403,6 +432,15 @@ function WasteReportContent() {
                       <TableCell className="text-right">{formatCostPerM2(r)}</TableCell>
                       <TableCell className="text-right font-medium text-red-700">
                         {formatVND(r.total_waste_cost.amount)}
+                      </TableCell>
+                      <TableCell className="text-right text-emerald-700">
+                        {scrapRevenue > 0 ? formatVND(scrapRevenue) : '—'}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-semibold ${stillLosing ? 'text-red-700' : 'text-emerald-700'}`}
+                        title={stillLosing ? 'Hao hụt thực còn dương — chưa hoà' : 'Hao hụt thực đã được phế liệu bù'}
+                      >
+                        {formatVND(netCost)}
                       </TableCell>
                     </TableRow>
                   )

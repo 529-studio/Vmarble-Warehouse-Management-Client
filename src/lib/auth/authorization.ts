@@ -31,6 +31,8 @@ export type AppResource =
   | 'containers'
   | 'loading_exceptions'
   | 'packing'
+  | 'scrap_sales'
+  | 'material_rejections'
 
 export type AppAction =
   | 'read'
@@ -65,6 +67,8 @@ const DASHBOARD_PATHS = [
   '/waste-report',
   '/containers',
   '/loading-exceptions',
+  '/scrap-sales',
+  '/material-rejections',
 ]
 
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account', '/packing']
@@ -94,6 +98,8 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/containers', resource: 'containers' },
   { path: '/loading-exceptions', resource: 'loading_exceptions' },
   { path: '/packing', resource: 'packing' },
+  { path: '/scrap-sales', resource: 'scrap_sales' },
+  { path: '/material-rejections', resource: 'material_rejections' },
 ]
 
 const DASHBOARD_RESOURCES: AppResource[] = [
@@ -137,6 +143,8 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     reports: ['read', 'generate'],
     containers: ['read', 'create', 'approve', 'cancel'],
     loading_exceptions: ['read', 'approve', 'cancel'],
+    scrap_sales: ['read', 'create'],
+    material_rejections: ['read', 'approve'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
@@ -144,6 +152,8 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     costing: ['read', 'compute', 'finalize', 'adjust'],
     waste_report: ['read', 'generate'],
     reports: ['read', 'generate'],
+    scrap_sales: ['read', 'create'],
+    material_rejections: ['read', 'approve'],
   },
   planner: {
     ...readOnly(DASHBOARD_RESOURCES),
