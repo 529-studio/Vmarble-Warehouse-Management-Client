@@ -1,0 +1,107 @@
+name: "Build & Deploy"
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: staging-fe-deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-deploy:
+    name: "🔨 Build & Deploy"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set variables
+        id: vars
+        run: |
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          SHA_SHORT=$(echo '${{ github.sha }}' | cut -c1-7)
+          IMAGE_NAME="${{ env.REGISTRY }}/${REPO_LOWER}"
+          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "sha_tag=${IMAGE_NAME}:sha-${SHA_SHORT}" >> $GITHUB_OUTPUT
+          echo "stg_tag=${IMAGE_NAME}:stg-latest" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.vars.outputs.sha_tag }}
+            ${{ steps.vars.outputs.stg_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trigger Dokploy Redeploy Webhook
+        run: |
+          curl -sS -f -X POST "${{ secrets.DOKPLOY_FE_WEBHOOK_URL }}"
+
+      # ── Thông báo Discord ─────────────────────────────────────────────────
+      - name: "[Discord] ✅ Deploy thành công"
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          SHORT="${GITHUB_SHA::7}"
+          MSG=$(echo '${{ github.event.head_commit.message }}' | head -1)
+          jq -cn \
+            --arg sha  "$SHORT" \
+            --arg msg  "$MSG" \
+            --arg who  "${{ github.actor }}" \
+            --arg url  "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{embeds:[{
+              title: "🚀 [FE] Deploy triggered — staging",
+              color: 3066993,
+              fields:[
+                {name:"Commit",   value:("`"+$sha+"` "+$msg), inline:false},
+                {name:"Tác giả",  value:$who,                 inline:true},
+                {name:"Run log",  value:("[#${{ github.run_number }}]("+$url+")"), inline:true}
+              ]
+            }]}' \
+          | curl -sS -X POST "$DISCORD_WEBHOOK" -H "Content-Type: application/json" -d @-
+
+      - name: "[Discord] ❌ Deploy thất bại"
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          SHORT="${GITHUB_SHA::7}"
+          MSG=$(echo '${{ github.event.head_commit.message }}' | head -1)
+          jq -cn \
+            --arg sha "$SHORT" \
+            --arg msg "$MSG" \
+            --arg who "${{ github.actor }}" \
+            --arg url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{embeds:[{
+              title: "❌ [FE] Deploy failed — staging",
+              color: 15158332,
+              fields:[
+                {name:"Commit",  value:("`"+$sha+"` "+$msg), inline:false},
+                {name:"Tác giả", value:$who,                 inline:true},
+                {name:"Log lỗi", value:("[#${{ github.run_number }}]("+$url+")"), inline:true}
+              ]
+            }]}' \
+          | curl -sS -X POST "$DISCORD_WEBHOOK" -H "Content-Type: application/json" -d @-
