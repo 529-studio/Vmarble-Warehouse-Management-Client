@@ -20,6 +20,21 @@ Turn a vague "next task" request into a disciplined execution flow:
 
 ## Workflow
 
+### 0. Sync with origin/dev FIRST — before anything else
+
+**Always run this before picking an issue, creating a branch, or writing code.**
+
+```bash
+git fetch origin dev
+git log --oneline origin/dev -5
+```
+
+- If the current branch is behind `origin/dev`: rebase or pull before continuing.
+- If already on `dev` and behind: `git pull --ff-only origin dev`.
+- If on a feature branch: `git rebase origin/dev` to stay current.
+
+This prevents working on a stale base that will cause merge conflicts later.
+
 ### 1. Fetch the highest-priority open FE issue
 
 Use the `product-manager` skill to identify the next issue to work on.

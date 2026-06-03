@@ -291,6 +291,12 @@ Example:
 ```
 
 ### Branch rules
+- **Sync with origin/dev FIRST** before creating any branch:
+  ```bash
+  git fetch origin dev
+  git log --oneline origin/dev -5
+  ```
+  If local `dev` is behind: `git pull --ff-only origin dev` before branching.
 - Feature branch from `dev`: `git checkout -b feat/area-brief-description dev`
 - Never push directly to `main` or `dev`
 - MR: feature → `dev` (approval optional)
