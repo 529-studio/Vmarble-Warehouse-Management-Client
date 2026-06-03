@@ -155,3 +155,6 @@ push-image:
     - docker push "$STG_TAG"
     - echo "Pushed → $SHA_TAG"
     - echo "Pushed → $STG_TAG"
+    # ── Dokploy webhook trigger ──────────────────────────────────────────
+    - curl -sS -f -X POST "$DOKPLOY_FE_WEBHOOK_URL"
+
