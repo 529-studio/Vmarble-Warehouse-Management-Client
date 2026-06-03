@@ -80,7 +80,11 @@ build-image:
     - name: docker:27-dind
       alias: docker
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+    # Disable TLS for DinD so buildx --driver docker-container can create
+    # a context without conflicting with the TLS env. Non-TLS is standard
+    # for GitLab SaaS runners using Docker-in-Docker + BuildKit.
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: tcp://docker:2375
     DOCKER_BUILDKIT: "1"
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
@@ -127,7 +131,8 @@ push-image:
     - name: docker:27-dind
       alias: docker
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: tcp://docker:2375
   resource_group: staging-fe-deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
