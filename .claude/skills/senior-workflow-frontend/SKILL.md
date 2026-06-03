@@ -291,13 +291,23 @@ Example:
 ```
 
 ### Branch rules
+- **Sync with origin/dev FIRST** before creating any branch:
+  ```bash
+  git fetch origin dev
+  git log --oneline origin/dev -5
+  ```
+  If local `dev` is behind: `git pull --ff-only origin dev` before branching.
 - Feature branch from `dev`: `git checkout -b feat/area-brief-description dev`
 - Never push directly to `main` or `dev`
-- PR: feature → `dev` (approval optional)
+- MR: feature → `dev` (approval optional)
 - `dev` → `main` requires 1 approval
 
-### PR body template
-```markdown
+**GitLab MR (replaces GitHub PR):**
+```bash
+# Create MR targeting dev
+glab mr create --target-branch dev \
+  --title "[scope] brief description" \
+  --description "$(cat <<'EOF'
 ## Summary
 - What was changed and why
 - Route group affected: (kiosk) / (dashboard) / shared
@@ -315,4 +325,26 @@ Example:
 - [ ] Loading / error / empty states all render correctly
 - [ ] All mutations show success/error toast
 - [ ] Tested manually: describe scenario
+
+Closes #<issue-number>
+EOF
+)"
 ```
+
+If `glab` is unavailable, push the branch and open the MR from the GitLab web UI.
+
+### After the MR is merged — update PROJECT-STATUS.md
+
+**This step is mandatory.** After the MR merges and the issue closes:
+
+1. Open `docs/PROJECT-STATUS.md`
+2. Prepend a new entry in section **7. Changelog**:
+   ```markdown
+   ### YYYY-MM-DD
+   - ✅ MR #N merged · `[scope] description`
+   - ✅ Issue #N closed · brief summary of what shipped
+   ```
+3. Update section **2** (sprint status) — move the issue from 🟡 pending to ✅ done.
+4. Update section **6** (next plan) — remove the done item, add any newly discovered follow-ups.
+
+Do not skip this. The PROJECT-STATUS.md is the cross-session memory for future Claude sessions.

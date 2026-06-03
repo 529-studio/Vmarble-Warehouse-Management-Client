@@ -1,0 +1,152 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Vmarble WMS — Frontend GitLab CI
+#
+# Mapping từ GitHub Actions:
+#   .github/workflows/ci.yml     → stage: quality  (MR → dev)
+#   .github/workflows/deploy.yml → stage: build    (push → dev / manual)
+#                                  stage: push     (push final tags)
+#
+# Scope: quality → build → push.
+# Không bao gồm: Dokploy webhook, Discord notification (DevOps làm tay).
+#
+# Tại sao tách build/push thành 2 job riêng?
+# Docker daemon không chia sẻ state giữa các GitLab CI job. Build job đẩy
+# image lên registry với temp tag (ci-<pipeline-id>); push job kéo temp tag
+# đó về, retag thành sha-XXX + stg-latest rồi đẩy final.
+# ─────────────────────────────────────────────────────────────────────────────
+
+stages:
+  - quality   # type-check + Next.js build (trên MR target dev)
+  - build     # Docker image build → temp tag trong GitLab Registry
+  - push      # Retag temp → sha-XXX + stg-latest, push final
+
+# ── Shared: Node.js base ──────────────────────────────────────────────────────
+#
+# Tương đương actions/setup-node@v4 + cache: npm.
+# Dùng npm ci --cache .npm để tận dụng offline cache giữa các pipeline.
+
+.node_base:
+  image: node:20-alpine
+  cache:
+    key:
+      files:
+        - package-lock.json       # cache bust khi lock file thay đổi
+    paths:
+      - .npm/                     # tương đương cache: npm của GitHub Actions
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1 · quality
+#
+# Trigger: MR mở / update khi target branch là dev.
+# Tương đương ci.yml → on: pull_request: branches: [dev]
+#
+# Steps (theo thứ tự ci.yml):
+#   1. Install dependencies  → npm ci
+#   2. TypeScript type-check → npx tsc --noEmit
+#   3. Next.js prod build    → npm run build
+# ─────────────────────────────────────────────────────────────────────────────
+
+quality:
+  extends: .node_base
+  stage: quality
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "merge_request_event" &&
+        $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"
+  before_script:
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - echo "🔍 TypeScript type-check..."
+    - npx tsc --noEmit
+    - echo "🏗️  Next.js production build..."
+    - npm run build
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 · build-image
+#
+# Trigger: push vào branch dev HOẶC manual trigger (Run pipeline từ UI).
+# Tương đương deploy.yml → on: push: branches: [dev] + workflow_dispatch.
+#
+# Đẩy image lên GitLab Registry với TEMP tag: ci-<pipeline-id>.
+# Tag tạm thời này được push job dùng trong stage tiếp theo.
+#
+# BuildKit cache → GitLab Container Registry (thay thế type=gha của GitHub).
+# ─────────────────────────────────────────────────────────────────────────────
+
+build-image:
+  stage: build
+  image: docker:27
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_BUILDKIT: "1"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: false
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker buildx create --use --name vwms-builder --driver docker-container || true
+    - docker buildx inspect --bootstrap
+  script:
+    - IMAGE_NAME="$CI_REGISTRY_IMAGE"
+    - TEMP_TAG="${IMAGE_NAME}:ci-${CI_PIPELINE_IID}"
+    - CACHE_TAG="${IMAGE_NAME}:buildcache"
+    - echo "Building image → $TEMP_TAG"
+    - |
+      docker buildx build \
+        --cache-from "type=registry,ref=${CACHE_TAG}" \
+        --cache-to   "type=registry,ref=${CACHE_TAG},mode=max" \
+        --tag        "$TEMP_TAG" \
+        --push \
+        .
+    - echo "Build done → $TEMP_TAG"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 3 · push-image
+#
+# Kéo temp tag (ci-<pipeline-id>) từ registry, retag thành:
+#   sha-<7 ký tự đầu SHA>   — immutable, traceable
+#   stg-latest               — mutable, dùng cho staging deploy
+# rồi push cả 2 tag lên GitLab Registry.
+#
+# resource_group: đảm bảo không có 2 push chạy song song trên staging
+# (tương đương concurrency.cancel-in-progress: false của GitHub Actions).
+#
+# Dừng tại đây — KHÔNG trigger Dokploy webhook, KHÔNG gửi Discord.
+# DevOps engineer deploy tay bằng cách pull tag stg-latest hoặc sha-XXX.
+# ─────────────────────────────────────────────────────────────────────────────
+
+push-image:
+  stage: push
+  image: docker:27
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  resource_group: staging-fe-deploy
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: false
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - SHA_SHORT=$(echo "$CI_COMMIT_SHA" | cut -c1-7)
+    - IMAGE_NAME="$CI_REGISTRY_IMAGE"
+    - TEMP_TAG="${IMAGE_NAME}:ci-${CI_PIPELINE_IID}"
+    - SHA_TAG="${IMAGE_NAME}:sha-${SHA_SHORT}"
+    - STG_TAG="${IMAGE_NAME}:stg-latest"
+    - echo "Pulling temp image $TEMP_TAG ..."
+    - docker pull "$TEMP_TAG"
+    - docker tag "$TEMP_TAG" "$SHA_TAG"
+    - docker tag "$TEMP_TAG" "$STG_TAG"
+    - docker push "$SHA_TAG"
+    - docker push "$STG_TAG"
+    - echo "Pushed → $SHA_TAG"
+    - echo "Pushed → $STG_TAG"
