@@ -1,0 +1,120 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Vmarble WMS — Frontend GitLab CI
+#
+# Mapping từ GitHub Actions:
+#   .github/workflows/ci.yml     → stage: quality  (MR → dev)
+#   .github/workflows/deploy.yml → stage: build    (push → dev / manual)
+#
+# Scope: chạy đầy đủ tới bước build image.
+# Không bao gồm: Dokploy webhook, Discord notification.
+# ─────────────────────────────────────────────────────────────────────────────
+
+stages:
+  - quality   # type-check + Next.js build (trên MR target dev)
+  - build     # Docker image build & push to GitLab Registry (trên push dev)
+
+# ── Shared: Node.js base ──────────────────────────────────────────────────────
+#
+# Tương đương actions/setup-node@v4 + cache: npm.
+# Dùng npm ci --cache .npm để tận dụng offline cache giữa các pipeline.
+
+.node_base:
+  image: node:20-alpine
+  cache:
+    key:
+      files:
+        - package-lock.json       # cache bust khi lock file thay đổi
+    paths:
+      - .npm/                     # tương đương cache: npm của GitHub Actions
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1 · quality
+#
+# Trigger: MR mở / update khi target branch là dev.
+# Tương đương ci.yml → on: pull_request: branches: [dev]
+#
+# Steps (theo thứ tự ci.yml):
+#   1. Install dependencies  → npm ci
+#   2. TypeScript type-check → npx tsc --noEmit
+#   3. Next.js prod build    → npm run build
+# ─────────────────────────────────────────────────────────────────────────────
+
+quality:
+  extends: .node_base
+  stage: quality
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "merge_request_event" &&
+        $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"
+  before_script:
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - echo "🔍 TypeScript type-check..."
+    - npx tsc --noEmit
+    - echo "🏗️  Next.js production build..."
+    - npm run build
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 · build-image
+#
+# Trigger: push vào branch dev HOẶC manual trigger (Run pipeline từ UI).
+# Tương đương deploy.yml → on: push: branches: [dev] + workflow_dispatch.
+#
+# resource_group: đảm bảo chỉ 1 pipeline chạy tại một thời điểm (không cancel
+# pipeline đang chạy — tương đương concurrency.cancel-in-progress: false).
+#
+# Image tags (giống deploy.yml):
+#   sha-<7 ký tự đầu của commit SHA>
+#   stg-latest
+#
+# BuildKit cache → GitLab Container Registry (thay thế type=gha của GitHub).
+#
+# Dừng tại đây — KHÔNG trigger Dokploy webhook, KHÔNG gửi Discord.
+# ─────────────────────────────────────────────────────────────────────────────
+
+build-image:
+  stage: build
+  image: docker:27
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_BUILDKIT: "1"
+  # Đảm bảo không có 2 build chạy song song trên staging
+  # (tương đương concurrency.cancel-in-progress: false)
+  resource_group: staging-fe-deploy
+  rules:
+    # push vào dev → chạy tự động
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+    # Run pipeline từ GitLab UI (workflow_dispatch) → manual
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: false
+  before_script:
+    # Login vào GitLab Container Registry
+    # Tương đương docker/login-action với GITHUB_TOKEN → GHCR
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    # Khởi tạo buildx builder (tương đương docker/setup-buildx-action@v3)
+    - docker buildx create --use --name vwms-builder --driver docker-container || true
+    - docker buildx inspect --bootstrap
+  script:
+    # Set variables — tương đương bước "Set variables" trong deploy.yml
+    - SHA_SHORT=$(echo "$CI_COMMIT_SHA" | cut -c1-7)
+    # GitLab CI_REGISTRY_IMAGE đã lowercase theo namespace/project
+    - IMAGE_NAME="$CI_REGISTRY_IMAGE"
+    - SHA_TAG="${IMAGE_NAME}:sha-${SHA_SHORT}"
+    - STG_TAG="${IMAGE_NAME}:stg-latest"
+    # Tag riêng cho BuildKit layer cache trong GitLab Registry
+    # Tương đương cache-from/cache-to type=gha của GitHub Actions
+    - CACHE_TAG="${IMAGE_NAME}:buildcache"
+    - echo "🔨 Building image $SHA_TAG ..."
+    - |
+      docker buildx build \
+        --cache-from "type=registry,ref=${CACHE_TAG}" \
+        --cache-to   "type=registry,ref=${CACHE_TAG},mode=max" \
+        --tag        "$SHA_TAG" \
+        --tag        "$STG_TAG" \
+        --push \
+        .
+    - echo "✅ Image pushed → $SHA_TAG / $STG_TAG"
