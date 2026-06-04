@@ -25,7 +25,29 @@ const nextConfig: NextConfig = {
   },
 
   /**
-   * Security / permissions headers applied to all routes.
+   * Proxy rewrites — forward requests to the Go backend without exposing
+   * the backend URL to the browser (avoids CORS issues in dev and staging).
+   *
+   * /api/proxy/:path*  → http://localhost:8080/api/v1/:path*  (apiClient base)
+   * /api/auth/:path*   → http://localhost:8080/api/auth/:path* (login, outside /v1)
+   *
+   * BACKEND_URL is set in .env.local / CI environment. Falls back to :8080 for dev.
+   */
+  async rewrites() {
+    const backend = process.env.BACKEND_URL ?? 'http://localhost:8080'
+    return [
+      {
+        source: '/api/proxy/:path*',
+        destination: `${backend}/api/v1/:path*`,
+      },
+      {
+        source: '/api/auth/:path*',
+        destination: `${backend}/api/auth/:path*`,
+      },
+    ]
+  },
+
+  /**
    * - Permissions-Policy: allow camera only from same origin (required for
    *   getUserMedia in the kiosk QR scanner on staging).
    * - COOP: same-origin isolates the browsing context for SharedArrayBuffer
