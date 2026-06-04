@@ -4,12 +4,14 @@ import { Suspense, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import { Container as ContainerIcon, Search } from 'lucide-react'
 import { toast } from 'sonner'
@@ -72,6 +74,52 @@ interface PendingDialog {
   containerCode: string
 }
 
+// Pure card visual — used by DraggableCard and DragOverlay
+function ContainerCardContent({ container }: { container: Container }) {
+  const cbmPct = container.fill_pct_cbm ?? 0
+  const massPct = container.fill_pct_mass ?? 0
+  return (
+    <Card className="bg-white">
+      <CardContent className="space-y-2 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <span className="font-mono text-sm font-semibold">{container.code}</span>
+          <Badge variant="outline" className="shrink-0 text-xs">
+            {container.container_type}
+          </Badge>
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">CBM</span>
+            <span className="font-medium tabular-nums">{formatPct(cbmPct)}</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-blue-500 transition-all"
+              style={{ width: `${Math.min(100, Math.max(0, cbmPct))}%` }}
+              aria-label={`CBM filled ${formatPct(cbmPct)}`}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Khối lượng</span>
+            <span className="font-medium tabular-nums">{formatPct(massPct)}</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-amber-500 transition-all"
+              style={{ width: `${Math.min(100, Math.max(0, massPct))}%` }}
+              aria-label={`Mass filled ${formatPct(massPct)}`}
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Tạo {formatDate(container.created_at)}</span>
+          {container.sealed_at && <span>Niêm phong {formatDate(container.sealed_at)}</span>}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function DraggableCard({
   container,
   draggable,
@@ -85,70 +133,34 @@ function DraggableCard({
     disabled: !draggable,
   })
 
-  const cbmPct = container.fill_pct_cbm ?? 0
-  const massPct = container.fill_pct_mass ?? 0
+  if (isDragging) {
+    return (
+      <div
+        ref={setNodeRef}
+        {...(draggable ? listeners : {})}
+        {...attributes}
+        className="h-[130px] rounded-lg border-2 border-dashed border-primary/30 bg-primary/5"
+        aria-hidden
+      />
+    )
+  }
 
   return (
     <div
       ref={setNodeRef}
       {...(draggable ? listeners : {})}
       {...attributes}
-      className={isDragging ? 'opacity-50' : ''}
     >
       <Link
         href={`/containers/${container.id}/loading`}
         className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
-        // Suppress click while dragging — dnd-kit's pointer handler keeps the
-        // cursor down past activation distance, and we don't want the link to
-        // open after a drag-cancel.
         onClick={(e) => {
           if (isDragging) e.preventDefault()
         }}
       >
-        <Card
-          className={`transition-shadow hover:shadow-md ${
-            draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
-          }`}
-        >
-        <CardContent className="space-y-2 p-3">
-          <div className="flex items-start justify-between gap-2">
-            <span className="font-mono text-sm font-semibold">{container.code}</span>
-            <Badge variant="outline" className="shrink-0 text-xs">
-              {container.container_type}
-            </Badge>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">CBM</span>
-              <span className="font-medium tabular-nums">{formatPct(cbmPct)}</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full bg-blue-500 transition-all"
-                style={{ width: `${Math.min(100, Math.max(0, cbmPct))}%` }}
-                aria-label={`CBM filled ${formatPct(cbmPct)}`}
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Khối lượng</span>
-              <span className="font-medium tabular-nums">{formatPct(massPct)}</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full bg-amber-500 transition-all"
-                style={{ width: `${Math.min(100, Math.max(0, massPct))}%` }}
-                aria-label={`Mass filled ${formatPct(massPct)}`}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Tạo {formatDate(container.created_at)}</span>
-            {container.sealed_at && <span>Niêm phong {formatDate(container.sealed_at)}</span>}
-          </div>
-        </CardContent>
-      </Card>
+        <div className={`rounded-lg transition-shadow hover:shadow-md ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}>
+          <ContainerCardContent container={container} />
+        </div>
       </Link>
     </div>
   )
@@ -245,10 +257,21 @@ function ContainersKanban() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
   const [overColumn, setOverColumn] = useState<ContainerStatus | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [pending, setPending] = useState<PendingDialog | null>(null)
+
+  const activeContainer = useMemo(
+    () => (activeId ? containers.find((c) => c.id === activeId) ?? null : null),
+    [activeId, containers],
+  )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
 
   const handleDragEnd = (event: DragEndEvent) => {
     setOverColumn(null)
+    setActiveId(null)
     const { active, over } = event
     if (!over) return
 
@@ -325,11 +348,12 @@ function ContainersKanban() {
       ) : (
         <DndContext
           sensors={sensors}
+          onDragStart={handleDragStart}
           onDragOver={(e) => {
             const to = e.over?.data.current?.to as ContainerStatus | undefined
             setOverColumn(to ?? null)
           }}
-          onDragCancel={() => setOverColumn(null)}
+          onDragCancel={() => { setOverColumn(null); setActiveId(null) }}
           onDragEnd={handleDragEnd}
         >
           <div className="grid gap-3 lg:grid-cols-5">
@@ -354,8 +378,6 @@ function ContainersKanban() {
                       <DraggableCard
                         key={c.id}
                         container={c}
-                        // SHIPPED and CANCELLED are terminal — never draggable.
-                        // Everyone else can attempt; persona is rechecked on drop.
                         draggable={c.status !== 'SHIPPED' && c.status !== 'CANCELLED'}
                       />
                     ))
@@ -364,6 +386,14 @@ function ContainersKanban() {
               )
             })}
           </div>
+
+          <DragOverlay dropAnimation={{ duration: 180, easing: 'ease' }}>
+            {activeContainer ? (
+              <div className="rotate-1 scale-105 opacity-95 shadow-2xl rounded-lg cursor-grabbing">
+                <ContainerCardContent container={activeContainer} />
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       )}
 
