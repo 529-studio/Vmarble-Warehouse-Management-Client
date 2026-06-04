@@ -366,7 +366,7 @@ function QueueShell() {
           <div>
             <h1 className="text-2xl font-bold leading-tight">Sự cố đóng hàng</h1>
             <p className="text-sm text-muted-foreground">
-              Hàng đợi cross-container — duyệt batch hoặc xử lý từng dòng.
+              Quản lý sự cố đóng hàng — duyệt hàng loạt hoặc xử lý từng dòng.
             </p>
           </div>
         </div>
@@ -395,7 +395,7 @@ function QueueShell() {
                 exception đang chờ duyệt
                 {summary && summary.blocked_containers > 0 && (
                   <span className="text-muted-foreground">
-                    {' '}· block <strong>{summary.blocked_containers}</strong> container chưa seal
+                    {' '}· đang chặn <strong>{summary.blocked_containers}</strong> container chưa niêm phong
                   </span>
                 )}
               </p>
