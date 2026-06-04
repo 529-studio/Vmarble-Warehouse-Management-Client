@@ -754,6 +754,12 @@ function todayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function thirtyDaysAgoISO(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 30)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ── Main list ─────────────────────────────────────────────────────────────────
 
 
@@ -903,9 +909,9 @@ function WorkOrdersContent() {
   const planFilter = getParam('plan_id') ?? 'ALL'
   const debouncedPlanSearch = useDebounce(planSearch, 300)
 
-  // Date filter — URL-driven, default to today (local time, VN-safe)
+  // Date filter — URL-driven, default to last 30 days
   const today = todayISO()
-  const dateFrom = getParam('from') ?? today
+  const dateFrom = getParam('from') ?? thirtyDaysAgoISO()
   const dateTo = getParam('to') ?? today
   const isViewingToday = dateFrom === today && dateTo === today
 
