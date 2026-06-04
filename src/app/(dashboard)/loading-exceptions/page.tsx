@@ -2,6 +2,7 @@
 
 import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
   Calendar,
@@ -12,6 +13,7 @@ import {
   Image as ImageIcon,
   Inbox,
   RefreshCw,
+  RotateCcw,
   Search,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -249,6 +251,7 @@ export default function LoadingExceptionsQueuePage() {
 
 function QueueShell() {
   const { getParam, setParam } = usePageParams()
+  const router = useRouter()
 
   const status = (getParam('status') as StatusFilter | undefined) ?? 'pending'
   const containerId = getParam('container_id') ?? ''
@@ -350,12 +353,10 @@ function QueueShell() {
   )
 
   const resetFilters = () => {
-    setParam('status', 'pending')
-    setParam('container_id', undefined)
-    setParam('customer_id', undefined)
-    setParam('exception_type', undefined)
-    setParam('from', undefined)
-    setParam('to', undefined)
+    // Replace the full URL to wipe ALL filter params atomically.
+    // setParam calls are not batched — calling them one-by-one leaves stale
+    // params from the previous iteration visible until the last call resolves.
+    router.replace('/loading-exceptions?status=pending')
   }
 
   return (
@@ -422,12 +423,13 @@ function QueueShell() {
           <CardTitle className="text-sm">Bộ lọc</CardTitle>
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="ml-auto h-7 text-xs"
+            className="ml-auto gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={resetFilters}
           >
-            Reset
+            <RotateCcw className="size-3.5" />
+            Đặt lại bộ lọc
           </Button>
         </CardHeader>
         <CardContent className="grid gap-3 pt-0 md:grid-cols-3 lg:grid-cols-6">
@@ -435,7 +437,7 @@ function QueueShell() {
             <Label htmlFor="status" className="text-xs">Trạng thái</Label>
             <Select
               value={status}
-              onValueChange={(v) => setParam('status', v === 'all' ? undefined : v)}
+              onValueChange={(v) => setParam('status', v)}
             >
               <SelectTrigger id="status" className="h-9">
                 <SelectValue />
