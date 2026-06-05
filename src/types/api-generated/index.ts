@@ -6661,6 +6661,227 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/work-orders/{id}/boost-priority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Boost work order priority */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description reason */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_planning.boostPriorityRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_planning.BoostPriorityResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/work-orders/{id}/check-feasibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check work order material feasibility */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_planning.FeasibilityResult"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/work-orders/{id}/preempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preempt a work order to free materials for another */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description target work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description from_wo_id + reason */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_planning.preemptRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_planning.PreemptResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/work-orders/{id}/preempt-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List preemption candidates for a work order */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_planning.PreemptCandidate"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plans": {
         parameters: {
             query?: never;
@@ -9054,7 +9275,68 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update SKU export/shipping fields (BR-SKU02) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sku id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_catalog.UpdateSKUInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_catalog.SKU"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/skus/{id}/bom": {
@@ -9188,6 +9470,213 @@ export interface paths {
         };
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skus/{id}/packing-units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List packing units for a SKU */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sku id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_catalog.PackingUnit"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skus/{id}/packing-units/{unit}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Create or replace a packing unit for a SKU (BR-SKU04/05) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sku id (uuid) */
+                    id: string;
+                    /** @description unit: piece|set|carton */
+                    unit: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_catalog.UpsertPackingUnitInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_catalog.PackingUnit"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a packing unit for a SKU */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sku id (uuid) */
+                    id: string;
+                    /** @description unit: piece|set|carton */
+                    unit: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -11048,14 +11537,24 @@ export interface components {
         };
         /** @enum {string} */
         "internal_module_catalog.MaterialType": "PLYWOOD" | "GLUE" | "METAL" | "OTHER";
+        "internal_module_catalog.PackingUnit": {
+            is_default?: boolean;
+            pieces_per_unit?: number;
+            sku_id?: string;
+            unit?: string;
+        };
         "internal_module_catalog.SKU": {
+            cbm_per_unit?: number;
             code?: string;
             created_at?: string;
             dimensions?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Dimension"];
+            height_mm?: number;
+            hs_code?: string;
             id?: string;
             is_active?: boolean;
             name?: string;
             requires_metal?: boolean;
+            weight_kg?: number;
         };
         "internal_module_catalog.SetBOMInput": {
             components?: components["schemas"]["internal_module_catalog.BOMComponent"][];
@@ -11064,6 +11563,18 @@ export interface components {
         "internal_module_catalog.UpdateMinRemnantPolicyInput": {
             min_remnant_length_mm?: number;
             min_remnant_width_mm?: number;
+        };
+        "internal_module_catalog.UpdateSKUInput": {
+            heightMM?: number;
+            hscode?: string;
+            skuid?: string;
+            weightKg?: number;
+        };
+        "internal_module_catalog.UpsertPackingUnitInput": {
+            is_default?: boolean;
+            pieces_per_unit?: number;
+            sku_id?: string;
+            unit?: string;
         };
         "internal_module_costing.CostingAdjustment": {
             costing_record_id?: string;
@@ -11207,6 +11718,7 @@ export interface components {
             container_type?: string;
             created_at?: string;
             created_by?: string;
+            cutoff_date?: string;
             fill_pct_cbm?: number;
             fill_pct_mass?: number;
             id?: string;
@@ -11223,6 +11735,7 @@ export interface components {
             status?: string;
             used_cbm?: number;
             used_weight_kg?: number;
+            vessel_id?: string;
         };
         "internal_module_delivery.ContainerLine": {
             added_at?: string;
@@ -11257,6 +11770,19 @@ export interface components {
             id?: string;
             note?: string;
             to_status?: string;
+        };
+        "internal_module_delivery.ContainerTransferAudit": {
+            actor_id?: string;
+            actor_role?: string;
+            created_at?: string;
+            id?: string;
+            is_cross_plan?: boolean;
+            line_id?: string;
+            qty_transferred?: number;
+            reason?: string;
+            sku_id?: string;
+            source_container_id?: string;
+            target_container_id?: string;
         };
         "internal_module_delivery.CreateContainerInput": {
             container_type?: string;
@@ -11322,10 +11848,12 @@ export interface components {
             cbm_total?: number;
             line_id?: string;
             qty?: number;
+            reason?: string;
             target_container_id?: string;
             weight_kg_total?: number;
         };
         "internal_module_delivery.TransferLineResult": {
+            audit?: components["schemas"]["internal_module_delivery.ContainerTransferAudit"];
             /** @description nil when the source line was fully consumed */
             source_line?: components["schemas"]["internal_module_delivery.ContainerLine"];
             target_line?: components["schemas"]["internal_module_delivery.ContainerLine"];
@@ -11701,11 +12229,27 @@ export interface components {
         "internal_module_packing.scanRequest": {
             barcode_id: string;
         };
+        "internal_module_planning.BoostPriorityResult": {
+            audit_id?: string;
+            boosted_at?: string;
+        };
         "internal_module_planning.CreatePlanInput": {
             deadline?: string;
             items?: components["schemas"]["internal_module_planning.PlanItemInput"][];
             po_id?: string;
             sales_order_id?: string;
+        };
+        "internal_module_planning.FeasibilityResult": {
+            feasible?: boolean;
+            reason?: string;
+            suggestions?: components["schemas"]["internal_module_planning.FeasibilitySuggestion"][];
+        };
+        "internal_module_planning.FeasibilitySuggestion": {
+            days_to_due?: number;
+            freed_qty?: number;
+            score?: number;
+            sku_code?: string;
+            wo_id?: string;
         };
         "internal_module_planning.Plan": {
             canceled_at?: string;
@@ -11740,7 +12284,26 @@ export interface components {
             sales_order_code?: string;
             status?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.PlanStatus"];
         };
+        "internal_module_planning.PreemptCandidate": {
+            current_so_code?: string;
+            freed_qty?: number;
+            slack_days?: number;
+            status?: string;
+            wo_id?: string;
+        };
+        "internal_module_planning.PreemptResult": {
+            audit_id?: string;
+            freed_qty?: number;
+            preempted_at?: string;
+        };
+        "internal_module_planning.boostPriorityRequest": {
+            reason?: string;
+        };
         "internal_module_planning.cancelPlanRequest": {
+            reason?: string;
+        };
+        "internal_module_planning.preemptRequest": {
+            from_wo_id?: string;
             reason?: string;
         };
         "internal_module_production.AdvanceStatusInput": {
@@ -11865,6 +12428,11 @@ export interface components {
              */
             parent_wo_id?: string;
             plan_id?: string;
+            /**
+             * @description PriorityBoost marks that a planner has manually elevated this WO's
+             *     scheduling priority (BR-PL05). Set by BoostPriority; never cleared.
+             */
+            priority_boost?: boolean;
             quantity?: number;
             /**
              * @description SalesOrderLineID, when set, links the WO back to a sales_order_lines row
