@@ -34,6 +34,7 @@ export type AppResource =
   | 'scrap_sales'
   | 'material_rejections'
   | 'fg_pool'
+  | 'vessels'
 
 export type AppAction =
   | 'read'
@@ -71,6 +72,7 @@ const DASHBOARD_PATHS = [
   '/scrap-sales',
   '/material-rejections',
   '/fg-pool',
+  '/vessels',
 ]
 
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account', '/packing']
@@ -103,6 +105,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/scrap-sales', resource: 'scrap_sales' },
   { path: '/material-rejections', resource: 'material_rejections' },
   { path: '/fg-pool', resource: 'fg_pool' },
+  { path: '/vessels', resource: 'vessels' },
 ]
 
 const DASHBOARD_RESOURCES: AppResource[] = [
@@ -122,6 +125,7 @@ const DASHBOARD_RESOURCES: AppResource[] = [
   'containers',
   'loading_exceptions',
   'fg_pool',
+  'vessels',
 ]
 
 function matchPath(pathname: string, path: string): boolean {
@@ -150,6 +154,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     scrap_sales: ['read', 'create'],
     material_rejections: ['read', 'approve'],
     fg_pool: ['read', 'create'],
+    vessels: ['read', 'create', 'cancel'],
   },
   accountant: {
     ...readOnly(DASHBOARD_RESOURCES),
@@ -167,6 +172,7 @@ const POLICY: Record<AppRole, Partial<Record<AppResource, readonly AppAction[]>>
     containers: ['read', 'create'],
     loading_exceptions: ['read', 'approve', 'cancel'],
     fg_pool: ['read', 'create'],
+    vessels: ['read', 'create'],
   },
   warehouse: {
     ...readOnly(DASHBOARD_RESOURCES),

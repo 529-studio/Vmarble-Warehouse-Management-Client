@@ -1027,6 +1027,7 @@ export interface Container {
   note: string | null
   sealed_at: string | null
   sealed_by: string | null
+  vessel_id?: string | null
   created_by: string
   created_at: string
   /** Only hydrated by GET /containers/:id, not by list. */
@@ -1406,4 +1407,47 @@ export interface BulkApproveResult {
 export interface LoadingExceptionsSummary {
   pending_count: number
   blocked_containers: number
+}
+
+// ── Vessels (shipping schedule) ───────────────────────────────────────────────
+
+/** Mirrors backend `shipping.Vessel`. */
+export interface Vessel {
+  id: string
+  name: string
+  voyage_number: string
+  etd: string
+  eta: string
+  port_of_loading: string
+  port_of_discharge: string
+  cutoff_date: string
+  note?: string | null
+  created_by?: string
+  created_at: string
+}
+
+export interface VesselsFilter extends PageParams {
+  search?: string
+}
+
+export interface CreateVesselInput {
+  name: string
+  voyage_number: string
+  etd: string
+  eta: string
+  port_of_loading: string
+  port_of_discharge: string
+  cutoff_date: string
+  note?: string
+}
+
+export interface UpdateVesselInput {
+  name?: string
+  voyage_number?: string
+  etd?: string
+  eta?: string
+  port_of_loading?: string
+  port_of_discharge?: string
+  cutoff_date?: string
+  note?: string
 }
