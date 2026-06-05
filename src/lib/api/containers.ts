@@ -21,6 +21,8 @@ export interface AddLineInput {
   /** CBM is supplied by the caller — BE does not derive from SKU dims. */
   cbm_total: number
   weight_kg_total: number
+  /** Admin-only override: bypass the 422 capacity guard. */
+  allow_overload?: boolean
 }
 
 /** Body for POST /containers/:id/transfer-line (BE `delivery.TransferLineInput`). */

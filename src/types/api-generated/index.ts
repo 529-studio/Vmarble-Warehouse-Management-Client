@@ -11707,6 +11707,7 @@ export interface components {
             status?: string;
         };
         "internal_module_delivery.AddLineInput": {
+            allow_overload?: boolean;
             cbm_total?: number;
             qty?: number;
             sales_order_line_id?: string;
