@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Checkbox } from '@/components/ui/checkbox'
 import { RoleGate } from '@/components/auth/role-gate'
 import { LifecycleDialog } from '@/components/containers/lifecycle-dialog'
 import { LoadingPlanTab } from '@/components/containers/loading-plan-tab'
@@ -95,20 +96,31 @@ function formatNumber(n: number, fractionDigits = 2) {
 
 // ── Capacity gauge ────────────────────────────────────────────────────────────
 
+function capacityBarColor(pct: number) {
+  if (pct > 90) return 'bg-destructive'
+  if (pct > 70) return 'bg-orange-500'
+  return 'bg-green-500'
+}
+
+function capacityTextColor(pct: number) {
+  if (pct > 90) return 'text-destructive'
+  if (pct > 70) return 'text-orange-600'
+  return ''
+}
+
 function CapacityBar({ label, used, max, unit }: { label: string; used: number; max: number; unit: string }) {
   const pct = max > 0 ? (used / max) * 100 : 0
-  const over = pct > 100
   return (
     <div className="space-y-1">
       <div className="flex items-baseline justify-between text-sm">
         <span className="text-muted-foreground">{label}</span>
-        <span className={`tabular-nums font-medium ${over ? 'text-destructive' : ''}`}>
+        <span className={`tabular-nums font-medium ${capacityTextColor(pct)}`}>
           {formatNumber(used)} / {formatNumber(max)} {unit} · {formatPct(pct)}
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-muted">
         <div
-          className={`h-full transition-all ${over ? 'bg-destructive' : 'bg-primary'}`}
+          className={`h-full transition-all ${capacityBarColor(pct)}`}
           style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
         />
       </div>
@@ -140,6 +152,7 @@ function AddLineDialog({
   const [qty, setQty] = useState('1')
   const [cbm, setCbm] = useState('')
   const [weight, setWeight] = useState('')
+  const [forceAdd, setForceAdd] = useState(false)
 
   // Reset whenever a different candidate opens.
   const candidateKey = candidate ? candidate.soLine.id : ''
@@ -149,6 +162,7 @@ function AddLineDialog({
     setQty('1')
     setCbm('')
     setWeight('')
+    setForceAdd(false)
   }
 
   if (!candidate) return null
@@ -173,6 +187,7 @@ function AddLineDialog({
           qty: qtyNum,
           cbm_total: cbmNum,
           weight_kg_total: weightNum,
+          allow_overload: forceAdd || undefined,
         },
       },
       { onSuccess: () => onCompleted() },
@@ -235,6 +250,19 @@ function AddLineDialog({
           <p className="text-xs text-muted-foreground">
             CBM và khối lượng do người xếp nhập trực tiếp — backend chưa derive từ SKU.
           </p>
+          <RoleGate allow={['ADMIN']}>
+            <div className="flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-2">
+              <Checkbox
+                id="add-line-force"
+                checked={forceAdd}
+                onCheckedChange={(v) => setForceAdd(!!v)}
+                disabled={addLine.isPending}
+              />
+              <Label htmlFor="add-line-force" className="cursor-pointer text-orange-900 text-sm font-normal">
+                Force add (vượt capacity) — chỉ admin
+              </Label>
+            </div>
+          </RoleGate>
         </div>
 
         <DialogFooter>

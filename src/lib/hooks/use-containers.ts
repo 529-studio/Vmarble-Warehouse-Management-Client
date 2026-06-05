@@ -110,6 +110,8 @@ function lineErrorMessage(err: unknown, fallback: string): string {
       return 'Container không ở trạng thái cho phép chỉnh sửa dòng hàng.'
     if (err.status === 400 && err.message?.toLowerCase().includes('exceed'))
       return 'Số lượng vượt quá số lượng còn lại của dòng SO.'
+    if (err.status === 422)
+      return 'Vượt quá sức chứa container. Admin có thể tick "Force add" để bỏ qua giới hạn.'
   }
   return mapApiErrorVi(err, fallback)
 }
