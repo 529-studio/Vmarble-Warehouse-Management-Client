@@ -1176,6 +1176,29 @@ export interface FGDefect {
   note?: string
 }
 
+export interface FGPoolFilter extends PageParams {
+  sku_id?: string
+  status?: FGPoolStatus
+  sales_order_line_id?: string
+}
+
+/** Body for POST /fg-pool/:id/reassign. */
+export interface ReassignFGInput {
+  new_sales_order_line_id: string
+  reason: string
+}
+
+/** Mirrors backend `packing.FGReassignHistory`. */
+export interface FGReassignHistory {
+  id: string
+  fg_pool_id: string
+  old_sales_order_line_id: string | null
+  new_sales_order_line_id: string
+  reason: string
+  reassigned_by: string
+  reassigned_at: string
+}
+
 // ── Customers ────────────────────────────────────────────────────────────────
 
 /** Mirrors backend `sales.Customer`. */
