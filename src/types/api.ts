@@ -1131,20 +1131,7 @@ export interface ContainerLoaderLog {
   reason?: string
 }
 
-/** Mirrors backend `delivery.AtRiskRow`. GET /api/v1/containers/at-risk */
-export interface AtRiskRow {
-  id?: string
-  code?: string
-  vessel_name?: string
-  cutoff_date?: string
-  days_to_cutoff?: number
-  fill_pct_cbm?: number
-  used_cbm?: number
-  max_cbm?: number
-  line_count?: number
-  /** "RED" | "ORANGE" */
-  risk_level?: string
-}
+// ── Sales Orders ────────────────────────────────────────────────────────────
 
 // ── Sales Orders ────────────────────────────────────────────────────────────
 
