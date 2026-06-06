@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/api/client'
 import type {
+  AtRiskRow,
   Container,
   ContainerLine,
   ContainersFilter,
@@ -81,4 +82,8 @@ export const containersApi = {
   /** POST /api/v1/containers/:id/transfer-line — full or partial transfer. */
   transferLine: (id: string, body: TransferLineInput) =>
     apiClient.post<TransferLineResult>(`/containers/${id}/transfer-line`, body),
+
+  /** GET /api/v1/containers/at-risk?days=N — OPEN/LOADING containers near cutoff. */
+  getAtRisk: (days = 7) =>
+    apiClient.get<AtRiskRow[]>('/containers/at-risk', { params: { days } }),
 }

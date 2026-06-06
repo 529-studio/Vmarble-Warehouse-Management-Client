@@ -157,3 +157,14 @@ export function useTransferContainerLine() {
     onError: (err) => toast.error(lineErrorMessage(err, 'Chuyển dòng hàng thất bại')),
   })
 }
+
+export const AT_RISK_KEY = 'containers-at-risk'
+
+export function useAtRisk(days = 7) {
+  return useQuery({
+    queryKey: [AT_RISK_KEY, days],
+    queryFn: () => containersApi.getAtRisk(days),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  })
+}
