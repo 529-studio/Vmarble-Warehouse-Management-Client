@@ -7,7 +7,7 @@ import {
   type TransferLineInput,
 } from '@/lib/api/containers'
 import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
-import type { ContainersFilter } from '@/types/api'
+import type { AssignLoaderInput, ContainersFilter } from '@/types/api'
 import { SALES_ORDERS_KEY } from '@/lib/hooks/use-sales-orders'
 
 export const CONTAINERS_KEY = 'containers'
@@ -166,5 +166,35 @@ export function useAtRisk(days = 7) {
     queryFn: () => containersApi.getAtRisk(days),
     staleTime: 60_000,
     refetchInterval: 60_000,
+  })
+}
+
+export const LOADER_LOG_KEY = 'container-loader-log'
+
+export function useContainerLoaderLog(id: string | null) {
+  return useQuery({
+    queryKey: [LOADER_LOG_KEY, id],
+    queryFn: () => containersApi.getLoaderLog(id!),
+    enabled: !!id,
+    staleTime: 30_000,
+  })
+}
+
+export function useAssignLoader(containerId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: AssignLoaderInput) => containersApi.assignLoader(containerId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [CONTAINERS_KEY] })
+      qc.invalidateQueries({ queryKey: [LOADER_LOG_KEY, containerId] })
+      toast.success('Đã cập nhật người xếp hàng')
+    },
+    onError: (err) => {
+      if (err instanceof ApiClientError && err.status === 400) {
+        toast.error('Cần nhập lý do khi thay đổi người xếp hàng.')
+      } else {
+        toast.error(mapApiErrorVi(err, 'Cập nhật người xếp hàng thất bại'))
+      }
+    },
   })
 }

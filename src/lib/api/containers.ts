@@ -1,8 +1,10 @@
 import { apiClient } from '@/lib/api/client'
 import type {
+  AssignLoaderInput,
   AtRiskRow,
   Container,
   ContainerLine,
+  ContainerLoaderLog,
   ContainersFilter,
   PagedResult,
 } from '@/types/api'
@@ -86,4 +88,12 @@ export const containersApi = {
   /** GET /api/v1/containers/at-risk?days=N — OPEN/LOADING containers near cutoff. */
   getAtRisk: (days = 7) =>
     apiClient.get<AtRiskRow[]>('/containers/at-risk', { params: { days } }),
+
+  /** POST /api/v1/containers/:id/assign-loader — assign, reassign, or unassign (BR-D21/D22/D23). */
+  assignLoader: (id: string, body: AssignLoaderInput) =>
+    apiClient.post<Container>(`/containers/${id}/assign-loader`, body),
+
+  /** GET /api/v1/containers/:id/loader-log — audit trail. */
+  getLoaderLog: (id: string) =>
+    apiClient.get<ContainerLoaderLog[]>(`/containers/${id}/loader-log`),
 }
