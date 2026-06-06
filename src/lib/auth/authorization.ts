@@ -35,6 +35,7 @@ export type AppResource =
   | 'material_rejections'
   | 'fg_pool'
   | 'vessels'
+  | 'at_risk'
 
 export type AppAction =
   | 'read'
@@ -73,6 +74,7 @@ const DASHBOARD_PATHS = [
   '/material-rejections',
   '/fg-pool',
   '/vessels',
+  '/at-risk',
 ]
 
 const KIOSK_PATHS = ['/scan', '/cutting-orders', '/report-cut', '/remnant-list', '/remnant-store', '/account', '/packing']
@@ -106,6 +108,7 @@ const RESOURCE_BY_PATH: Array<{ path: string; resource: AppResource }> = [
   { path: '/material-rejections', resource: 'material_rejections' },
   { path: '/fg-pool', resource: 'fg_pool' },
   { path: '/vessels', resource: 'vessels' },
+  { path: '/at-risk', resource: 'at_risk' },
 ]
 
 const DASHBOARD_RESOURCES: AppResource[] = [
@@ -126,6 +129,7 @@ const DASHBOARD_RESOURCES: AppResource[] = [
   'loading_exceptions',
   'fg_pool',
   'vessels',
+  'at_risk',
 ]
 
 function matchPath(pathname: string, path: string): boolean {

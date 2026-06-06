@@ -15,6 +15,7 @@ import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 const MANAGEMENT_NAV = [
   { href: '/overview', label: 'Tổng quan', icon: LayoutDashboard, resource: 'overview' },
   { href: '/containers', label: 'Container', icon: ContainerIcon, resource: 'containers' },
+  { href: '/at-risk', label: 'Nguy cơ thiếu hàng', icon: AlertTriangle, resource: 'at_risk' },
   { href: '/loading-exceptions', label: 'Sự cố đóng hàng', icon: AlertTriangle, resource: 'loading_exceptions' },
   { href: '/fg-pool', label: 'Thành phẩm chờ xuất', icon: BoxesIcon, resource: 'fg_pool' },
   { href: '/vessels', label: 'Lịch tàu', icon: Anchor, resource: 'vessels' },
