@@ -188,3 +188,47 @@ export function usePartialCompleteWorkOrder() {
     },
   })
 }
+
+export function useCheckFeasibility(id: string | null) {
+  return useQuery({
+    queryKey: [WORK_ORDERS_KEY, id, 'feasibility'],
+    queryFn: () => workOrdersApi.checkFeasibility(id!),
+    enabled: false,
+    staleTime: 0,
+    gcTime: 0,
+  })
+}
+
+export function useBoostPriority(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (reason: string) => workOrdersApi.boostPriority(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+      toast.success('Đã đôn ưu tiên lệnh sản xuất.')
+    },
+    onError: (err) => toast.error(mapApiErrorVi(err, 'Đôn ưu tiên thất bại')),
+  })
+}
+
+export function usePreemptCandidates(id: string | null) {
+  return useQuery({
+    queryKey: [WORK_ORDERS_KEY, id, 'preempt-candidates'],
+    queryFn: () => workOrdersApi.listPreemptCandidates(id!),
+    enabled: !!id,
+    staleTime: 30_000,
+  })
+}
+
+export function usePreempt(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ from_wo_id, reason }: { from_wo_id: string; reason: string }) =>
+      workOrdersApi.preempt(id, from_wo_id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+      toast.success('Đã thực hiện đôn từ lệnh khác.')
+    },
+    onError: (err) => toast.error(mapApiErrorVi(err, 'Đôn từ WO thất bại')),
+  })
+}

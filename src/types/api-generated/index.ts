@@ -924,6 +924,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/containers/at-risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List at-risk containers — OPEN/LOADING with cutoff within N days
+         * @description Returns containers whose cutoff_date is within the next `days`
+         *     calendar days (default 7). Overdue containers (cutoff in the past)
+         *     are included. Sorted by cutoff_date ASC (most urgent first).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description look-ahead window in days (default 7) */
+                    days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.AtRiskRow"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/containers/{id}": {
         parameters: {
             query?: never;
@@ -11713,6 +11757,20 @@ export interface components {
             sales_order_line_id?: string;
             sku_id?: string;
             weight_kg_total?: number;
+        };
+        "internal_module_delivery.AtRiskRow": {
+            code?: string;
+            cutoff_date?: string;
+            days_to_cutoff?: number;
+            /** @description 0–100, 0 when max_cbm=0 */
+            fill_pct_cbm?: number;
+            id?: string;
+            line_count?: number;
+            max_cbm?: number;
+            /** @description RED | ORANGE */
+            risk_level?: string;
+            used_cbm?: number;
+            vessel_name?: string;
         };
         "internal_module_delivery.Container": {
             code?: string;
