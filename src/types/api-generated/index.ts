@@ -1068,6 +1068,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/containers/{id}/change-destination": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change container destination — clears vessel booking if DC changes (BR-D24/D25/D26) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_delivery.ChangeDestinationInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description container is SEALED/SHIPPED */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/containers/{id}/exceptions": {
         parameters: {
             query?: never;
@@ -1608,6 +1685,56 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/route-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Destination change audit trail for a container */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.ContainerRouteChangeLog"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -11835,12 +11962,19 @@ export interface components {
             used_cbm?: number;
             vessel_name?: string;
         };
+        "internal_module_delivery.ChangeDestinationInput": {
+            destination_code?: string;
+            destination_name?: string;
+            reason?: string;
+        };
         "internal_module_delivery.Container": {
             code?: string;
             container_type?: string;
             created_at?: string;
             created_by?: string;
             cutoff_date?: string;
+            destination_code?: string;
+            destination_name?: string;
             fill_pct_cbm?: number;
             fill_pct_mass?: number;
             id?: string;
@@ -11883,6 +12017,17 @@ export interface components {
             superseded_at?: string;
             superseded_by_plan?: string;
             superseded_by_user?: string;
+        };
+        "internal_module_delivery.ContainerRouteChangeLog": {
+            actor_id?: string;
+            changed_at?: string;
+            container_id?: string;
+            from_dc?: string;
+            from_dest?: string;
+            id?: string;
+            reason?: string;
+            to_dc?: string;
+            to_dest?: string;
         };
         "internal_module_delivery.ContainerStatusLogEntry": {
             actor_id?: string;
