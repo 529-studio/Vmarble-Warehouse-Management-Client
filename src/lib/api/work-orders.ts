@@ -10,6 +10,10 @@ import type {
   AddLaborEntryInput,
   PartialCompleteInput,
   PartialCompleteResult,
+  FeasibilityResult,
+  BoostPriorityResult,
+  PreemptCandidate,
+  PreemptResult,
   PagedResult,
 } from '@/types/api'
 import { apiClient } from './client'
@@ -80,4 +84,20 @@ export const workOrdersApi = {
    */
   partialComplete: (id: string, input: PartialCompleteInput) =>
     apiClient.post<PartialCompleteResult>(`/work-orders/${id}/report`, input),
+
+  /** GET /api/v1/planning/work-orders/:id/check-feasibility */
+  checkFeasibility: (id: string) =>
+    apiClient.get<FeasibilityResult>(`/planning/work-orders/${id}/check-feasibility`),
+
+  /** POST /api/v1/planning/work-orders/:id/boost-priority */
+  boostPriority: (id: string, reason: string) =>
+    apiClient.post<BoostPriorityResult>(`/planning/work-orders/${id}/boost-priority`, { reason }),
+
+  /** GET /api/v1/planning/work-orders/:id/preempt-candidates */
+  listPreemptCandidates: (id: string) =>
+    apiClient.get<PreemptCandidate[]>(`/planning/work-orders/${id}/preempt-candidates`),
+
+  /** POST /api/v1/planning/work-orders/:id/preempt */
+  preempt: (id: string, from_wo_id: string, reason: string) =>
+    apiClient.post<PreemptResult>(`/planning/work-orders/${id}/preempt`, { from_wo_id, reason }),
 }

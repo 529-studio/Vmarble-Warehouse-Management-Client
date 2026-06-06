@@ -233,6 +233,8 @@ export interface WorkOrder {
    * so legacy/PO-rooted WOs read fine without it.
    */
   sales_order_line_id?: string | null
+  /** Set by BoostPriority (BR-PL05); never cleared. */
+  priority_boost?: boolean
 }
 
 /**
@@ -258,6 +260,43 @@ export interface PartialCompleteResult {
   wo_updated?: WorkOrder
   /** The auto-spawned carry-over WO (PLANNED) when `carry_over` was true. */
   carry_over_wo?: WorkOrder
+}
+
+/** GET /api/v1/planning/work-orders/:id/check-feasibility */
+export interface FeasibilitySuggestion {
+  wo_id?: string
+  score?: number
+  freed_qty?: number
+  sku_code?: string
+  days_to_due?: number
+}
+
+export interface FeasibilityResult {
+  feasible?: boolean
+  reason?: string
+  suggestions?: FeasibilitySuggestion[]
+}
+
+/** POST /api/v1/planning/work-orders/:id/boost-priority */
+export interface BoostPriorityResult {
+  audit_id?: string
+  boosted_at?: string
+}
+
+/** GET /api/v1/planning/work-orders/:id/preempt-candidates */
+export interface PreemptCandidate {
+  wo_id?: string
+  freed_qty?: number
+  slack_days?: number
+  status?: string
+  current_so_code?: string
+}
+
+/** POST /api/v1/planning/work-orders/:id/preempt */
+export interface PreemptResult {
+  audit_id?: string
+  freed_qty?: number
+  preempted_at?: string
 }
 
 /** POST /api/v1/work-orders */
