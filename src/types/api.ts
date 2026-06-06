@@ -1067,6 +1067,8 @@ export interface Container {
   sealed_at: string | null
   sealed_by: string | null
   vessel_id?: string | null
+  /** UUID of the loader assigned to physically load this container. */
+  loader_id?: string | null
   created_by: string
   created_at: string
   /** Only hydrated by GET /containers/:id, not by list. */
@@ -1092,6 +1094,41 @@ export interface ContainersFilter extends PageParams {
   search?: string
   status?: ContainerStatus
   container_type?: string
+  loader_id?: string
+}
+
+/** Mirrors backend `delivery.AtRiskRow`. GET /api/v1/containers/at-risk */
+export interface AtRiskRow {
+  id?: string
+  code?: string
+  vessel_name?: string
+  cutoff_date?: string
+  days_to_cutoff?: number
+  fill_pct_cbm?: number
+  used_cbm?: number
+  max_cbm?: number
+  line_count?: number
+  /** "RED" | "ORANGE" */
+  risk_level?: string
+}
+
+/** POST /api/v1/containers/:id/assign-loader — BR-D21/D22/D23. */
+export interface AssignLoaderInput {
+  /** nil = unassign */
+  loader_id?: string | null
+  /** Required when reassigning a different loader (BR-D22). */
+  reason?: string
+}
+
+/** GET /api/v1/containers/:id/loader-log */
+export interface ContainerLoaderLog {
+  id?: string
+  container_id?: string
+  from_loader_id?: string | null
+  to_loader_id?: string | null
+  assigned_by?: string
+  assigned_at?: string
+  reason?: string
 }
 
 // ── Sales Orders ────────────────────────────────────────────────────────────

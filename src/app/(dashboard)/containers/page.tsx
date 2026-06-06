@@ -36,6 +36,7 @@ import {
   type LifecycleAction,
 } from '@/lib/delivery/transitions'
 import { LifecycleDialog } from '@/components/containers/lifecycle-dialog'
+import { useUsers } from '@/lib/hooks/use-users'
 import { CONTAINER_STATUSES } from '@/types/api'
 import type { Container, ContainerStatus } from '@/types/api'
 
@@ -75,7 +76,7 @@ interface PendingDialog {
 }
 
 // Pure card visual — used by DraggableCard and DragOverlay
-function ContainerCardContent({ container }: { container: Container }) {
+function ContainerCardContent({ container, loaderName }: { container: Container; loaderName?: string }) {
   const cbmPct = container.fill_pct_cbm ?? 0
   const massPct = container.fill_pct_mass ?? 0
   return (
@@ -115,6 +116,12 @@ function ContainerCardContent({ container }: { container: Container }) {
           <span>Tạo {formatDate(container.created_at)}</span>
           {container.sealed_at && <span>Niêm phong {formatDate(container.sealed_at)}</span>}
         </div>
+        {loaderName && (
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <span className="shrink-0">👤</span>
+            <span className="truncate">{loaderName}</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -123,9 +130,11 @@ function ContainerCardContent({ container }: { container: Container }) {
 function DraggableCard({
   container,
   draggable,
+  loaderName,
 }: {
   container: Container
   draggable: boolean
+  loaderName?: string
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: container.id,
@@ -159,7 +168,7 @@ function DraggableCard({
         }}
       >
         <div className={`rounded-lg transition-shadow hover:shadow-md ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}>
-          <ContainerCardContent container={container} />
+          <ContainerCardContent container={container} loaderName={loaderName} />
         </div>
       </Link>
     </div>
@@ -223,11 +232,20 @@ function ContainersKanban() {
   }
 
   const containerType = getParam('container_type') ?? 'ALL'
+  const loaderFilter = getParam('loader_id') ?? 'ALL'
+
+  const { data: usersData } = useUsers({ limit: 200 })
+  const loaders = usersData?.items ?? []
+  const userMap = useMemo(
+    () => new Map(loaders.map((u) => [u.id, u.full_name ?? u.username])),
+    [loaders],
+  )
 
   const { data, isLoading, isError } = useContainers({
     limit: 100,
     search: debouncedSearch || undefined,
     container_type: containerType === 'ALL' ? undefined : containerType,
+    loader_id: loaderFilter === 'ALL' ? undefined : loaderFilter === '__unassigned__' ? 'null' : loaderFilter,
   })
 
   const containers = useMemo(() => data?.items ?? [], [data?.items])
@@ -338,6 +356,24 @@ function ContainersKanban() {
           </SelectContent>
         </Select>
 
+        <Select
+          value={loaderFilter}
+          onValueChange={(v) => setParam('loader_id', v === 'ALL' ? undefined : v)}
+        >
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Người xếp hàng" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Tất cả</SelectItem>
+            <SelectItem value="__unassigned__">Chưa gán</SelectItem>
+            {loaders.filter((u) => u.is_active).map((u) => (
+              <SelectItem key={u.id} value={u.id}>
+                {u.full_name ?? u.username}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <span className="ml-auto text-sm text-muted-foreground">
           {isLoading ? 'Đang tải…' : `${containers.length} container`}
         </span>
@@ -379,6 +415,7 @@ function ContainersKanban() {
                         key={c.id}
                         container={c}
                         draggable={c.status !== 'SHIPPED' && c.status !== 'CANCELLED'}
+                        loaderName={c.loader_id ? userMap.get(c.loader_id) : undefined}
                       />
                     ))
                   )}

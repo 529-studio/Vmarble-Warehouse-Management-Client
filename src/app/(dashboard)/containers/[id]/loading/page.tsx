@@ -1,8 +1,8 @@
 'use client'
 
-import { use, useMemo, useState } from 'react'
+import { use, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Package, Plus, Minus, Trash2, ArrowRightLeft, Lock } from 'lucide-react'
+import { ArrowLeft, Package, Plus, Minus, Trash2, ArrowRightLeft, Lock, UserCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -45,7 +46,9 @@ import {
 import { ExceptionPanel } from '@/components/containers/exception-panel'
 import {
   useAddContainerLine,
+  useAssignLoader,
   useContainer,
+  useContainerLoaderLog,
   useContainers,
   useRemoveContainerLine,
   useTransferContainerLine,
@@ -59,9 +62,11 @@ import {
 } from '@/lib/delivery/reconciliation'
 import { useSalesOrders } from '@/lib/hooks/use-sales-orders'
 import { useSKUs } from '@/lib/hooks/use-skus'
+import { useUsers } from '@/lib/hooks/use-users'
 import type {
   Container,
   ContainerLine,
+  ContainerLoaderLog,
   ContainerStatus,
   SalesOrder,
   SalesOrderLine,
@@ -135,6 +140,139 @@ interface AddLineCandidate {
   so: SalesOrder
   sku: { code: string; name: string } | undefined
   qtyRemaining: number
+}
+
+// ── Assign Loader Dialog ──────────────────────────────────────────────────────
+
+function AssignLoaderDialog({
+  containerId,
+  currentLoaderId,
+  open,
+  onClose,
+}: {
+  containerId: string
+  currentLoaderId?: string | null
+  open: boolean
+  onClose: () => void
+}) {
+  const { data: usersData } = useUsers({ limit: 200 })
+  const { data: logData } = useContainerLoaderLog(open ? containerId : null)
+  const assign = useAssignLoader(containerId)
+
+  const [selectedId, setSelectedId] = useState<string>('__unassign__')
+  const [reason, setReason] = useState('')
+
+  // Sync dropdown with current loader when dialog opens.
+  useEffect(() => {
+    setSelectedId(currentLoaderId ?? '__unassign__')
+    setReason('')
+  }, [currentLoaderId, open])
+
+  const loaders = (usersData?.items ?? []).filter((u) => u.is_active)
+  const isReassign = !!currentLoaderId && selectedId !== '__unassign__' && selectedId !== currentLoaderId
+  const needsReason = isReassign
+  const canSubmit = !assign.isPending && (!needsReason || reason.trim().length > 0)
+
+  const handleSubmit = () => {
+    const loader_id = selectedId === '__unassign__' ? null : selectedId
+    assign.mutate(
+      { loader_id: loader_id ?? undefined, reason: reason.trim() || undefined },
+      { onSuccess: () => { onClose() } },
+    )
+  }
+
+  const userMap = new Map((usersData?.items ?? []).map((u) => [u.id, u]))
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !assign.isPending) onClose() }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Gán người xếp hàng</DialogTitle>
+          <DialogDescription>Chỉ định ai sẽ xếp hàng vào container này.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Người xếp hàng</Label>
+            <Select value={selectedId} onValueChange={setSelectedId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn nhân viên..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__unassign__">— Bỏ gán —</SelectItem>
+                {loaders.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.full_name ?? u.username}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {needsReason && (
+            <div className="space-y-1.5">
+              <Label htmlFor="loader-reason">
+                Lý do thay đổi <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="loader-reason"
+                rows={2}
+                placeholder="Nhập lý do..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                disabled={assign.isPending}
+              />
+            </div>
+          )}
+
+          {logData && logData.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Lịch sử gán</p>
+              <div className="max-h-40 overflow-y-auto rounded-md border text-xs">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="py-1 text-xs">Thời gian</TableHead>
+                      <TableHead className="py-1 text-xs">Từ → Đến</TableHead>
+                      <TableHead className="py-1 text-xs">Lý do</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logData.map((entry: ContainerLoaderLog) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="py-1 text-xs tabular-nums">
+                          {entry.assigned_at
+                            ? new Date(entry.assigned_at).toLocaleDateString('vi-VN')
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="py-1 text-xs">
+                          {entry.from_loader_id
+                            ? (userMap.get(entry.from_loader_id)?.full_name ?? entry.from_loader_id.slice(0, 8))
+                            : '—'}
+                          {' → '}
+                          {entry.to_loader_id
+                            ? (userMap.get(entry.to_loader_id)?.full_name ?? entry.to_loader_id.slice(0, 8))
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="py-1 text-xs">{entry.reason ?? '—'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={assign.isPending}>Huỷ</Button>
+          <Button onClick={handleSubmit} disabled={!canSubmit}>
+            {assign.isPending ? 'Đang lưu...' : 'Lưu'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 function AddLineDialog({
@@ -429,6 +567,7 @@ export default function ContainerLoadingPage({
 
   const removeLine = useRemoveContainerLine()
   const [seal, setSeal] = useState(false)
+  const [showAssignLoader, setShowAssignLoader] = useState(false)
   const [pendingAdd, setPendingAdd] = useState<AddLineCandidate | null>(null)
   const [pendingTransfer, setPendingTransfer] = useState<ContainerLine | null>(null)
 
@@ -505,12 +644,18 @@ export default function ContainerLoadingPage({
         </div>
 
         <RoleGate min="PLANNER">
-          <Button
-            onClick={() => setSeal(true)}
-            disabled={!editable || (container.lines ?? []).length === 0}
-          >
-            <Lock className="size-4" /> Niêm phong
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowAssignLoader(true)}>
+              <UserCircle className="size-4" />
+              {container.loader_id ? 'Đổi người xếp' : 'Gán người xếp'}
+            </Button>
+            <Button
+              onClick={() => setSeal(true)}
+              disabled={!editable || (container.lines ?? []).length === 0}
+            >
+              <Lock className="size-4" /> Niêm phong
+            </Button>
+          </div>
         </RoleGate>
       </div>
 
@@ -730,6 +875,12 @@ export default function ContainerLoadingPage({
         containerCode={container.code}
         onCompleted={() => setSeal(false)}
         onCancel={() => setSeal(false)}
+      />
+      <AssignLoaderDialog
+        containerId={containerId}
+        currentLoaderId={container.loader_id}
+        open={showAssignLoader}
+        onClose={() => setShowAssignLoader(false)}
       />
     </div>
   )
