@@ -36,6 +36,7 @@ const STATUS_LABELS: Record<RemnantStatus | 'ALL', string> = {
   ALLOCATED: 'Đã phân bổ',
   CONSUMED: 'Đã dùng',
   WASTE: 'Phế liệu',
+  EXPIRED: 'Hết hạn',
 }
 
 const statusVariant = (status: RemnantStatus) => {

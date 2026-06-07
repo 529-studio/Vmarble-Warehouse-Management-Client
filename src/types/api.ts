@@ -23,8 +23,25 @@ export interface CreateMaterialInput {
   unit: string
 }
 
-/** Backend: AVAILABLE | ALLOCATED | CONSUMED | WASTE */
-export type RemnantStatus = 'AVAILABLE' | 'ALLOCATED' | 'CONSUMED' | 'WASTE'
+/** Backend: AVAILABLE | ALLOCATED | CONSUMED | WASTE | EXPIRED */
+export type RemnantStatus = 'AVAILABLE' | 'ALLOCATED' | 'CONSUMED' | 'WASTE' | 'EXPIRED'
+
+export type RemnantAgingLevel = 'OK' | 'AT_RISK' | 'EXPIRED'
+
+export interface RemnantAgingRow {
+  age_days?: number
+  level?: RemnantAgingLevel
+  remnant?: Remnant
+}
+
+export interface RemnantAgingSummary {
+  warn_days?: number
+  expire_days?: number
+  total_ok?: number
+  total_at_risk?: number
+  total_expired?: number
+  rows?: RemnantAgingRow[]
+}
 
 export type WorkOrderStatus =
   | 'PLANNED'

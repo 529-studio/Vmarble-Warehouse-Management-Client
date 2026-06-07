@@ -1,4 +1,4 @@
-import type { Remnant, BoardSheet, RemnantSuggestion, StorageLocation, PagedResult, PageParams } from '@/types/api'
+import type { Remnant, RemnantAgingSummary, BoardSheet, RemnantSuggestion, StorageLocation, PagedResult, PageParams } from '@/types/api'
 import { apiClient } from './client'
 
 // ── Remnant list filters ─────────────────────────────────────────────────────
@@ -64,6 +64,15 @@ export const remnantsApi = {
   suggest: (lengthMm: number, widthMm: number, limit = 3) =>
     apiClient.get<RemnantSuggestion[]>('/inventory/remnants/suggestions', {
       params: { length_mm: lengthMm, width_mm: widthMm, limit },
+    }),
+
+  /**
+   * GET /api/v1/inventory/remnants/aging?warn_days&expire_days
+   * Returns all AVAILABLE remnants classified as OK / AT_RISK / EXPIRED.
+   */
+  aging: (warnDays?: number, expireDays?: number) =>
+    apiClient.get<RemnantAgingSummary>('/inventory/remnants/aging', {
+      params: { warn_days: warnDays, expire_days: expireDays },
     }),
 }
 

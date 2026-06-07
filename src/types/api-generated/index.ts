@@ -851,6 +851,8 @@ export interface paths {
                     status?: string;
                     /** @description 20GP / 40GP / 40HC */
                     container_type?: string;
+                    /** @description filter by assigned loader (uuid) */
+                    loader_id?: string;
                 };
                 header?: never;
                 path?: never;
@@ -1012,6 +1014,77 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/assign-loader": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign or reassign a loader to a container (BR-D21/D22/D23)
+         * @description Sets loader_id on the container and writes an audit row. When the
+         *     container already has a different loader (reassignment), reason is
+         *     mandatory (BR-D22). Send loader_id=null to unassign.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_delivery.AssignLoaderInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1437,6 +1510,56 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/loader-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Loader assignment audit trail for a container */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.ContainerLoaderLog"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4673,6 +4796,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/remnants/aging": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get remnant aging report
+         * @description Returns all AVAILABLE remnants with age in days, classified as OK / AT_RISK / EXPIRED.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description days before AT_RISK (default 60) */
+                    warn_days?: number;
+                    /** @description days before EXPIRED candidate (default 90) */
+                    expire_days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_inventory.RemnantAgingSummary"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/remnants/expire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Expire stale AVAILABLE remnants (admin)
+         * @description Flips AVAILABLE remnants older than age_days to EXPIRED. Default 90 days.
+         */
+        post: {
+            parameters: {
+                query?: {
+                    /** @description age threshold in days (default 90) */
+                    age_days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/remnants/suggestions": {
         parameters: {
             query?: never;
@@ -4681,8 +4914,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Suggest best-fit remnants for a required dimension
-         * @description Returns up to `limit` AVAILABLE remnants ranked by Best Fit (smallest area) + FIFO (oldest first). Each suggestion includes the remnant's storage location when available.
+         * Suggest remnants for a required dimension
+         * @description Returns up to `limit` AVAILABLE remnants ranked by the chosen strategy (best_fit or fifo). Each suggestion includes age_days, score, reason, and storage location when available.
          */
         get: {
             parameters: {
@@ -4693,6 +4926,10 @@ export interface paths {
                     width_mm: number;
                     /** @description max results (default 3, max 10) */
                     limit?: number;
+                    /** @description best_fit or fifo (default: material config → best_fit) */
+                    strategy?: "best_fit" | "fifo";
+                    /** @description restrict to remnants from this material */
+                    material_id?: string;
                 };
                 header?: never;
                 path?: never;
@@ -11448,7 +11685,7 @@ export interface components {
         /** @enum {string} */
         "github_com_vmarble_warehouse-management-service_internal_domain.PlanStatus": "DRAFT" | "APPROVED" | "CANCELED";
         /** @enum {string} */
-        "github_com_vmarble_warehouse-management-service_internal_domain.RemnantStatus": "AVAILABLE" | "ALLOCATED" | "CONSUMED" | "WASTE";
+        "github_com_vmarble_warehouse-management-service_internal_domain.RemnantStatus": "AVAILABLE" | "ALLOCATED" | "CONSUMED" | "WASTE" | "EXPIRED";
         /** @enum {string} */
         "github_com_vmarble_warehouse-management-service_internal_domain.WorkOrderStatus": "PLANNED" | "IN_CUTTING" | "IN_PROCESSING" | "COMPLETED" | "PARTIAL_COMPLETE" | "COSTED" | "CANCELED";
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_barcode_ScanEvent": {
@@ -11948,6 +12185,11 @@ export interface components {
             sku_id?: string;
             weight_kg_total?: number;
         };
+        "internal_module_delivery.AssignLoaderInput": {
+            /** @description nil = unassign */
+            loader_id?: string;
+            reason?: string;
+        };
         "internal_module_delivery.AtRiskRow": {
             code?: string;
             cutoff_date?: string;
@@ -11983,6 +12225,7 @@ export interface components {
              *     these to keep the page query a single round-trip.
              */
             lines?: components["schemas"]["internal_module_delivery.ContainerLine"][];
+            loader_id?: string;
             max_cbm?: number;
             max_payload_kg?: number;
             note?: string;
@@ -12017,6 +12260,15 @@ export interface components {
             superseded_at?: string;
             superseded_by_plan?: string;
             superseded_by_user?: string;
+        };
+        "internal_module_delivery.ContainerLoaderLog": {
+            assigned_at?: string;
+            assigned_by?: string;
+            container_id?: string;
+            from_loader_id?: string;
+            id?: string;
+            reason?: string;
+            to_loader_id?: string;
         };
         "internal_module_delivery.ContainerRouteChangeLog": {
             actor_id?: string;
@@ -12328,10 +12580,28 @@ export interface components {
             status?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.RemnantStatus"];
             supplier_code?: string;
         };
+        /** @enum {string} */
+        "internal_module_inventory.RemnantAgingLevel": "OK" | "AT_RISK" | "EXPIRED";
+        "internal_module_inventory.RemnantAgingRow": {
+            age_days?: number;
+            level?: components["schemas"]["internal_module_inventory.RemnantAgingLevel"];
+            remnant?: components["schemas"]["internal_module_inventory.Remnant"];
+        };
+        "internal_module_inventory.RemnantAgingSummary": {
+            expire_days?: number;
+            rows?: components["schemas"]["internal_module_inventory.RemnantAgingRow"][];
+            total_at_risk?: number;
+            total_expired?: number;
+            total_ok?: number;
+            warn_days?: number;
+        };
         "internal_module_inventory.RemnantSuggestion": {
+            age_days?: number;
             location?: components["schemas"]["internal_module_inventory.StorageLocation"];
             rank?: number;
+            reason?: string;
             remnant?: components["schemas"]["internal_module_inventory.Remnant"];
+            score?: number;
         };
         "internal_module_inventory.StorageLocation": {
             barcode?: string;
