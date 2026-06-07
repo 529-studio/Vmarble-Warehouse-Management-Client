@@ -1,4 +1,5 @@
-import { apiClient } from '@/lib/api/client'
+import { apiClient, ApiClientError } from '@/lib/api/client'
+import { normalizeAuthToken } from '@/lib/auth/token'
 import type {
   AssignLoaderInput,
   AtRiskRow,
@@ -42,6 +43,8 @@ export interface TransferLineResult {
   source_line: ContainerLine | null
   target_line: ContainerLine
 }
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1'
 
 export const containersApi = {
   /** GET /api/v1/containers — paginated list (no `lines` hydrated). */
@@ -96,4 +99,29 @@ export const containersApi = {
   /** GET /api/v1/containers/:id/loader-log — audit trail. */
   getLoaderLog: (id: string) =>
     apiClient.get<ContainerLoaderLog[]>(`/containers/${id}/loader-log`),
+
+  /**
+   * GET /api/v1/containers/:id/packing-list — download .xlsx.
+   * Uses raw fetch (not apiClient) because the response is binary, not JSON.
+   * Throws ApiClientError(412) when container is not SEALED.
+   */
+  downloadPackingList: async (id: string): Promise<Blob> => {
+    const base =
+      typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+    const url = new URL(`${BASE_URL}/containers/${id}/packing-list`, base)
+    const token =
+      typeof window !== 'undefined'
+        ? normalizeAuthToken(localStorage.getItem('auth_token'))
+        : null
+    const response = await fetch(url.toString(), {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    })
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      const code: string = body?.code ?? 'DOWNLOAD_FAILED'
+      const message: string = body?.message ?? body?.error ?? `HTTP ${response.status}`
+      throw new ApiClientError(response.status, code, message)
+    }
+    return response.blob()
+  },
 }

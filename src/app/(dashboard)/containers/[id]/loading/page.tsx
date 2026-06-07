@@ -2,7 +2,7 @@
 
 import { use, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Package, Plus, Minus, Trash2, ArrowRightLeft, Lock, UserCircle } from 'lucide-react'
+import { ArrowLeft, Package, Plus, Minus, Trash2, ArrowRightLeft, Lock, UserCircle, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,6 +50,7 @@ import {
   useContainer,
   useContainerLoaderLog,
   useContainers,
+  useDownloadPackingList,
   useRemoveContainerLine,
   useTransferContainerLine,
 } from '@/lib/hooks/use-containers'
@@ -566,6 +567,7 @@ export default function ContainerLoadingPage({
   }, [skusData?.items])
 
   const removeLine = useRemoveContainerLine()
+  const downloadPackingList = useDownloadPackingList(containerId)
   const [seal, setSeal] = useState(false)
   const [showAssignLoader, setShowAssignLoader] = useState(false)
   const [pendingAdd, setPendingAdd] = useState<AddLineCandidate | null>(null)
@@ -657,6 +659,16 @@ export default function ContainerLoadingPage({
             </Button>
           </div>
         </RoleGate>
+        {container.status === 'SEALED' && (
+          <Button
+            variant="outline"
+            onClick={() => downloadPackingList.mutate()}
+            disabled={downloadPackingList.isPending}
+          >
+            <Download className="size-4" />
+            {downloadPackingList.isPending ? 'Đang tải…' : 'Tải packing list'}
+          </Button>
+        )}
       </div>
 
       {/* Capacity gauges */}
