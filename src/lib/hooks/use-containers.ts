@@ -198,3 +198,26 @@ export function useAssignLoader(containerId: string) {
     },
   })
 }
+
+export function useDownloadPackingList(containerId: string) {
+  return useMutation({
+    mutationFn: () => containersApi.downloadPackingList(containerId),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `packing-list-${containerId}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
+    onError: (err) => {
+      if (err instanceof ApiClientError && err.status === 412) {
+        toast.error('Container chưa được niêm phong. Chỉ tải được packing list khi SEALED.')
+      } else {
+        toast.error(mapApiErrorVi(err, 'Tải packing list thất bại'))
+      }
+    },
+  })
+}
