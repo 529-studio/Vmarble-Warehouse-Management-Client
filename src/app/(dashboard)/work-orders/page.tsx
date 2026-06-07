@@ -210,6 +210,7 @@ const REMNANT_STATUS_LABEL: Record<RemnantStatus, string> = {
   ALLOCATED: 'Đã phân bổ',
   CONSUMED: 'Đã dùng',
   WASTE: 'Hao hụt',
+  EXPIRED: 'Hết hạn',
 }
 
 const REMNANT_STATUS_CLASS: Record<RemnantStatus, string> = {
@@ -217,6 +218,7 @@ const REMNANT_STATUS_CLASS: Record<RemnantStatus, string> = {
   ALLOCATED: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   CONSUMED: 'bg-gray-100 text-gray-600 border-gray-200',
   WASTE: 'bg-red-100 text-red-700 border-red-200',
+  EXPIRED: 'bg-red-100 text-red-700 border-red-200',
 }
 
 interface RemnantSuggestionPanelProps {

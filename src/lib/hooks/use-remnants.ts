@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { remnantsApi, sheetsApi, storageLocationsApi, type RemnantsFilter, type SheetsFilter } from '@/lib/api/remnants'
-import type { RemnantSuggestion, StorageLocation } from '@/types/api'
+import type { RemnantAgingSummary, RemnantSuggestion, StorageLocation } from '@/types/api'
 
 export const REMNANTS_KEY = 'remnants'
 
@@ -100,5 +100,23 @@ export function useAvailableSheets(filter: SheetsFilter = {}, enabled = true) {
     queryFn: () => sheetsApi.list({ ...filter, status: 'AVAILABLE', limit: filter.limit ?? 50 }),
     enabled,
     staleTime: 30_000,
+  })
+}
+
+export function useRemnantAging(warnDays?: number, expireDays?: number) {
+  return useQuery({
+    queryKey: [REMNANTS_KEY, 'aging', warnDays, expireDays],
+    queryFn: () => remnantsApi.aging(warnDays, expireDays),
+    staleTime: 60_000,
+  })
+}
+
+export function useMarkWaste() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (remnantId: string) => remnantsApi.markWaste(remnantId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [REMNANTS_KEY] })
+    },
   })
 }
