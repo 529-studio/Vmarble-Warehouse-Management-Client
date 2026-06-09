@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { workOrdersApi, type WorkOrdersFilter } from '@/lib/api/work-orders'
+import { useCursorList } from '@/lib/hooks/use-cursor-list'
 import type {
   CreateWOInput,
   AdvanceStatusInput,
@@ -15,6 +16,22 @@ export const WORK_ORDERS_KEY = 'work-orders'
 export const CONSUMPTIONS_KEY = 'consumptions'
 export const LABOR_ENTRIES_KEY = 'labor-entries'
 
+/**
+ * Cursor-paginated list for the /work-orders and /cutting-dispatch pages.
+ * Exposes `items`, `hasMore`, `fetchNextPage`, `total`, `totalIsEstimate`.
+ */
+export function useWorkOrderList(filter: Omit<WorkOrdersFilter, 'cursor'> = {}) {
+  return useCursorList({
+    queryKey: [WORK_ORDERS_KEY, 'list', filter],
+    fetchPage: (cursor) => workOrdersApi.list({ ...filter, cursor: cursor ?? undefined }),
+    staleTime: 30_000,
+  })
+}
+
+/**
+ * Single-page fetch for dropdown / lookup callers (e.g. limit:100, status filter).
+ * Returns the raw CursorResult — callers access `.items`.
+ */
 export function useWorkOrders(filter: WorkOrdersFilter = {}) {
   return useQuery({
     queryKey: [WORK_ORDERS_KEY, filter],

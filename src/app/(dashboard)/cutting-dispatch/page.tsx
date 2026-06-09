@@ -29,14 +29,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DataPagination } from '@/components/ui/data-pagination'
 import {
   DateRangeFilter,
   defaultFromIso,
   isoToday,
 } from '@/components/dashboard/date-range-filter'
 import { usePageParams } from '@/lib/hooks/use-page-params'
-import { useWorkOrders,
+import { useWorkOrderList,
   useAssignWorkOrder,
   useSuggestAssignment,
 } from '@/lib/hooks/use-work-orders'
@@ -298,7 +297,7 @@ function CuttingDispatchContent() {
   const [pulseIds, setPulseIds] = useState<Set<string>>(() => new Set())
   const [recentIds, setRecentIds] = useState<Set<string>>(() => new Set())
 
-  const { page, limit, setPage, getParam, setParams } = usePageParams(15)
+  const { limit, getParam, setParams } = usePageParams(15)
 
   const dateFrom = getParam('from') ?? defaultFromIso()
   const dateTo = getParam('to') ?? isoToday()
@@ -308,29 +307,32 @@ function CuttingDispatchContent() {
     ...(assignmentFilter === 'unassigned' ? { assigned: 'null' as const } : {}),
     from: dateFrom,
     to: dateTo,
-    page,
     limit,
   }
 
-  const { data, isLoading, isFetching, isError } = useWorkOrders(filter)
-  // Defensive client-side filter: if the backend ignores `assigned=null`
-  // (Spec §5.1 notes the param is pending BE confirmation), fall back to
-  // filtering the page in the client so the UX promise still holds.
+  const {
+    items: allItems,
+    total,
+    totalIsEstimate,
+    hasMore,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isFetching,
+    isError,
+  } = useWorkOrderList(filter)
+
   const workOrders = useMemo(() => {
-    const items = data?.items ?? []
     if (assignmentFilter === 'unassigned') {
-      return items.filter((wo) => !wo.assigned_to)
+      return allItems.filter((wo) => !wo.assigned_to)
     }
     if (assignmentFilter === 'recent') {
-      // Only show WOs dispatched in this browser session — keeps render pure
-      // (no Date.now() in the memo) and matches the operator intent of "what
-      // I just dispatched, where did it land".
-      return items.filter((wo) => recentIds.has(wo.id))
+      return allItems.filter((wo) => recentIds.has(wo.id))
     }
-    return items
-  }, [data?.items, assignmentFilter, recentIds])
-  const totalItems = data?.total_items ?? 0
-  const totalPages = data?.total_pages ?? 1
+    return allItems
+  }, [allItems, assignmentFilter, recentIds])
+
+  const totalLabel = totalIsEstimate ? `~${total}` : `${total}`
   const isDefaultDispatchView = statusFilter === 'PLANNED' && assignmentFilter === 'unassigned'
 
   function markRecentlyDispatched(woId: string) {
@@ -369,7 +371,6 @@ function CuttingDispatchContent() {
     markRecentlyDispatched(woId)
     if (assignmentFilter === 'unassigned') {
       setAssignmentFilter('recent')
-      setPage(1)
     }
   }
 
@@ -379,7 +380,7 @@ function CuttingDispatchContent() {
       <div className="flex flex-wrap items-center gap-3">
         <Select
           value={statusFilter}
-          onValueChange={(v) => { setStatusFilter(v as WorkOrderStatus | 'ALL'); setPage(1) }}
+          onValueChange={(v) => { setStatusFilter(v as WorkOrderStatus | 'ALL') }}
         >
           <SelectTrigger className="w-44">
             <SelectValue />
@@ -396,7 +397,7 @@ function CuttingDispatchContent() {
 
         <Select
           value={assignmentFilter}
-          onValueChange={(v) => { setAssignmentFilter(v as AssignmentFilter); setPage(1) }}
+          onValueChange={(v) => { setAssignmentFilter(v as AssignmentFilter) }}
         >
           <SelectTrigger className="w-44">
             <SelectValue />
@@ -425,7 +426,7 @@ function CuttingDispatchContent() {
               ? `Lệnh chờ điều phối (${workOrders.length})`
               : assignmentFilter === 'recent'
                 ? `Vừa điều phối — 5 phút gần đây (${workOrders.length})`
-                : `Lệnh cắt (${totalItems})`}
+                : `Lệnh cắt (${totalLabel})`}
         </div>
 
         {isError ? (
@@ -516,14 +517,16 @@ function CuttingDispatchContent() {
         )}
       </div>
 
-      {!isLoading && !isError && (
-        <DataPagination
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={setPage}
-        />
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={fetchNextPage}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Đang tải…' : 'Tải thêm'}
+          </Button>
+        </div>
       )}
 
       {canAssignWorkOrder && (

@@ -1,9 +1,9 @@
 import { apiClient } from '@/lib/api/client'
-import type { PO, CreatePOInput, LineItem, PagedResult } from '@/types/api'
+import type { PO, CreatePOInput, LineItem, CursorResult } from '@/types/api'
 
 export interface POFilter {
-  page?: number
   limit?: number
+  cursor?: string
   /** Free-text search — BE matches against PO `code` (and notes when present). */
   search?: string
   /** Inclusive ISO date (YYYY-MM-DD) lower bound on `created_at`. */
@@ -14,7 +14,7 @@ export interface POFilter {
 
 export const posApi = {
   list: (filter: POFilter = {}) =>
-    apiClient.get<PagedResult<PO>>('/pos', {
+    apiClient.get<CursorResult<PO>>('/pos', {
       params: filter as Record<string, string | number | undefined>,
     }),
 

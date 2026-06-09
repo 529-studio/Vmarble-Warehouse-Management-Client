@@ -18,7 +18,6 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SearchInput } from '@/components/ui/search-input'
-import { DataPagination } from '@/components/ui/data-pagination'
 import {
   Select,
   SelectContent,
@@ -36,6 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  usePlanList,
   usePlans,
   useCreatePlan,
   useApprovePlan,
@@ -375,7 +375,7 @@ function PlansContent() {
   const [approveTarget, setApproveTarget] = useState<ProductionPlan | null>(null)
   const [cancelTarget, setCancelTarget] = useState<ProductionPlan | null>(null)
 
-  const { page, search, limit, getParam, setPage, setSearch, setParam, setParams } =
+  const { search, limit, getParam, setSearch, setParam, setParams } =
     usePageParams(15)
 
   const [inputValue, setInputValue] = useState(search)
@@ -390,8 +390,6 @@ function PlansContent() {
     setSearch(debouncedSearch)
   }, [debouncedSearch, search, setSearch])
 
-  // URL-driven filters mirror /work-orders + /costing so planners can deep-link
-  // (#183 DoD §3). Date range defaults to last 30 days.
   const statusFilter = (getParam('status') ?? ALL_PLAN_STATUSES) as PlanStatus | typeof ALL_PLAN_STATUSES
   const poFilter = getParam('po_id') ?? ALL_POS
   const skuFilter = getParam('sku_id') ?? ALL_SKUS
@@ -408,7 +406,6 @@ function PlansContent() {
     !isDefaultRange
 
   const filter = {
-    page,
     limit,
     ...(statusFilter !== ALL_PLAN_STATUSES ? { status: statusFilter as PlanStatus } : {}),
     ...(normalizedSearch ? { search: normalizedSearch } : {}),
@@ -418,8 +415,20 @@ function PlansContent() {
     to: dateTo,
   }
 
-  const { data, isLoading, isFetching, isError } = usePlans(filter)
+  const {
+    items,
+    total,
+    totalIsEstimate,
+    hasMore,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isFetching,
+    isError,
+  } = usePlanList(filter)
+
   const isPending = isFetching && inputValue !== debouncedSearch
+  const totalLabel = totalIsEstimate ? `~${total}` : `${total}`
 
   const { data: posData } = usePOs({ limit: 200 })
   const poMap = useMemo(
@@ -431,12 +440,7 @@ function PlansContent() {
   const { data: skusData } = useSKUs({ limit: 200 })
   const skus = useMemo(() => skusData?.items ?? [], [skusData?.items])
 
-  // Defensive client-side filter: BE GET /plans currently supports search +
-  // status + from + to + sort, but NOT po_id / sku_id. Keep filtering those
-  // two on the client so the toolbar still narrows the page. Date is BE-side
-  // now (BE #311), so don't double-filter on `created_at` here.
   const filteredPlans = useMemo(() => {
-    const items = data?.items ?? []
     return items.filter((plan) => {
       if (poFilter !== ALL_POS && plan.po_id !== poFilter) return false
       if (skuFilter !== ALL_SKUS) {
@@ -445,10 +449,7 @@ function PlansContent() {
       }
       return true
     })
-  }, [data?.items, poFilter, skuFilter])
-
-  const totalItems = data?.total_items ?? 0
-  const totalPages = data?.total_pages ?? 1
+  }, [items, poFilter, skuFilter])
 
   const { mutate: approve, isPending: approving } = useApprovePlan()
   const { mutate: cancel, isPending: canceling } = useCancelPlan()
@@ -636,8 +637,8 @@ function PlansContent() {
           {isLoading
             ? 'Đang tải…'
             : hasAnyFilter
-              ? `Kết quả lọc (${filteredPlans.length}${filteredPlans.length !== totalItems ? ` / ${totalItems}` : ''})`
-              : `Tất cả kế hoạch (${totalItems})`}
+              ? `Kết quả lọc (${filteredPlans.length} / ${totalLabel})`
+              : `Tất cả kế hoạch (${totalLabel})`}
         </div>
 
         {isError ? (
@@ -716,14 +717,16 @@ function PlansContent() {
         )}
       </div>
 
-      {!isLoading && !isError && (
-        <DataPagination
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={setPage}
-        />
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={fetchNextPage}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Đang tải…' : 'Tải thêm'}
+          </Button>
+        </div>
       )}
 
       {canCreatePlan && <CreatePlanDialog open={createOpen} onOpenChange={setCreateOpen} />}

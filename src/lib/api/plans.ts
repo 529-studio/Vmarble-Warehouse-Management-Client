@@ -1,13 +1,11 @@
 import { apiClient } from '@/lib/api/client'
-import type { ProductionPlan, CreatePlanInput, PlanStatus, PagedResult } from '@/types/api'
+import type { ProductionPlan, CreatePlanInput, PlanStatus, CursorResult } from '@/types/api'
 
 export interface PlanFilter {
   status?: PlanStatus
   search?: string
-  page?: number
   limit?: number
-  sort_by?: 'created_at' | 'deadline'
-  order?: 'asc' | 'desc'
+  cursor?: string
   /** PO id filter — narrows the plan list to a single PO. */
   po_id?: string
   /** SKU id filter — narrows to plans that contain at least one row of this SKU. */
@@ -20,7 +18,7 @@ export interface PlanFilter {
 
 export const plansApi = {
   list: (filter: PlanFilter = {}) =>
-    apiClient.get<PagedResult<ProductionPlan>>('/plans', {
+    apiClient.get<CursorResult<ProductionPlan>>('/plans', {
       params: filter as Record<string, string | number | undefined>,
     }),
 

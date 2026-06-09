@@ -14,7 +14,7 @@ import type {
   BoostPriorityResult,
   PreemptCandidate,
   PreemptResult,
-  PagedResult,
+  CursorResult,
 } from '@/types/api'
 import { apiClient } from './client'
 
@@ -31,14 +31,14 @@ export interface WorkOrdersFilter {
    * matters.
    */
   assigned?: 'null' | string
-  page?: number
+  cursor?: string
   limit?: number
 }
 
 export const workOrdersApi = {
   /** GET /api/v1/work-orders */
   list: (filter: WorkOrdersFilter = {}) =>
-    apiClient.get<PagedResult<WorkOrder>>('/work-orders', {
+    apiClient.get<CursorResult<WorkOrder>>('/work-orders', {
       params: filter as Record<string, string | number | boolean | undefined>,
     }),
 

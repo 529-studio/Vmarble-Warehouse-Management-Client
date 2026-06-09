@@ -19,6 +19,8 @@ interface UseCursorListArgs<T> {
 interface UseCursorListResult<T> {
   items: T[]
   hasMore: boolean
+  total: number
+  totalIsEstimate: boolean
   fetchNextPage: () => void
   isFetchingNextPage: boolean
   isLoading: boolean
@@ -78,10 +80,14 @@ export function useCursorList<T>({
 
   const lastPage = query.data?.pages[query.data.pages.length - 1]
   const hasMore = lastPage?.has_more ?? false
+  const total = lastPage?.total ?? 0
+  const totalIsEstimate = lastPage?.total_is_estimate ?? false
 
   return {
     items,
     hasMore,
+    total,
+    totalIsEstimate,
     fetchNextPage: () => query.fetchNextPage(),
     isFetchingNextPage: query.isFetchingNextPage,
     isLoading: query.isLoading,

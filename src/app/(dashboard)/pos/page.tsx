@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SearchInput } from '@/components/ui/search-input'
-import { DataPagination } from '@/components/ui/data-pagination'
 import {
   Dialog,
   DialogContent,
@@ -28,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { mapApiErrorVi } from '@/lib/api/client'
-import { usePOs, useCreatePO } from '@/lib/hooks/use-pos'
+import { usePOList, usePOs, useCreatePO } from '@/lib/hooks/use-pos'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { usePageParams } from '@/lib/hooks/use-page-params'
@@ -369,7 +368,7 @@ function POsContent() {
   const role = useCurrentRole()
   const canCreatePO = can(role, 'create', 'pos')
 
-  const { page, limit, search, setPage, setSearch, getParam, setParams } = usePageParams(10)
+  const { limit, search, setSearch, getParam, setParams } = usePageParams(10)
   const [createOpen, setCreateOpen] = useState(false)
   const router = useRouter()
 
@@ -384,8 +383,17 @@ function POsContent() {
   const dateFrom = getParam('from') ?? defaultFromIso()
   const dateTo = getParam('to') ?? isoToday()
 
-  const { data, isLoading, isFetching, isError } = usePOs({
-    page,
+  const {
+    items: pos,
+    total,
+    totalIsEstimate,
+    hasMore,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isFetching,
+    isError,
+  } = usePOList({
     limit,
     search: debouncedSearch || undefined,
     from: dateFrom,
@@ -394,9 +402,7 @@ function POsContent() {
 
   const isSearchPending = isFetching && inputValue !== debouncedSearch
 
-  const pos = data?.items ?? []
-  const totalItems = data?.total_items ?? 0
-  const totalPages = data?.total_pages ?? 1
+  const totalLabel = totalIsEstimate ? `~${total}` : `${total}`
 
   return (
     <>
@@ -430,7 +436,7 @@ function POsContent() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              {isLoading ? 'Đang tải…' : `Tất cả đơn hàng (${totalItems})`}
+              {isLoading ? 'Đang tải…' : `Tất cả đơn hàng (${totalLabel})`}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -482,14 +488,16 @@ function POsContent() {
         </Card>
       )}
 
-      {!isLoading && !isError && (
-        <DataPagination
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={setPage}
-        />
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={fetchNextPage}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Đang tải…' : 'Tải thêm'}
+          </Button>
+        </div>
       )}
 
       {canCreatePO && <CreatePODialog open={createOpen} onOpenChange={setCreateOpen} />}
