@@ -49,7 +49,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  useWorkOrders,
+  useWorkOrderList,
   useCreateWorkOrder,
   useAdvanceStatus,
   useWorkOrderConsumptions,
@@ -57,7 +57,6 @@ import {
 import { usePlans } from '@/lib/hooks/use-plans'
 import { usePOs } from '@/lib/hooks/use-pos'
 import { usePageParams } from '@/lib/hooks/use-page-params'
-import { DataPagination } from '@/components/ui/data-pagination'
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
@@ -922,21 +921,27 @@ function WorkOrdersContent() {
     ...(planFilter !== 'ALL' ? { plan_id: planFilter } : {}),
     from: dateFrom,
     to: dateTo,
-    page,
     limit,
   }
 
-  const { data, isLoading, isFetching, isError } = useWorkOrders(filter)
-  const workOrders = data?.items ?? []
-  const totalItems = data?.total_items ?? 0
-  const totalPages = data?.total_pages ?? 1
+  const {
+    items: workOrders,
+    total,
+    totalIsEstimate,
+    hasMore,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isFetching,
+    isError,
+  } = useWorkOrderList(filter)
+
+  const totalLabel = totalIsEstimate ? `~${total}` : `${total}`
 
   const { data: plansData, isFetching: isFetchingPlans } = usePlans({
     status: 'APPROVED',
     search: debouncedPlanSearch.trim() || undefined,
     limit: 20,
-    sort_by: 'deadline',
-    order: 'asc',
   })
   const visiblePlans = useMemo(() => plansData?.items ?? [], [plansData?.items])
   const { data: selectedPlanData } = usePlans({
@@ -1179,8 +1184,8 @@ function WorkOrdersContent() {
           {isLoading
             ? 'Đang tải…'
             : isViewingToday
-              ? `Lệnh hôm nay (${totalItems})`
-              : `Kết quả (${totalItems} lệnh)`}
+              ? `Lệnh hôm nay (${totalLabel})`
+              : `Kết quả (${totalLabel} lệnh)`}
         </div>
 
         {isError ? (
@@ -1217,14 +1222,16 @@ function WorkOrdersContent() {
         )}
       </div>
 
-      {!isLoading && !isError && (
-        <DataPagination
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={setPage}
-        />
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={fetchNextPage}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Đang tải…' : 'Tải thêm'}
+          </Button>
+        </div>
       )}
 
       {canCreateWorkOrder && <CreateWODialog open={createOpen} onOpenChange={setCreateOpen} />}

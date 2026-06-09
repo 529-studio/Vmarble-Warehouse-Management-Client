@@ -98,6 +98,17 @@ export interface BoardSheet {
   supplier_code?: string | null
 }
 
+/** GET /api/v1/inventory/lots */
+export interface InventoryLot {
+  id: string
+  material_id?: string
+  supplier_ref?: string
+  quantity?: number
+  cost_per_sheet?: Money
+  received_at?: string
+  is_active?: boolean
+}
+
 /** GET /api/v1/inventory/remnants */
 export interface Remnant {
   id: string
@@ -948,11 +959,15 @@ export interface PagedResult<T> {
 /**
  * Matches the Go backend httpkit.CursorResult[T] envelope (keyset pagination).
  * `next_cursor` is opaque — FE round-trips it as `?cursor=...` and never parses.
+ * `total` is a best-effort count; when `total_is_estimate=true` it is an estimate
+ * and should be rendered with a `~` prefix.
  */
 export interface CursorResult<T> {
   items: T[]
   next_cursor: string
   has_more: boolean
+  total: number
+  total_is_estimate: boolean
 }
 
 /** @deprecated use PagedResult instead */

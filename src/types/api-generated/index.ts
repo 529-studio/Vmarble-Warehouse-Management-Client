@@ -11692,36 +11692,50 @@ export interface components {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_barcode.ScanEvent"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_costing_CostingRecord": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_costing.CostingRecord"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_AuditLogEntry": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_inventory.AuditLogEntry"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_CuttingRecordReport": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_inventory.CuttingRecordReport"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_MaterialRejection": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_inventory.MaterialRejection"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_loading_exception_LoadingException": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_loading_exception.LoadingException"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_scrap_ScrapSale": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_scrap.ScrapSale"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_authn_UserDetail": {
             current_page?: number;
@@ -12065,10 +12079,20 @@ export interface components {
             finalized?: boolean;
             finalized_at?: string;
             finalized_by?: string;
+            /**
+             * @description FXRateToVND is the closest-on-or-before-WO-completion rate for SOCurrency.
+             *     Nil when SOCurrency is nil or "VND".
+             */
+            fx_rate_to_vnd?: number;
             id?: string;
             labor_cost?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
             material_cost?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
             sku_id?: string;
+            /**
+             * @description SOCurrency is the ISO-4217 currency of the linked sales order line.
+             *     Nil for VND orders or when the WO has no SO link.
+             */
+            so_currency?: string;
             total_cost?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
             work_order_id?: string;
         };
@@ -12736,6 +12760,7 @@ export interface components {
         };
         "internal_module_packing.FGPool": {
             barcode_id?: string;
+            component_type?: string;
             container_line_id?: string;
             created_at?: string;
             id?: string;
@@ -12746,6 +12771,7 @@ export interface components {
             sku_id?: string;
             sku_name?: string;
             status?: string;
+            unit_index?: number;
             work_order_id?: string;
         };
         "internal_module_packing.ReportDefectInput": {
