@@ -68,6 +68,8 @@ export type GrainPattern = 'WITH_GRAIN' | 'CROSS_GRAIN' | 'NONE'
 
 export type ScanCheckpoint =
   | 'CNC_COMPLETE'
+  | 'QC_PASSED'
+  | 'QC_FAILED'
   | 'FINISHED_GOODS'
   | 'SHIPPED'
 
@@ -263,6 +265,8 @@ export interface WorkOrder {
   sales_order_line_id?: string | null
   /** Set by BoostPriority (BR-PL05); never cleared. */
   priority_boost?: boolean
+  /** Denormalized last QC result ('QC_PASSED' | 'QC_FAILED') — set by the barcode module after QC scan. */
+  qc_status?: string | null
 }
 
 /**
@@ -711,6 +715,18 @@ export interface ScanEvent {
 /** Enriched response from POST /api/proxy/barcodes/:id/scans — mirrors backend barcode.ScanResult */
 export interface ScanResult extends ScanEvent {
   scanned_by_name: string
+}
+
+/** GET /api/v1/work-orders/:id/qc-history — mirrors backend barcode.QCEvent */
+export interface QCEvent {
+  id?: string
+  barcode_id?: string
+  scan_event_id?: string
+  work_order_id?: string
+  result?: ScanCheckpoint
+  note?: string
+  scanned_by?: string
+  created_at?: string
 }
 
 /** Mirrors backend barcode.LabelSize. */

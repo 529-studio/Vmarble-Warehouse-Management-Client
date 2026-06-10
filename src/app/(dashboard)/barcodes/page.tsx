@@ -39,12 +39,16 @@ import type { BarcodeRecord, ScanCheckpoint, ScanEvent, WorkOrder } from '@/type
 
 const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
   CNC_COMPLETE: 'Hoàn thành CNC',
+  QC_PASSED: 'QC Đạt',
+  QC_FAILED: 'QC Lỗi',
   FINISHED_GOODS: 'Hoàn thành gia công',
   SHIPPED: 'Xuất kho',
 }
 
 const CHECKPOINT_COLOR: Record<ScanCheckpoint, string> = {
   CNC_COMPLETE: 'bg-orange-100 text-orange-700 border-orange-200',
+  QC_PASSED: 'bg-green-100 text-green-700 border-green-200',
+  QC_FAILED: 'bg-red-100 text-red-700 border-red-200',
   FINISHED_GOODS: 'bg-blue-100 text-blue-700 border-blue-200',
   SHIPPED: 'bg-green-100 text-green-700 border-green-200',
 }

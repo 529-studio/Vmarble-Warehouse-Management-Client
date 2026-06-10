@@ -14,6 +14,7 @@ import type {
   BoostPriorityResult,
   PreemptCandidate,
   PreemptResult,
+  QCEvent,
   CursorResult,
 } from '@/types/api'
 import { apiClient } from './client'
@@ -100,4 +101,8 @@ export const workOrdersApi = {
   /** POST /api/v1/planning/work-orders/:id/preempt */
   preempt: (id: string, from_wo_id: string, reason: string) =>
     apiClient.post<PreemptResult>(`/planning/work-orders/${id}/preempt`, { from_wo_id, reason }),
+
+  /** GET /api/v1/work-orders/:id/qc-history */
+  getQCHistory: (id: string) =>
+    apiClient.get<QCEvent[]>(`/work-orders/${id}/qc-history`),
 }
