@@ -249,3 +249,14 @@ export function usePreempt(id: string) {
     onError: (err) => toast.error(mapApiErrorVi(err, 'Đôn từ WO thất bại')),
   })
 }
+
+export const QC_HISTORY_KEY = 'qc-history'
+
+export function useWorkOrderQCHistory(woId: string | null) {
+  return useQuery({
+    queryKey: [WORK_ORDERS_KEY, woId, QC_HISTORY_KEY],
+    queryFn: () => workOrdersApi.getQCHistory(woId!),
+    enabled: !!woId,
+    staleTime: 60_000,
+  })
+}

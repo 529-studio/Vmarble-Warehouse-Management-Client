@@ -70,12 +70,14 @@ export const barcodeApi = {
     deviceId?: string
     deviceName?: string
     shift?: string
+    note?: string
   }) =>
     apiClient.post<ScanResult>(`/barcodes/${input.barcodeId}/scans`, {
       checkpoint: input.checkpoint,
       ...(input.deviceId ? { device_id: input.deviceId } : {}),
       ...(input.deviceName ? { device_name: input.deviceName } : {}),
       ...(input.shift ? { shift: input.shift } : {}),
+      ...(input.note ? { note: input.note } : {}),
     }),
 
   getLabelPdfBlob: (barcodeId: string) =>

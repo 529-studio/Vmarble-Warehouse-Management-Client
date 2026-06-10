@@ -67,6 +67,8 @@ export const useScanStore = create<ScanStore>((set) => ({
 
 const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
   CNC_COMPLETE: 'Hoàn thành CNC',
+  QC_PASSED: 'QC Đạt',
+  QC_FAILED: 'QC Lỗi',
   FINISHED_GOODS: 'Hoàn thành gia công',
   SHIPPED: 'Xuất kho',
 }
@@ -82,6 +84,7 @@ export function useRecordScan() {
       deviceId?: string
       deviceName?: string
       shift?: string
+      note?: string
     }) => barcodeApi.recordScan(input),
 
     onSuccess: (scanResult, variables) => {

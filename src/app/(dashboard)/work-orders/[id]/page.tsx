@@ -51,6 +51,7 @@ import {
   useBoostPriority,
   usePreemptCandidates,
   usePreempt,
+  useWorkOrderQCHistory,
 } from '@/lib/hooks/use-work-orders'
 import { usePlan } from '@/lib/hooks/use-plans'
 import { useMaterials } from '@/lib/hooks/use-materials'
@@ -74,6 +75,7 @@ import type {
   User,
   FeasibilitySuggestion,
   PreemptCandidate,
+  QCEvent,
 } from '@/types/api'
 
 // ── Helpers
@@ -139,10 +141,12 @@ function formatDate(iso: string) {
 
 // ── Scan history ─────────────────────────────────────────────────────────────
 
-const CHECKPOINT_ORDER: ScanCheckpoint[] = ['CNC_COMPLETE', 'FINISHED_GOODS', 'SHIPPED']
+const CHECKPOINT_ORDER: ScanCheckpoint[] = ['CNC_COMPLETE', 'QC_PASSED', 'QC_FAILED', 'FINISHED_GOODS', 'SHIPPED']
 
 const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
   CNC_COMPLETE: 'Hoàn thành CNC',
+  QC_PASSED: 'QC Đạt',
+  QC_FAILED: 'QC Lỗi',
   FINISHED_GOODS: 'Hoàn thành gia công',
   SHIPPED: 'Xuất kho',
 }
@@ -934,6 +938,83 @@ function PreemptTab({ woId }: { woId: string }) {
   )
 }
 
+// ── QC History tab ────────────────────────────────────────────────────────────
+
+const QC_RESULT_CLASS: Partial<Record<ScanCheckpoint, string>> = {
+  QC_PASSED: 'bg-green-100 text-green-800 border-green-200',
+  QC_FAILED: 'bg-red-100 text-red-800 border-red-200',
+}
+
+function QCHistoryTab({ woId }: { woId: string }) {
+  const { data: events, isLoading, isError } = useWorkOrderQCHistory(woId)
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex gap-4 px-4 py-3 border rounded-lg">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-5 flex-1" />
+            <Skeleton className="h-5 w-32" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (isError) {
+    return <p className="text-sm text-destructive">Không thể tải lịch sử QC.</p>
+  }
+
+  const list = events ?? []
+
+  if (list.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Chưa có sự kiện QC nào cho lệnh sản xuất này.
+      </p>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Kết quả</TableHead>
+            <TableHead>Barcode</TableHead>
+            <TableHead>Ghi chú lỗi</TableHead>
+            <TableHead>Thời gian</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {list.map((event: QCEvent, i: number) => (
+            <TableRow key={event.id ?? i}>
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  className={event.result ? (QC_RESULT_CLASS[event.result] ?? '') : ''}
+                >
+                  {event.result ? (CHECKPOINT_LABEL[event.result] ?? event.result) : '—'}
+                </Badge>
+              </TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">
+                {event.barcode_id ? event.barcode_id.slice(0, 8).toUpperCase() : '—'}
+              </TableCell>
+              <TableCell className="text-sm">
+                {event.note ?? <span className="text-muted-foreground">—</span>}
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {event.created_at ? formatDate(event.created_at) : '—'}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
 function WorkOrderDetail({ id }: { id: string }) {
   const role = useCurrentRole()
   const { data: me } = useMe()
@@ -1129,6 +1210,20 @@ function WorkOrderDetail({ id }: { id: string }) {
             <Badge variant="outline" className={STATUS_CLASS[wo.status]}>
               {STATUS_LABEL[wo.status]}
             </Badge>
+            {wo.qc_status && (
+              <Badge
+                variant="outline"
+                className={
+                  wo.qc_status === 'QC_PASSED'
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : wo.qc_status === 'QC_FAILED'
+                      ? 'bg-red-100 text-red-800 border-red-200'
+                      : ''
+                }
+              >
+                {wo.qc_status === 'QC_PASSED' ? 'QC Đạt' : wo.qc_status === 'QC_FAILED' ? 'QC Lỗi' : wo.qc_status}
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -1183,6 +1278,7 @@ function WorkOrderDetail({ id }: { id: string }) {
         <TabsList>
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="labor">Nhân công</TabsTrigger>
+          <TabsTrigger value="qc">Lịch sử QC</TabsTrigger>
           {canPreempt && (
             <TabsTrigger value="preempt">
               <TrendingUp className="mr-1.5 size-3.5" />
@@ -1430,6 +1526,10 @@ function WorkOrderDetail({ id }: { id: string }) {
 
         <TabsContent value="labor" className="pt-4">
           <LaborSection wo={wo} />
+        </TabsContent>
+
+        <TabsContent value="qc" className="pt-4">
+          <QCHistoryTab woId={wo.id} />
         </TabsContent>
 
         {canPreempt && (

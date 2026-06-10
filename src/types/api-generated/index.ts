@@ -11032,6 +11032,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** CNC operator self-claims a PLANNED unassigned work order */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_production.WorkOrder"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-orders/{id}/consumptions": {
         parameters: {
             query?: never;
@@ -11457,6 +11540,166 @@ export interface paths {
                 };
                 /** @description wo not in IN_PROCESSING */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{id}/qc-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get QC scan history for a work order */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_barcode.QCEvent"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{id}/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin force-reassign a work order to a different CNC operator */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_production.ReassignWorkOrderInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_production.WorkOrder"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -11934,6 +12177,16 @@ export interface components {
         };
         /** @enum {string} */
         "internal_module_barcode.LabelSize": "50x30" | "100x70";
+        "internal_module_barcode.QCEvent": {
+            barcode_id?: string;
+            created_at?: string;
+            id?: string;
+            note?: string;
+            result?: components["schemas"]["internal_module_barcode.ScanCheckpoint"];
+            scan_event_id?: string;
+            scanned_by?: string;
+            work_order_id?: string;
+        };
         "internal_module_barcode.RecordScanInput": {
             checkpoint?: components["schemas"]["internal_module_barcode.ScanCheckpoint"];
             device_id?: string;
@@ -11943,7 +12196,7 @@ export interface components {
             shift?: string;
         };
         /** @enum {string} */
-        "internal_module_barcode.ScanCheckpoint": "CNC_COMPLETE" | "FINISHED_GOODS" | "SHIPPED";
+        "internal_module_barcode.ScanCheckpoint": "CNC_COMPLETE" | "QC_PASSED" | "QC_FAILED" | "FINISHED_GOODS" | "SHIPPED";
         "internal_module_barcode.ScanEvent": {
             barcode_id?: string;
             checkpoint?: components["schemas"]["internal_module_barcode.ScanCheckpoint"];
@@ -12948,6 +13201,10 @@ export interface components {
             carry_over_wo?: components["schemas"]["internal_module_production.WorkOrder"];
             wo_updated?: components["schemas"]["internal_module_production.WorkOrder"];
         };
+        "internal_module_production.ReassignWorkOrderInput": {
+            new_user_id?: string;
+            reason?: string;
+        };
         "internal_module_production.RecordConsumptionInput": {
             material_id?: string;
             material_type?: string;
@@ -12996,6 +13253,11 @@ export interface components {
              *     scheduling priority (BR-PL05). Set by BoostPriority; never cleared.
              */
             priority_boost?: boolean;
+            /**
+             * @description QCStatus is the denormalized last QC result for this work order.
+             *     Nil means no QC scan has been recorded yet.
+             */
+            qc_status?: string;
             quantity?: number;
             /**
              * @description SalesOrderLineID, when set, links the WO back to a sales_order_lines row
