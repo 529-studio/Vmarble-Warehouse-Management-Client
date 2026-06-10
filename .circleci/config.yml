@@ -1,0 +1,63 @@
+version: 2.1
+
+executors:
+  docker-executor:
+    docker:
+      - image: cimg/base:current
+    environment:
+      # Biến toàn cục lấy theo tên Gitlab repo của Frontend Client
+      IMAGE_NAME: registry.gitlab.com/529-stu/vmarble-warehouse-management-client
+
+jobs:
+  docker-build-and-push:
+    executor: docker-executor
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: docker24
+      - run:
+          name: Prepare Environment Variables
+          command: |
+            # CircleCI dùng CIRCLE_SHA1, ta cắt 7 ký tự như GitLab CI
+            echo 'export SHORT_SHA="${CIRCLE_SHA1:0:7}"' >> $BASH_ENV
+            echo 'export CACHE_TAG="${IMAGE_NAME}:buildcache"' >> $BASH_ENV
+            echo 'export TEMP_TAG="${IMAGE_NAME}:ci-${CIRCLE_BUILD_NUM}"' >> $BASH_ENV
+            echo 'export SHA_TAG="${IMAGE_NAME}:sha-${CIRCLE_SHA1:0:7}"' >> $BASH_ENV
+            echo 'export STG_TAG="${IMAGE_NAME}:stg-latest"' >> $BASH_ENV
+      - run:
+          name: Docker Login
+          command: |
+            echo "$GITLAB_REGISTRY_TOKEN" | docker login registry.gitlab.com -u "$GITLAB_REGISTRY_USER" --password-stdin
+      - run:
+          name: Setup Docker Buildx
+          command: |
+            # Cài đặt môi trường buildx giống hệt GitLab CI
+            docker buildx create --use --name vwms-builder --driver docker-container
+            docker buildx inspect --bootstrap
+      - run:
+          name: Docker Build and Push
+          command: |
+            # Gộp cả bước Build và Push của GitLab thành 1 lệnh buildx duy nhất (tối ưu hơn rất nhiều)
+            docker buildx build \
+              --cache-from "type=registry,ref=${CACHE_TAG}" \
+              --cache-to   "type=registry,ref=${CACHE_TAG},mode=max" \
+              --tag        "$TEMP_TAG" \
+              --tag        "$SHA_TAG" \
+              --tag        "$STG_TAG" \
+              --push \
+              .
+      - run:
+          name: Trigger Deploy Webhook
+          command: |
+            # Gọi webhook Dokploy (chú ý: biến DOKPLOY_FE_WEBHOOK_URL cần setup ở Project Settings của CircleCI)
+            curl -sS -f -X POST "$DOKPLOY_FE_WEBHOOK_URL"
+
+workflows:
+  version: 2
+  vwms_frontend_pipeline:
+    jobs:
+      - docker-build-and-push:
+          context: lab-stg
+          filters:
+            branches:
+              only: dev
