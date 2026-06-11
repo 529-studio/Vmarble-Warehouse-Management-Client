@@ -3,6 +3,7 @@ import type {
   CreateWOInput,
   AdvanceStatusInput,
   AssignWorkOrderInput,
+  ReassignWorkOrderInput,
   SuggestAssignmentResult,
   ConsumptionRecord,
   AddConsumptionInput,
@@ -105,4 +106,12 @@ export const workOrdersApi = {
   /** GET /api/v1/work-orders/:id/qc-history */
   getQCHistory: (id: string) =>
     apiClient.get<QCEvent[]>(`/work-orders/${id}/qc-history`),
+
+  /** POST /api/v1/work-orders/:id/reassign — Admin force-reassign to different operator */
+  reassign: (id: string, input: ReassignWorkOrderInput) =>
+    apiClient.post<WorkOrder>(`/work-orders/${id}/reassign`, input),
+
+  /** POST /api/v1/work-orders/:id/claim — CNC operator self-claim PLANNED unassigned WO */
+  claim: (id: string) =>
+    apiClient.post<WorkOrder>(`/work-orders/${id}/claim`, {}),
 }

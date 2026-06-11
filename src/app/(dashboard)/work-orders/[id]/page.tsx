@@ -4,7 +4,7 @@ import { use, useMemo, useSyncExternalStore, useState } from 'react'
 import { toast } from 'sonner'
 import QRCode from 'react-qr-code'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardCheck, QrCode, Eye, Copy, Check, CheckCircle2, Circle, ExternalLink, Loader2, Printer, AlertCircle, Zap, TrendingUp } from 'lucide-react'
+import { ArrowLeft, ClipboardCheck, QrCode, Eye, Copy, Check, CheckCircle2, Circle, ExternalLink, Loader2, Printer, AlertCircle, Zap, TrendingUp, UserCog } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -52,6 +52,7 @@ import {
   usePreemptCandidates,
   usePreempt,
   useWorkOrderQCHistory,
+  useReassignWorkOrder,
 } from '@/lib/hooks/use-work-orders'
 import { usePlan } from '@/lib/hooks/use-plans'
 import { useMaterials } from '@/lib/hooks/use-materials'
@@ -1015,6 +1016,114 @@ function QCHistoryTab({ woId }: { woId: string }) {
   )
 }
 
+// ── Reassign Dialog ───────────────────────────────────────────────────────────
+
+interface ReassignDialogProps {
+  wo: WorkOrder
+  open: boolean
+  onClose: () => void
+}
+
+function ReassignDialog({ wo, open, onClose }: ReassignDialogProps) {
+  const [newUserId, setNewUserId] = useState('')
+  const [reason, setReason] = useState('')
+
+  const { data: usersData, isLoading: loadingUsers } = useUsers({ role: 'cnc', limit: 200 })
+  const workers = useMemo(() => usersData?.items ?? [], [usersData?.items])
+  const currentWorker = workers.find((w) => w.id === wo.assigned_to)
+
+  const { mutate: reassign, isPending } = useReassignWorkOrder(wo.id)
+
+  function handleClose() {
+    setNewUserId('')
+    setReason('')
+    onClose()
+  }
+
+  function handleSubmit() {
+    if (!newUserId || !reason.trim()) return
+    reassign(
+      { new_user_id: newUserId, reason: reason.trim() },
+      {
+        onSuccess: () => {
+          const worker = workers.find((w) => w.id === newUserId)
+          const name = worker?.full_name ?? worker?.username ?? 'công nhân'
+          toast.success(`Đã chuyển lệnh cho ${name}`)
+          handleClose()
+        },
+      },
+    )
+  }
+
+  const canSubmit = !!newUserId && reason.trim().length > 0
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserCog className="size-4" />
+            Phân công lại lệnh sản xuất
+          </DialogTitle>
+          <DialogDescription>
+            Mã lệnh: <span className="font-mono font-medium">{shortId(wo.id)}</span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-1">
+          {wo.assigned_to && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <p>
+                Lệnh này đang được <span className="font-semibold">{currentWorker?.full_name ?? currentWorker?.username ?? shortId(wo.assigned_to)}</span> thực hiện.
+                Phân công lại sẽ chuyển quyền cho người khác.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>Chuyển cho *</Label>
+            <Select value={newUserId} onValueChange={setNewUserId} disabled={loadingUsers}>
+              <SelectTrigger>
+                <SelectValue placeholder={loadingUsers ? 'Đang tải…' : '— Chọn công nhân CNC —'} />
+              </SelectTrigger>
+              <SelectContent>
+                {workers
+                  .filter((w) => w.id !== wo.assigned_to)
+                  .map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.full_name ?? w.username}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="reassign-reason">Lý do *</Label>
+            <Textarea
+              id="reassign-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Nhập lý do phân công lại…"
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={isPending}>
+            Hủy
+          </Button>
+          <Button variant="destructive" onClick={handleSubmit} disabled={isPending || !canSubmit}>
+            {isPending ? 'Đang chuyển…' : 'Xác nhận chuyển'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function WorkOrderDetail({ id }: { id: string }) {
   const role = useCurrentRole()
   const { data: me } = useMe()
@@ -1022,11 +1131,13 @@ function WorkOrderDetail({ id }: { id: string }) {
   const canConsume = can(role, 'consume', 'work_orders')
   const canBoost = can(role, 'advance', 'work_orders')
   const canPreempt = can(role, 'create', 'work_orders') || can(role, 'advance', 'work_orders')
+  const canReassign = can(role, 'assign', 'work_orders')
 
   const [showBarcodeDialog, setShowBarcodeDialog] = useState(false)
   const [showViewBarcodeDialog, setShowViewBarcodeDialog] = useState(false)
   const [showFeasibility, setShowFeasibility] = useState(false)
   const [showBoost, setShowBoost] = useState(false)
+  const [showReassign, setShowReassign] = useState(false)
   const [materialId, setMaterialId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState('')
@@ -1133,6 +1244,9 @@ function WorkOrderDetail({ id }: { id: string }) {
       )}
       <FeasibilityModal woId={wo.id} open={showFeasibility} onClose={() => setShowFeasibility(false)} />
       <BoostPriorityDialog woId={wo.id} open={showBoost} onClose={() => setShowBoost(false)} />
+      {canReassign && (wo.status === 'IN_CUTTING' || wo.status === 'IN_PROCESSING') && (
+        <ReassignDialog wo={wo} open={showReassign} onClose={() => setShowReassign(false)} />
+      )}
 
       {/* Carry-over banner — this WO was spawned from a parent shortfall (#241). */}
       {wo.parent_wo_id && (
@@ -1185,6 +1299,12 @@ function WorkOrderDetail({ id }: { id: string }) {
                 <TrendingUp className="mr-1 size-3" />
                 Ưu tiên cao
               </Badge>
+            )}
+            {canReassign && (wo.status === 'IN_CUTTING' || wo.status === 'IN_PROCESSING') && (
+              <Button size="sm" variant="outline" onClick={() => setShowReassign(true)}>
+                <UserCog className="size-4" />
+                Phân công lại
+              </Button>
             )}
             {canGenerateBarcode && (
               hasBarcode ? (

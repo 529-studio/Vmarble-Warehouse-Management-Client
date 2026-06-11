@@ -6,6 +6,7 @@ import type {
   CreateWOInput,
   AdvanceStatusInput,
   AssignWorkOrderInput,
+  ReassignWorkOrderInput,
   AddConsumptionInput,
   AddLaborEntryInput,
   PartialCompleteInput,
@@ -258,5 +259,40 @@ export function useWorkOrderQCHistory(woId: string | null) {
     queryFn: () => workOrdersApi.getQCHistory(woId!),
     enabled: !!woId,
     staleTime: 60_000,
+  })
+}
+
+export function useReassignWorkOrder(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: ReassignWorkOrderInput) => workOrdersApi.reassign(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+    },
+    onError: (err: unknown) => {
+      if (err instanceof ApiClientError && err.status === 409) {
+        toast.error('Lệnh không ở trạng thái cho phép phân công lại')
+      } else {
+        toast.error(mapApiErrorVi(err, 'Phân công lại thất bại'))
+      }
+    },
+  })
+}
+
+export function useClaimWorkOrder(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => workOrdersApi.claim(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+    },
+    onError: (err: unknown) => {
+      if (err instanceof ApiClientError && err.status === 409) {
+        toast.error('Lệnh đã được người khác nhận rồi')
+        queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+      } else {
+        toast.error(mapApiErrorVi(err, 'Nhận việc thất bại'))
+      }
+    },
   })
 }

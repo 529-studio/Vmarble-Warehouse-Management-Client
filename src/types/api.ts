@@ -360,6 +360,12 @@ export interface AssignWorkOrderInput {
   user_id: string
 }
 
+/** POST /api/v1/work-orders/:id/reassign — Admin force-reassign (note: BE uses new_user_id, not new_assignee_id) */
+export interface ReassignWorkOrderInput {
+  new_user_id?: string
+  reason?: string
+}
+
 /** POST /api/v1/work-orders/:id/suggest-assignment */
 export interface SuggestAssignmentResult {
   user_id: string
