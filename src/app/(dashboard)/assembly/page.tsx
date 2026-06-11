@@ -2,7 +2,7 @@
 
 import { Suspense, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Boxes, CheckCircle2, ClipboardList, HardHat, Loader2, Plus } from 'lucide-react'
+import { ArrowRight, Boxes, CheckCircle2, ClipboardList, HardHat, Loader2, Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -39,10 +39,11 @@ import {
   useAdvanceStatus,
   useWorkOrderConsumptions,
   useWorkOrderLaborEntries,
-  useWorkOrders,
+  useWorkOrderList,
 } from '@/lib/hooks/use-work-orders'
 import { useMe } from '@/lib/hooks/use-auth'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { useDebounce } from '@/lib/hooks/use-debounce'
 import type { LaborStage, MaterialType, WorkOrder } from '@/types/api'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -367,16 +368,32 @@ function AssemblyContent() {
   const dateFrom = getParam('from') ?? defaultFromIso()
   const dateTo = getParam('to') ?? isoToday()
 
-  // BE has no team / assignee filter on /work-orders for foreman yet — pull all
-  // IN_PROCESSING work orders for now. When BE adds ?foreman_id, switch to a
-  // server-side filter so foremen don't see other shops' lists.
-  const { data, isLoading, isError } = useWorkOrders({
+  const [skuSearch, setSkuSearch] = useState('')
+  const debouncedSku = useDebounce(skuSearch, 300)
+
+  const {
+    items: workOrders,
+    hasMore,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useWorkOrderList({
     status: 'IN_PROCESSING',
     from: dateFrom,
     to: dateTo,
-    limit: 100,
+    limit: 10,
   })
-  const workOrders = useMemo(() => data?.items ?? [], [data?.items])
+
+  const filteredOrders = useMemo(() => {
+    if (!debouncedSku.trim()) return workOrders
+    const q = debouncedSku.trim().toLowerCase()
+    return workOrders.filter(
+      (wo: WorkOrder) =>
+        (wo.sku_code ?? '').toLowerCase().includes(q) ||
+        (wo.sku_name ?? '').toLowerCase().includes(q),
+    )
+  }, [workOrders, debouncedSku])
 
   return (
     <div className="space-y-6 p-6">
@@ -403,6 +420,17 @@ function AssemblyContent() {
         </div>
       </header>
 
+      {/* SKU search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Input
+          className="pl-9"
+          placeholder="Tìm theo mã SKU hoặc tên…"
+          value={skuSearch}
+          onChange={(e) => setSkuSearch(e.target.value)}
+        />
+      </div>
+
       {isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -422,22 +450,48 @@ function AssemblyContent() {
           </p>
         </div>
       ) : (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{workOrders.length}</span> lệnh đang xử lý
-            {workOrders.some((wo) => {
-              return wo.assigned_to && me?.id === wo.assigned_to
-            }) && ' · có lệnh được giao cho bạn'}
-          </p>
-        </div>
-      )}
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                {workOrders.length}
+              </span> lệnh đang xử lý
+              {filteredOrders.length < workOrders.length && (
+                <span> · hiển thị <span className="font-semibold text-foreground">{filteredOrders.length}</span> kết quả</span>
+              )}
+              {workOrders.some((wo: WorkOrder) => wo.assigned_to && me?.id === wo.assigned_to) &&
+                ' · có lệnh được giao cho bạn'}
+            </p>
+          </div>
 
-      {workOrders.length > 0 && (
-        <div className="space-y-4">
-          {workOrders.map((wo) => (
-            <AssemblyCard key={wo.id} wo={wo} />
-          ))}
-        </div>
+          {filteredOrders.length === 0 ? (
+            <p className="rounded-xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
+              Không tìm thấy lệnh nào khớp &quot;{debouncedSku}&quot;.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {filteredOrders.map((wo) => (
+                <AssemblyCard key={wo.id} wo={wo} />
+              ))}
+            </div>
+          )}
+
+          {hasMore && !debouncedSku && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={fetchNextPage}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage ? (
+                  <><Loader2 className="size-4 animate-spin" /> Đang tải…</>
+                ) : (
+                  'Tải thêm'
+                )}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
