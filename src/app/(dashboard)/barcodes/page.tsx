@@ -35,6 +35,7 @@ import {
 import { useWorkOrders } from '@/lib/hooks/use-work-orders'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
 import type { BarcodeRecord, ScanCheckpoint, ScanEvent, WorkOrder } from '@/types/api'
 
 const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
@@ -198,8 +199,8 @@ function BarcodesContent() {
 
   const workOrderId = params.getParam('wo') ?? ''
   const checkpointFilter = params.getParam('cp') ?? ''
-  const dateFrom = params.getParam('from') ?? ''
-  const dateTo = params.getParam('to') ?? ''
+  const dateFrom = params.getParam('from') ?? defaultFromIso(7)
+  const dateTo = params.getParam('to') ?? isoToday()
 
   // Fan in: pull recent WOs (any status) so the user can scan their list.
   // We don't have a "list all barcodes" endpoint, so the user must pick a WO.
