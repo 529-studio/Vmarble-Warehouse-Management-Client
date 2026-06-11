@@ -39,6 +39,23 @@ export function useCuttingOrder(id: string) {
   })
 }
 
+/**
+ * Kiosk pool hook: fetches PLANNED + unassigned WOs for the "Chờ nhận" tab.
+ * Workers pick from this pool to self-claim via POST /work-orders/:id/claim.
+ */
+export function usePlannedUnassignedForKiosk() {
+  const query = useQuery({
+    queryKey: [WORK_ORDERS_KEY, { status: 'PLANNED', assigned: 'null' }],
+    queryFn: () => cuttingOrdersApi.list({ status: 'PLANNED', assigned: 'null' }),
+    refetchInterval: 60_000,
+    placeholderData: (prev) => prev,
+  })
+  return {
+    ...query,
+    data: query.data?.items ?? [],
+  }
+}
+
 export function useRecordCut() {
   const queryClient = useQueryClient()
   return useMutation({
