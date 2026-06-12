@@ -40,7 +40,7 @@ import {
   useUpdateClaim,
 } from '@/lib/hooks/use-material-rejections'
 import { useDebounce } from '@/lib/hooks/use-debounce'
-import { defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
+import { DateRangeFilter, defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import {
   CLAIM_STATUSES,
@@ -378,25 +378,12 @@ function MaterialRejectionsContent() {
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Từ ngày</label>
-          <Input
-            type="date"
-            className="w-40"
-            value={dateFrom}
-            onChange={(e) => setParam('from', e.target.value || undefined)}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Đến ngày</label>
-          <Input
-            type="date"
-            className="w-40"
-            value={dateTo}
-            onChange={(e) => setParam('to', e.target.value || undefined)}
-          />
-        </div>
+        <DateRangeFilter
+          from={dateFrom}
+          to={dateTo}
+          onChange={(r) => { setParam('from', r.from); setParam('to', r.to) }}
+          defaultDaysAgo={30}
+        />
       </div>
 
       {/* Table */}

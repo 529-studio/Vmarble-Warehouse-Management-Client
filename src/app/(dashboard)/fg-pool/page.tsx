@@ -4,7 +4,6 @@ import { Suspense, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Boxes } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
@@ -23,7 +22,7 @@ import {
 } from '@/components/ui/table'
 import { useFGPoolList } from '@/lib/hooks/use-packing'
 import { usePageParams } from '@/lib/hooks/use-page-params'
-import { defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
+import { DateRangeFilter, defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
 import type { FGPoolStatus } from '@/types/api'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -82,27 +81,12 @@ function FGPoolTable() {
           </Select>
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Từ ngày</label>
-          <Input
-            type="date"
-            className="w-40"
-            value={dateFrom}
-            max={dateTo || undefined}
-            onChange={(e) => setParam('from', e.target.value || undefined)}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Đến ngày</label>
-          <Input
-            type="date"
-            className="w-40"
-            value={dateTo}
-            min={dateFrom || undefined}
-            onChange={(e) => setParam('to', e.target.value || undefined)}
-          />
-        </div>
+        <DateRangeFilter
+          from={dateFrom}
+          to={dateTo}
+          onChange={(r) => { setParam('from', r.from); setParam('to', r.to) }}
+          defaultDaysAgo={30}
+        />
 
         <span className="ml-auto self-end text-sm text-muted-foreground">
           {isLoading ? 'Đang tải…' : `${items.length} thành phẩm`}
