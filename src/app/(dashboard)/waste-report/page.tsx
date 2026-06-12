@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useMemo, useState, useSyncExternalStore } from 'react'
-import { Calendar, Download, Loader2, RotateCcw, Trash2 } from 'lucide-react'
+import { Download, Loader2, Trash2 } from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -35,6 +35,7 @@ import { mapApiErrorVi } from '@/lib/api/client'
 import { costingApi } from '@/lib/api/costing'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
+import { DateRangeFilter, isoToday, defaultFromIso } from '@/components/dashboard/date-range-filter'
 import { formatVND } from '@/lib/format'
 import { useMaterials } from '@/lib/hooks/use-materials'
 import { useWasteReport } from '@/lib/hooks/use-waste-report'
@@ -50,15 +51,6 @@ function useCurrentRole() {
   )
 }
 
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function defaultFromDate(): string {
-  const d = new Date()
-  d.setDate(d.getDate() - 30)
-  return isoDate(d)
-}
 
 function formatM2(mm2: number): string {
   return (mm2 / 1_000_000).toLocaleString('vi-VN', {
@@ -107,8 +99,8 @@ function WasteReportContent() {
   const canRead = can(role, 'read', 'waste_report')
   const canExport = can(role, 'generate', 'waste_report')
 
-  const today = isoDate(new Date())
-  const [from, setFrom] = useState<string>(defaultFromDate())
+  const today = isoToday()
+  const [from, setFrom] = useState<string>(defaultFromIso())
   const [to, setTo] = useState<string>(today)
   const [materialId, setMaterialId] = useState<string>(ALL_MATERIALS)
   const [downloading, setDownloading] = useState(false)
@@ -179,7 +171,7 @@ function WasteReportContent() {
   }
 
   function resetRange() {
-    setFrom(defaultFromDate())
+    setFrom(defaultFromIso())
     setTo(today)
   }
 
@@ -197,33 +189,14 @@ function WasteReportContent() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
-            <Label htmlFor="waste-from" className="text-xs text-muted-foreground">
-              Từ ngày
+            <Label className="text-xs text-muted-foreground">
+              Khoảng ngày
             </Label>
-            <div className="flex items-center gap-1.5">
-              <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <input
-                id="waste-from"
-                type="date"
-                value={from}
-                max={to}
-                onChange={(e) => setFrom(e.target.value)}
-                className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <span className="text-muted-foreground text-sm" aria-hidden="true">–</span>
-              <input
-                aria-label="Đến ngày"
-                type="date"
-                value={to}
-                min={from}
-                onChange={(e) => setTo(e.target.value)}
-                className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <Button variant="outline" size="sm" onClick={resetRange} className="gap-1">
-                <RotateCcw className="size-3" />
-                30 ngày
-              </Button>
-            </div>
+            <DateRangeFilter
+              from={from}
+              to={to}
+              onChange={({ from: f, to: t }) => { setFrom(f); setTo(t) }}
+            />
           </div>
 
           <div className="space-y-1">

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
-  Calendar,
   Check,
   ChevronDown,
   Container as ContainerIcon,
@@ -49,6 +48,7 @@ import {
 import { useCustomers } from '@/lib/hooks/use-customers'
 import { useContainers } from '@/lib/hooks/use-containers'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { DateRangeFilter } from '@/components/dashboard/date-range-filter'
 import { cn } from '@/lib/utils'
 import {
   LOADING_EXCEPTION_TYPES,
@@ -497,33 +497,14 @@ function QueueShell() {
             </Select>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="from" className="text-xs">Từ ngày</Label>
-            <div className="relative">
-              <Calendar className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="from"
-                type="date"
-                className="h-9 pl-7"
-                value={fromDate}
-                onChange={(e) => setParam('from', e.target.value || undefined)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="to" className="text-xs">Đến ngày</Label>
-            <div className="relative">
-              <Calendar className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="to"
-                type="date"
-                className="h-9 pl-7"
-                value={toDate}
-                onChange={(e) => setParam('to', e.target.value || undefined)}
-              />
-            </div>
-          </div>
+          <DateRangeFilter
+            from={fromDate}
+            to={toDate}
+            onChange={({ from, to }) => {
+              setParam('from', from)
+              setParam('to', to)
+            }}
+          />
         </CardContent>
       </Card>
 
