@@ -613,6 +613,9 @@ export interface MaterialRejectionsFilter {
   limit?: number
   claim_status?: ClaimStatus
   lot_id?: string
+  from?: string
+  to?: string
+  supplier_ref?: string
 }
 
 // ── Cutting ──────────────────────────────────────────────────────────────────
@@ -1313,6 +1316,8 @@ export interface FGPoolFilter extends PageParams {
   sku_id?: string
   status?: FGPoolStatus
   sales_order_line_id?: string
+  from?: string
+  to?: string
 }
 
 /** Body for POST /fg-pool/:id/reassign. */
