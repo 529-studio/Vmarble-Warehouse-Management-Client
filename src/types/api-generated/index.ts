@@ -853,6 +853,8 @@ export interface paths {
                     container_type?: string;
                     /** @description filter by assigned loader (uuid) */
                     loader_id?: string;
+                    /** @description filter by vessel (uuid) */
+                    vessel_id?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3505,6 +3507,10 @@ export interface paths {
                     so_line_id?: string;
                     /** @description filter by work order id (uuid) */
                     wo_id?: string;
+                    /** @description filter created_at from (RFC3339 or YYYY-MM-DD) */
+                    from?: string;
+                    /** @description filter created_at to (RFC3339 or YYYY-MM-DD, inclusive day-end) */
+                    to?: string;
                 };
                 header?: never;
                 path?: never;
@@ -4547,6 +4553,10 @@ export interface paths {
                     claim_status?: string;
                     /** @description filter by lot id (uuid) */
                     lot_id?: string;
+                    /** @description filter reported_at from (RFC3339 or YYYY-MM-DD) */
+                    from?: string;
+                    /** @description filter reported_at to (RFC3339 or YYYY-MM-DD, inclusive day-end) */
+                    to?: string;
                     /** @description opaque cursor token; omit for first page */
                     cursor?: string;
                     /** @description page size (default 50, max 200) */
@@ -10418,6 +10428,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/uploads/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate a presigned upload URL for R2 object storage
+         * @description Returns a short-lived PUT URL (5 min) and a permanent public URL.
+         *     The client PUTs the file bytes directly to upload_url, then stores
+         *     public_url in the relevant entity (loading exception, defect, rejection).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description content_type: image/jpeg | image/png | image/webp */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_platform_storage.presignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_platform_storage.PresignResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me": {
         parameters: {
             query?: never;
@@ -13463,6 +13541,15 @@ export interface components {
             sale_date?: string;
             total_amount?: number;
             unit_price?: number;
+        };
+        "internal_platform_storage.PresignResult": {
+            /** @description PublicURL is the permanent URL to store in the database. */
+            public_url?: string;
+            /** @description UploadURL is the short-lived PUT URL the client sends bytes to. */
+            upload_url?: string;
+        };
+        "internal_platform_storage.presignRequest": {
+            content_type: string;
         };
     };
     responses: never;

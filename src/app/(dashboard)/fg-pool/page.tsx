@@ -4,6 +4,7 @@ import { Suspense, useMemo } from 'react'
 import Link from 'next/link'
 import { Boxes } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/table'
 import { useFGPoolList } from '@/lib/hooks/use-packing'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
 import type { FGPoolStatus } from '@/types/api'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -45,10 +47,17 @@ function formatDate(iso: string) {
 function FGPoolTable() {
   const { getParam, setParam } = usePageParams()
   const statusParam = getParam('status') ?? 'all'
+  const dateFrom = getParam('from') ?? defaultFromIso(30)
+  const dateTo = getParam('to') ?? isoToday()
 
   const filter = useMemo(
-    () => (statusParam !== 'all' ? { status: statusParam as FGPoolStatus, limit: 100 } : { limit: 100 }),
-    [statusParam],
+    () => ({
+      ...(statusParam !== 'all' ? { status: statusParam as FGPoolStatus } : {}),
+      from: dateFrom || undefined,
+      to: dateTo || undefined,
+      limit: 100,
+    }),
+    [statusParam, dateFrom, dateTo],
   )
 
   const { data, isLoading, isError } = useFGPoolList(filter)
@@ -56,20 +65,43 @@ function FGPoolTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Select value={statusParam} onValueChange={(v) => setParam('status', v === 'all' ? undefined : v)}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Trạng thái" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            {Object.entries(STATUS_LABEL).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Trạng thái</label>
+          <Select value={statusParam} onValueChange={(v) => setParam('status', v === 'all' ? undefined : v)}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
+              {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        <span className="ml-auto text-sm text-muted-foreground">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Từ ngày</label>
+          <Input
+            type="date"
+            className="w-40"
+            value={dateFrom}
+            onChange={(e) => setParam('from', e.target.value || undefined)}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Đến ngày</label>
+          <Input
+            type="date"
+            className="w-40"
+            value={dateTo}
+            onChange={(e) => setParam('to', e.target.value || undefined)}
+          />
+        </div>
+
+        <span className="ml-auto self-end text-sm text-muted-foreground">
           {isLoading ? 'Đang tải…' : `${items.length} thành phẩm`}
         </span>
       </div>
@@ -138,7 +170,7 @@ function FGPoolTable() {
 
 export default function FGPoolPage() {
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 p-6">
       <div className="flex items-center gap-3">
         <Boxes className="size-6 text-muted-foreground" />
         <h1 className="text-2xl font-bold">Thành phẩm chờ xuất</h1>

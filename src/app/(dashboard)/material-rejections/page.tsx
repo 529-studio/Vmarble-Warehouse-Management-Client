@@ -39,6 +39,9 @@ import {
   useMaterialRejections,
   useUpdateClaim,
 } from '@/lib/hooks/use-material-rejections'
+import { useDebounce } from '@/lib/hooks/use-debounce'
+import { defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
+import { usePageParams } from '@/lib/hooks/use-page-params'
 import {
   CLAIM_STATUSES,
   type ClaimStatus,
@@ -176,15 +179,12 @@ function UpdateClaimDialog({ rejection, onClose }: UpdateClaimDialogProps) {
   )
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Reset local state when the dialog opens for a different row.
   const openId = rejection?.id ?? null
   useEffect(() => {
     setNextStatus('')
     setClaimAmount(rejection?.claim_amount ?? 0)
     setResolutionNotes(rejection?.resolution_notes ?? '')
     setErrors({})
-    // The row identity drives the reset; field values are read from the
-    // freshly-opened row inside the effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId])
 
@@ -210,10 +210,7 @@ function UpdateClaimDialog({ rejection, onClose }: UpdateClaimDialogProps) {
         : {}),
       ...(resolutionNotes.trim() ? { resolution_notes: resolutionNotes.trim() } : {}),
     }
-    mutate(
-      { id: rejection.id, body },
-      { onSuccess: onClose },
-    )
+    mutate({ id: rejection.id, body }, { onSuccess: onClose })
   }
 
   const open = !!rejection
@@ -298,13 +295,8 @@ function UpdateClaimDialog({ rejection, onClose }: UpdateClaimDialogProps) {
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Huỷ
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isPending || allowed.length === 0}
-          >
+          <Button variant="outline" onClick={onClose}>Huỷ</Button>
+          <Button onClick={handleSubmit} disabled={isPending || allowed.length === 0}>
             {isPending ? 'Đang lưu…' : 'Lưu'}
           </Button>
         </DialogFooter>
@@ -320,18 +312,27 @@ function MaterialRejectionsContent() {
   const canRead = can(role, 'read', 'material_rejections')
   const canApprove = can(role, 'approve', 'material_rejections')
 
-  const [statusFilter, setStatusFilter] = useState<ClaimStatus | typeof ALL_STATUSES>(
-    ALL_STATUSES,
-  )
+  const { getParam, setParam } = usePageParams()
+
+  const [statusFilter, setStatusFilter] = useState<ClaimStatus | typeof ALL_STATUSES>(ALL_STATUSES)
+  const [supplierSearch, setSupplierSearch] = useState('')
+  const debouncedSupplier = useDebounce(supplierSearch, 300)
+
+  const dateFrom = getParam('from') ?? defaultFromIso(30)
+  const dateTo = getParam('to') ?? isoToday()
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [editing, setEditing] = useState<MaterialRejection | null>(null)
 
   const filter = useMemo(
     () => ({
       ...(statusFilter !== ALL_STATUSES ? { claim_status: statusFilter } : {}),
+      ...(debouncedSupplier.trim() ? { supplier_ref: debouncedSupplier.trim() } : {}),
+      from: dateFrom || undefined,
+      to: dateTo || undefined,
       limit: 50,
     }),
-    [statusFilter],
+    [statusFilter, debouncedSupplier, dateFrom, dateTo],
   )
 
   const list = useMaterialRejections(canRead ? filter : {})
@@ -348,25 +349,54 @@ function MaterialRejectionsContent() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Select
-          value={statusFilter}
-          onValueChange={(v) =>
-            setStatusFilter(isClaimStatus(v) ? v : ALL_STATUSES)
-          }
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_STATUSES}>Tất cả trạng thái</SelectItem>
-            {CLAIM_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Trạng thái</label>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(isClaimStatus(v) ? v : ALL_STATUSES)}
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_STATUSES}>Tất cả trạng thái</SelectItem>
+              {CLAIM_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Nhà cung cấp</label>
+          <Input
+            className="w-48"
+            placeholder="Tìm theo mã NCC…"
+            value={supplierSearch}
+            onChange={(e) => setSupplierSearch(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Từ ngày</label>
+          <Input
+            type="date"
+            className="w-40"
+            value={dateFrom}
+            onChange={(e) => setParam('from', e.target.value || undefined)}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Đến ngày</label>
+          <Input
+            type="date"
+            className="w-40"
+            value={dateTo}
+            onChange={(e) => setParam('to', e.target.value || undefined)}
+          />
+        </div>
       </div>
 
       {/* Table */}
@@ -402,18 +432,13 @@ function MaterialRejectionsContent() {
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={i}>
                     {Array.from({ length: 8 }).map((__, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-5 w-full" />
-                      </TableCell>
+                      <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="py-10 text-center text-muted-foreground"
-                  >
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                     Chưa có khiếu nại nào.
                   </TableCell>
                 </TableRow>
@@ -432,10 +457,7 @@ function MaterialRejectionsContent() {
                       isOpen={isOpen}
                       canEdit={canEdit}
                       onToggle={() =>
-                        setExpanded((prev) => ({
-                          ...prev,
-                          [row.id]: !prev[row.id],
-                        }))
+                        setExpanded((prev) => ({ ...prev, [row.id]: !prev[row.id] }))
                       }
                       onEdit={() => setEditing(row)}
                     />
@@ -468,14 +490,7 @@ interface RejectionRowProps {
   onEdit: () => void
 }
 
-function RejectionRow({
-  row,
-  status,
-  isOpen,
-  canEdit,
-  onToggle,
-  onEdit,
-}: RejectionRowProps) {
+function RejectionRow({ row, status, isOpen, canEdit, onToggle, onEdit }: RejectionRowProps) {
   return (
     <>
       <TableRow>
@@ -489,19 +504,13 @@ function RejectionRow({
             aria-label={isOpen ? 'Thu gọn' : 'Mở rộng'}
             aria-expanded={isOpen}
           >
-            {isOpen ? (
-              <ChevronDown className="size-4" />
-            ) : (
-              <ChevronRight className="size-4" />
-            )}
+            {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
           </Button>
         </TableCell>
         <TableCell className="text-sm text-muted-foreground">
           {formatDate(row.reported_at)}
         </TableCell>
-        <TableCell className="font-mono text-xs">
-          {row.lot_id.slice(0, 8)}…
-        </TableCell>
+        <TableCell className="font-mono text-xs">{row.lot_id.slice(0, 8)}…</TableCell>
         <TableCell>
           <span className="font-medium">{row.reason_code}</span>
           {row.reason_detail && (
