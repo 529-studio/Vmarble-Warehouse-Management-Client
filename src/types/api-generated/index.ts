@@ -13090,6 +13090,7 @@ export interface components {
             resolved_by?: string;
         };
         "internal_module_packing.FGPool": {
+            barcode_code?: string;
             barcode_id?: string;
             component_type?: string;
             container_line_id?: string;
@@ -13103,6 +13104,7 @@ export interface components {
             sku_name?: string;
             status?: string;
             unit_index?: number;
+            work_order_code?: string;
             work_order_id?: string;
         };
         "internal_module_packing.ReportDefectInput": {

@@ -4,7 +4,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { AlertTriangle, Calendar, Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, RotateCcw } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -64,6 +64,7 @@ import { evaluateStartCutGate, startCutTooltip } from '@/lib/auth/work-order-gat
 import { useMe } from '@/lib/hooks/use-auth'
 import { useRemnantBypassedWorkOrders } from '@/lib/hooks/use-inventory'
 import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
+import { DateRangeFilter } from '@/components/dashboard/date-range-filter'
 import type {
   WorkOrderStatus,
   WorkOrder,
@@ -1117,43 +1118,11 @@ function WorkOrdersContent() {
           />
 
           {/* Date range filter */}
-          <div className="flex items-center gap-1.5">
-            <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <input
-              type="date"
-              value={dateFrom}
-              max={dateTo}
-              aria-label="Từ ngày"
-              onChange={(e) => {
-                const val = e.target.value
-                setParams({ from: val || undefined, to: dateTo !== today ? dateTo : val || undefined })
-              }}
-              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <span className="text-muted-foreground text-sm" aria-hidden="true">–</span>
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom}
-              aria-label="Đến ngày"
-              onChange={(e) => {
-                const val = e.target.value
-                setParams({ from: dateFrom, to: val || undefined })
-              }}
-              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            {!isViewingToday && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setParams({ from: undefined, to: undefined })}
-                className="gap-1"
-              >
-                <RotateCcw className="size-3" />
-                Hôm nay
-              </Button>
-            )}
-          </div>
+          <DateRangeFilter
+            from={dateFrom}
+            to={dateTo}
+            onChange={({ from, to }) => setParams({ from, to })}
+          />
         </div>
 
         {canCreateWorkOrder ? (

@@ -35,7 +35,7 @@ import {
 import { useWorkOrders } from '@/lib/hooks/use-work-orders'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
-import { defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
+import { DateRangeFilter, defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
 import type { BarcodeRecord, ScanCheckpoint, ScanEvent, WorkOrder } from '@/types/api'
 
 const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
@@ -94,8 +94,7 @@ interface FilterBarProps {
   onCheckpointChange: (v: string) => void
   dateFrom: string
   dateTo: string
-  onDateFromChange: (v: string) => void
-  onDateToChange: (v: string) => void
+  onDateRangeChange: (next: { from: string; to: string }) => void
   hasFilters: boolean
   onReset: () => void
 }
@@ -104,7 +103,7 @@ function FilterBar({
   search, onSearch,
   workOrderId, onWorkOrderChange, workOrders, workOrdersLoading,
   checkpoint, onCheckpointChange,
-  dateFrom, dateTo, onDateFromChange, onDateToChange,
+  dateFrom, dateTo, onDateRangeChange,
   hasFilters, onReset,
 }: FilterBarProps) {
   return (
@@ -150,15 +149,13 @@ function FilterBar({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Từ ngày</label>
-            <Input type="date" value={dateFrom} onChange={(e) => onDateFromChange(e.target.value)} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Đến ngày</label>
-            <Input type="date" value={dateTo} onChange={(e) => onDateToChange(e.target.value)} />
-          </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Khoảng ngày</label>
+          <DateRangeFilter
+            from={dateFrom}
+            to={dateTo}
+            onChange={onDateRangeChange}
+          />
         </div>
       </div>
 
@@ -335,8 +332,10 @@ function BarcodesContent() {
         onCheckpointChange={(v) => params.setParam('cp', v || undefined)}
         dateFrom={dateFrom}
         dateTo={dateTo}
-        onDateFromChange={(v) => params.setParam('from', v || undefined)}
-        onDateToChange={(v) => params.setParam('to', v || undefined)}
+        onDateRangeChange={({ from, to }) => {
+          params.setParam('from', from || undefined)
+          params.setParam('to', to || undefined)
+        }}
         hasFilters={hasFilters}
         onReset={resetFilters}
       />
