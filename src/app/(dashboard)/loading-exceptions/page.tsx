@@ -60,10 +60,10 @@ import type { ListGlobalExceptionsFilter } from '@/lib/api/loading-exceptions'
 const TYPE_LABEL: Record<string, string> = {
   SHORT_SHIPPED: 'Thiếu hàng',
   OVER_LOADED: 'Dư hàng',
-  WRONG_SKU: 'Sai SKU',
+  WRONG_SKU: 'Sai thành phẩm',
   SUBSTITUTION: 'Thay thế',
   DAMAGED_AT_LOADING: 'Hỏng khi xếp',
-  UNPLANNED_UNIT: 'Ngoài plan',
+  UNPLANNED_UNIT: 'Ngoài kế hoạch SX',
   CUSTOMER_CHANGE: 'Khách đổi',
 }
 
@@ -393,7 +393,7 @@ function QueueShell() {
                 <span className="text-2xl font-bold tabular-nums">
                   {summary?.pending_count ?? 0}
                 </span>{' '}
-                exception đang chờ duyệt
+                sự cố đang chờ duyệt
                 {summary && summary.blocked_containers > 0 && (
                   <span className="text-muted-foreground">
                     {' '}· đang chặn <strong>{summary.blocked_containers}</strong> container chưa niêm phong
@@ -476,7 +476,7 @@ function QueueShell() {
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="type" className="text-xs">Loại exception</Label>
+            <Label htmlFor="type" className="text-xs">Loại sự cố</Label>
             <Select
               value={exceptionType || 'ALL'}
               onValueChange={(v) =>
@@ -548,7 +548,7 @@ function QueueShell() {
                 size="sm"
                 onClick={() => {
                   if (selected.size > 50) {
-                    toast.error('Tối đa 50 exception/lần.')
+                    toast.error('Tối đa 50 sự cố/lần.')
                     return
                   }
                   setBulkOpen(true)
@@ -572,11 +572,11 @@ function QueueShell() {
             </div>
           ) : isError ? (
             <p className="p-6 text-center text-sm text-destructive">
-              Không thể tải hàng đợi exception.
+              Không thể tải hàng đợi sự cố.
             </p>
           ) : exceptions.length === 0 ? (
             <p className="p-10 text-center text-sm text-muted-foreground">
-              Không có exception nào khớp bộ lọc.
+              Không có sự cố nào khớp bộ lọc.
             </p>
           ) : (
             <Table>
@@ -617,7 +617,7 @@ function QueueShell() {
                             checked={selected.has(ex.id)}
                             onCheckedChange={(v) => toggleOne(ex.id, v === true)}
                             disabled={!isPending}
-                            aria-label={`Chọn exception ${ex.id}`}
+                            aria-label={`Chọn sự cố ${ex.id}`}
                           />
                         </TableCell>
                         <TableCell>
@@ -727,7 +727,7 @@ function QueueShell() {
                                       size="sm"
                                       onClick={() => setActionTarget(ex)}
                                     >
-                                      Xử lý exception
+                                      Xử lý sự cố
                                     </Button>
                                   </div>
                                 </RoleGate>
