@@ -139,7 +139,7 @@ function ReassignModal({
             Chuyển đơn hàng
           </DialogTitle>
           <DialogDescription>
-            Thành phẩm <span className="font-mono font-semibold">{fg.barcode_id}</span> · SKU{' '}
+            Thành phẩm <span className="font-mono font-semibold">{fg.barcode_code ?? fg.barcode_id}</span> · SKU{' '}
             <span className="font-mono">{fg.sku_code}</span>
           </DialogDescription>
         </DialogHeader>
@@ -239,7 +239,7 @@ function FGPoolDetail({ id }: { id: string }) {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
-              <p className="font-mono text-lg font-bold">{fg.barcode_id}</p>
+              <p className="font-mono text-lg font-bold">{fg.barcode_code ?? fg.barcode_id}</p>
               <div className="flex items-center gap-2">
                 <Badge variant={STATUS_VARIANT[fg.status] ?? 'outline'}>
                   {STATUS_LABEL[fg.status] ?? fg.status}
@@ -263,7 +263,7 @@ function FGPoolDetail({ id }: { id: string }) {
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
           <div>
-            <p className="text-xs text-muted-foreground">SKU</p>
+            <p className="text-xs text-muted-foreground">Mã thành phẩm</p>
             <p className="font-mono font-semibold">{fg.sku_code}</p>
           </div>
           <div>
@@ -272,7 +272,7 @@ function FGPoolDetail({ id }: { id: string }) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Lệnh sản xuất</p>
-            <p className="font-mono text-sm">{fg.work_order_id}</p>
+            <p className="font-mono text-sm">{fg.work_order_code ?? fg.work_order_id}</p>
           </div>
           {fg.sales_order_line_id && (
             <div>
