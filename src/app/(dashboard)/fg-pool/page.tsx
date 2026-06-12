@@ -88,6 +88,7 @@ function FGPoolTable() {
             type="date"
             className="w-40"
             value={dateFrom}
+            max={dateTo || undefined}
             onChange={(e) => setParam('from', e.target.value || undefined)}
           />
         </div>
@@ -98,6 +99,7 @@ function FGPoolTable() {
             type="date"
             className="w-40"
             value={dateTo}
+            min={dateFrom || undefined}
             onChange={(e) => setParam('to', e.target.value || undefined)}
           />
         </div>
