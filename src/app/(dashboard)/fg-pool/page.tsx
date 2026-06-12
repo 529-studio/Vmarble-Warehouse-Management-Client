@@ -115,7 +115,7 @@ function FGPoolTable() {
             <TableHeader>
               <TableRow>
                 <TableHead>Mã vạch</TableHead>
-                <TableHead>SKU</TableHead>
+                <TableHead>Mã thành phẩm</TableHead>
                 <TableHead>Tên sản phẩm</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Lệnh SX</TableHead>
@@ -146,7 +146,7 @@ function FGPoolTable() {
                   >
                     <TableCell>
                       <span className="font-mono text-sm text-primary hover:underline">
-                        {fg.barcode_id}
+                        {fg.barcode_code ?? fg.barcode_id}
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-sm font-medium">{fg.sku_code}</TableCell>
@@ -157,7 +157,7 @@ function FGPoolTable() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {fg.work_order_id.slice(0, 8)}…
+                      {fg.work_order_code ?? fg.work_order_id.slice(0, 8) + '…'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(fg.created_at)}

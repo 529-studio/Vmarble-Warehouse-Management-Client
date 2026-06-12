@@ -1247,10 +1247,12 @@ export type FGPoolStatus = 'AVAILABLE' | 'RESERVED' | 'LOADED' | 'DEFECT' | stri
 export interface FGPool {
   id: string
   barcode_id: string
+  barcode_code?: string
   sku_id: string
   sku_code: string
   sku_name: string
   work_order_id: string
+  work_order_code?: string
   sales_order_line_id?: string
   container_line_id?: string
   status: FGPoolStatus
