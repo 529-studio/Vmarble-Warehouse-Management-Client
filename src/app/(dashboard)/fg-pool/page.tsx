@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useMemo } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Boxes } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -45,6 +45,7 @@ function formatDate(iso: string) {
 }
 
 function FGPoolTable() {
+  const router = useRouter()
   const { getParam, setParam } = usePageParams()
   const statusParam = getParam('status') ?? 'all'
   const dateFrom = getParam('from') ?? defaultFromIso(30)
@@ -138,11 +139,15 @@ function FGPoolTable() {
                 </TableRow>
               ) : (
                 items.map((fg) => (
-                  <TableRow key={fg.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableRow
+                    key={fg.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => router.push(`/fg-pool/${fg.id}`)}
+                  >
                     <TableCell>
-                      <Link href={`/fg-pool/${fg.id}`} className="font-mono text-sm hover:underline">
+                      <span className="font-mono text-sm text-primary hover:underline">
                         {fg.barcode_id}
-                      </Link>
+                      </span>
                     </TableCell>
                     <TableCell className="font-mono text-sm font-medium">{fg.sku_code}</TableCell>
                     <TableCell className="max-w-xs truncate text-sm">{fg.sku_name}</TableCell>
