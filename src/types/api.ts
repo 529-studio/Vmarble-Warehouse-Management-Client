@@ -1152,6 +1152,7 @@ export interface ContainersFilter extends PageParams {
   status?: ContainerStatus
   container_type?: string
   loader_id?: string
+  vessel_id?: string
 }
 
 /** Mirrors backend `delivery.AtRiskRow`. GET /api/v1/containers/at-risk */
@@ -1505,6 +1506,7 @@ export interface ApproveLoadingExceptionInput {
   resolution_notes?: string
   substitute_sku_id?: string
   parent_so_line_id?: string
+  photo_urls?: string[]
 }
 
 export interface RejectLoadingExceptionInput {
@@ -1520,6 +1522,17 @@ export interface BulkApproveLoadingExceptionsInput {
    */
   resolution: LoadingExceptionResolution | string
   resolution_notes?: string
+}
+
+// ── R2 presigned upload ──────────────────────────────────────────────────────
+
+export interface PresignRequest {
+  content_type: string
+}
+
+export interface PresignResult {
+  upload_url: string
+  public_url: string
 }
 
 export const BULK_APPROVE_FAILURE_CODES = [
