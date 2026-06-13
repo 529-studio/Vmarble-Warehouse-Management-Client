@@ -35,6 +35,11 @@ interface DateRangeFilterProps {
   /** Inline label to the left of the trigger button. */
   label?: string
   className?: string
+  /**
+   * When provided, replaces the reset button with a "Xoá" button that calls
+   * this handler. Useful for optional date ranges with no meaningful default.
+   */
+  onClear?: () => void
 }
 
 /**
@@ -48,6 +53,7 @@ export function DateRangeFilter({
   defaultDaysAgo = DEFAULT_RANGE_DAYS,
   label,
   className,
+  onClear,
 }: DateRangeFilterProps) {
   const [open, setOpen] = useState(false)
 
@@ -104,7 +110,7 @@ export function DateRangeFilter({
           />
         </PopoverContent>
       </Popover>
-      {!isAtDefault && (
+      {!isAtDefault && !onClear && (
         <Button
           variant="ghost"
           size="sm"
@@ -113,6 +119,17 @@ export function DateRangeFilter({
         >
           <RotateCcw className="size-3" />
           {defaultDaysAgo} ngày
+        </Button>
+      )}
+      {onClear && (from || to) && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1 text-muted-foreground"
+          onClick={onClear}
+        >
+          <RotateCcw className="size-3" />
+          Xoá
         </Button>
       )}
     </div>

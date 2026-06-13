@@ -1580,6 +1580,10 @@ export interface Vessel {
 
 export interface VesselsFilter extends PageParams {
   search?: string
+  cutoff_from?: string
+  cutoff_to?: string
+  etd_from?: string
+  etd_to?: string
 }
 
 export interface CreateVesselInput {

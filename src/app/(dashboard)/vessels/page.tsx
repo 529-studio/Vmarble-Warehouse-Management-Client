@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, Suspense, useId, useMemo, useState, useSyncExternalStore } from 'react'
-import { Anchor, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Anchor, ChevronDown, ChevronRight, Pencil, Plus, Trash2, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,6 +25,9 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { DateRangeFilter } from '@/components/dashboard/date-range-filter'
+import { usePageParams } from '@/lib/hooks/use-page-params'
+import { useDebounce } from '@/lib/hooks/use-debounce'
 import {
   useCreateVessel,
   useDeleteVessel,
@@ -310,7 +313,31 @@ function VesselContainersRow({ vesselId }: { vesselId: string }) {
 
 function VesselsTable() {
   const role = useCurrentRole()
-  const { data, isLoading, isError } = useVessels({ limit: 100 })
+  const { getParam, setParam } = usePageParams()
+
+  const [searchInput, setSearchInput] = useState(getParam('search') ?? '')
+  const debouncedSearch = useDebounce(searchInput, 400)
+  const [prevDebounced, setPrevDebounced] = useState(debouncedSearch)
+  if (prevDebounced !== debouncedSearch) {
+    setPrevDebounced(debouncedSearch)
+    setParam('search', debouncedSearch || undefined)
+  }
+
+  const cutoffFrom = getParam('cutoff_from') ?? ''
+  const cutoffTo = getParam('cutoff_to') ?? ''
+  const etdFrom = getParam('etd_from') ?? ''
+  const etdTo = getParam('etd_to') ?? ''
+
+  const hasFilters = !!debouncedSearch || !!cutoffFrom || !!cutoffTo || !!etdFrom || !!etdTo
+
+  const { data, isLoading, isError } = useVessels({
+    limit: 100,
+    search: debouncedSearch || undefined,
+    cutoff_from: cutoffFrom || undefined,
+    cutoff_to: cutoffTo || undefined,
+    etd_from: etdFrom || undefined,
+    etd_to: etdTo || undefined,
+  })
   const vessels = useMemo(() => data?.items ?? [], [data?.items])
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -330,18 +357,74 @@ function VesselsTable() {
     })
   }
 
+  const clearAllFilters = () => {
+    setSearchInput('')
+    setParam('search', undefined)
+    setParam('cutoff_from', undefined)
+    setParam('cutoff_to', undefined)
+    setParam('etd_from', undefined)
+    setParam('etd_to', undefined)
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
-          {isLoading ? 'Đang tải…' : `${vessels.length} tàu`}
-        </span>
-        {canCreate && (
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-1.5 size-4" />
-            Tạo tàu
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="relative min-w-52 max-w-sm flex-1">
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Tìm tên tàu hoặc số chuyến…"
+            className="pl-8"
+          />
+        </div>
+
+        <DateRangeFilter
+          label="Cutoff"
+          from={cutoffFrom}
+          to={cutoffTo}
+          onChange={({ from, to }) => {
+            setParam('cutoff_from', from || undefined)
+            setParam('cutoff_to', to || undefined)
+          }}
+          onClear={() => {
+            setParam('cutoff_from', undefined)
+            setParam('cutoff_to', undefined)
+          }}
+        />
+
+        <DateRangeFilter
+          label="ETD"
+          from={etdFrom}
+          to={etdTo}
+          onChange={({ from, to }) => {
+            setParam('etd_from', from || undefined)
+            setParam('etd_to', to || undefined)
+          }}
+          onClear={() => {
+            setParam('etd_from', undefined)
+            setParam('etd_to', undefined)
+          }}
+        />
+
+        {hasFilters && (
+          <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clearAllFilters}>
+            Xoá bộ lọc
           </Button>
         )}
+
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            {isLoading ? 'Đang tải…' : `${vessels.length} tàu`}
+          </span>
+          {canCreate && (
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-1.5 size-4" />
+              Tạo tàu
+            </Button>
+          )}
+        </div>
       </div>
 
       {isError ? (
