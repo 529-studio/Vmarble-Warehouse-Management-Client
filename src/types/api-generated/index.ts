@@ -10576,6 +10576,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vessels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List vessels */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description page (default 1) */
+                    page?: number;
+                    /** @description limit (default 10, max 100) */
+                    limit?: number;
+                    /** @description ILIKE on vessel name or voyage number */
+                    search?: string;
+                    /** @description cutoff_date >= (YYYY-MM-DD or RFC3339) */
+                    cutoff_from?: string;
+                    /** @description cutoff_date < (YYYY-MM-DD or RFC3339, exclusive) */
+                    cutoff_to?: string;
+                    /** @description etd >= (YYYY-MM-DD or RFC3339) */
+                    etd_from?: string;
+                    /** @description etd < (YYYY-MM-DD or RFC3339, exclusive) */
+                    etd_to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_shipping_Vessel"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-orders": {
         parameters: {
             query?: never;
@@ -12186,6 +12248,14 @@ export interface components {
             total_items?: number;
             total_pages?: number;
         };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_shipping_Vessel": {
+            current_page?: number;
+            items?: components["schemas"]["internal_module_shipping.Vessel"][];
+            limit?: number;
+            total_is_estimate?: boolean;
+            total_items?: number;
+            total_pages?: number;
+        };
         "internal_module_authn.CreateUserInput": {
             email?: string;
             full_name?: string;
@@ -13543,6 +13613,19 @@ export interface components {
             sale_date?: string;
             total_amount?: number;
             unit_price?: number;
+        };
+        "internal_module_shipping.Vessel": {
+            carrier?: string;
+            created_at?: string;
+            created_by?: string;
+            cutoff_date?: string;
+            eta?: string;
+            etd?: string;
+            id?: string;
+            name?: string;
+            port_of_discharge?: string;
+            port_of_loading?: string;
+            voyage_number?: string;
         };
         "internal_platform_storage.PresignResult": {
             /** @description PublicURL is the permanent URL to store in the database. */

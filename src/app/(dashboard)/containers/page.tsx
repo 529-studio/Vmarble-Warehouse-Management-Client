@@ -29,6 +29,7 @@ import {
 import { useContainers } from '@/lib/hooks/use-containers'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { useDebounce } from '@/lib/hooks/use-debounce'
+import { useVessels } from '@/lib/hooks/use-vessels'
 import { isAtLeast, usePersona } from '@/lib/auth/persona'
 import {
   isAutoTransition,
@@ -233,6 +234,7 @@ function ContainersKanban() {
 
   const containerType = getParam('container_type') ?? 'ALL'
   const loaderFilter = getParam('loader_id') ?? 'ALL'
+  const vesselFilter = getParam('vessel_id') ?? 'ALL'
 
   const { data: usersData } = useUsers({ limit: 200 })
   const loaders = usersData?.items ?? []
@@ -241,11 +243,15 @@ function ContainersKanban() {
     [loaders],
   )
 
+  const { data: vesselsData } = useVessels({ limit: 200 })
+  const vessels = vesselsData?.items ?? []
+
   const { data, isLoading, isError } = useContainers({
     limit: 100,
     search: debouncedSearch || undefined,
     container_type: containerType === 'ALL' ? undefined : containerType,
     loader_id: loaderFilter === 'ALL' ? undefined : loaderFilter === '__unassigned__' ? 'null' : loaderFilter,
+    vessel_id: vesselFilter === 'ALL' ? undefined : vesselFilter,
   })
 
   const containers = useMemo(() => data?.items ?? [], [data?.items])
@@ -369,6 +375,23 @@ function ContainersKanban() {
             {loaders.filter((u) => u.is_active).map((u) => (
               <SelectItem key={u.id} value={u.id}>
                 {u.full_name ?? u.username}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={vesselFilter}
+          onValueChange={(v) => setParam('vessel_id', v === 'ALL' ? undefined : v)}
+        >
+          <SelectTrigger className="w-52">
+            <SelectValue placeholder="Tàu" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Tất cả tàu</SelectItem>
+            {vessels.map((v) => (
+              <SelectItem key={v.id} value={v.id}>
+                {v.name} — {v.voyage_number}
               </SelectItem>
             ))}
           </SelectContent>
