@@ -178,6 +178,15 @@ if (!items.length) return <EmptyState />     // specific empty message, not gene
 - Font size: ≥ 16px for anything the user reads or taps
 - Action feedback: `toast.success()` / `toast.error()` within 300ms of mutation settling
 
+### Installing new npm packages
+When a task requires a new package:
+1. Run `npm install <pkg>` as normal.
+2. **Immediately stage `package.json` and `package-lock.json`** in the same commit that first uses the package.
+   ```bash
+   git add package.json package-lock.json
+   ```
+   Forgetting this causes CI to fail with "Module not found: Can't resolve '...'" because the lockfile records the resolved version and the package directory, and without it the package is effectively absent in CI.
+
 ---
 
 ## Phase 5 — Self-QA ⛔ DO NOT SKIP
@@ -250,6 +259,8 @@ Do not skim. For each changed file, ask yourself the questions below.
 - [ ] Helper components used only in stories — are they named without a leading underscore (since they are used)?
 - [ ] Story covers the happy path AND the meaningful error/empty states?
 
+> **Storybook errors are non-blocking.** Lint/build errors in `*.stories.tsx` files do not affect production. If a storybook file has errors, skip fixing it — do not let storybook issues delay a PR. The only exception is if the error is in a shared component that both a story and production code import.
+
 #### Navigation & routing
 - [ ] New route added → is it listed in `authorization.ts` so the middleware allows it?
 - [ ] New nav item added → does it appear in both `side-nav.tsx` (dashboard) or `bottom-nav.tsx` (kiosk) as appropriate?
@@ -257,12 +268,17 @@ Do not skim. For each changed file, ask yourself the questions below.
 
 ### Step 5.3 — Spot-check in the browser
 
-Before marking the task done, open the page and verify:
-- [ ] Renders correctly at 375px (mobile) — no horizontal scroll, no clipped text
-- [ ] Loading state shows before data arrives (add a 3G throttle in DevTools if needed)
-- [ ] Empty state shows when no data exists (test with an empty filter)
-- [ ] Error state shows when the API fails (temporarily break the URL to test)
-- [ ] All mutations show a success or error toast — no silent failures
+The `npm run dev` command is blocked in the Claude shell (hook `pre-bash-dev-server-block.js` prevents running it outside tmux). Browser verification must be done manually by the user or in a separate tmux session.
+
+**What to tell the user instead of silently skipping:**
+> "Phase 5.3 requires a running dev server — `npm run dev` is blocked in this shell. Please start the server in tmux (`tmux new-session -s dev 'npm run dev'`) and verify these specific scenarios before merging:"
+
+Then list the exact scenarios to check:
+- [ ] Page renders at 375px — no horizontal scroll, no clipped text
+- [ ] Loading skeleton shows before data arrives
+- [ ] Empty state message shows when filters return no results
+- [ ] Error toast fires if the API returns a non-2xx response
+- [ ] All mutation buttons show success/error toast — no silent failures
 - [ ] Console has 0 errors and 0 warnings
 
 ---
@@ -270,9 +286,12 @@ Before marking the task done, open the page and verify:
 ## Phase 6 — PR
 
 ### Commit message format
-```
-[area] verb: brief description
 
+**Subject line must be ≤ 72 characters.** The `check-commit-message.sh` hook enforces this and will block the commit if exceeded. Count characters before committing — long subject lines are the most common hook failure in this project.
+
+```
+[area] verb: brief description          ← max 72 chars total including "[area] "
+                                        ← blank line (required for multi-line)
 - bullet detail 1
 - bullet detail 2
 ```
