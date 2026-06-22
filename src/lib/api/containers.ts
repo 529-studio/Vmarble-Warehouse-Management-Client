@@ -7,6 +7,7 @@ import type {
   ContainerLine,
   ContainerLoaderLog,
   ContainersFilter,
+  CreateContainerInput,
   PagedResult,
 } from '@/types/api'
 
@@ -47,6 +48,10 @@ export interface TransferLineResult {
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1'
 
 export const containersApi = {
+  /** POST /api/v1/containers — create a new container (defaults to OPEN). */
+  create: (body: CreateContainerInput) =>
+    apiClient.post<Container>('/containers', body),
+
   /** GET /api/v1/containers — paginated list (no `lines` hydrated). */
   list: (filter: ContainersFilter = {}) =>
     apiClient.get<PagedResult<Container>>('/containers', {

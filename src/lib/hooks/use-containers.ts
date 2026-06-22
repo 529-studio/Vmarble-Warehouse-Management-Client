@@ -7,7 +7,7 @@ import {
   type TransferLineInput,
 } from '@/lib/api/containers'
 import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
-import type { AssignLoaderInput, ContainersFilter } from '@/types/api'
+import type { AssignLoaderInput, ContainersFilter, CreateContainerInput } from '@/types/api'
 import { SALES_ORDERS_KEY } from '@/lib/hooks/use-sales-orders'
 
 export const CONTAINERS_KEY = 'containers'
@@ -27,6 +27,18 @@ export function useContainer(id: string | null) {
     queryFn: () => containersApi.getById(id!),
     enabled: !!id,
     staleTime: 15_000,
+  })
+}
+
+export function useCreateContainer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateContainerInput) => containersApi.create(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [CONTAINERS_KEY] })
+      toast.success('Đã tạo container')
+    },
+    onError: (err) => toast.error(mapApiErrorVi(err, 'Tạo container thất bại')),
   })
 }
 
