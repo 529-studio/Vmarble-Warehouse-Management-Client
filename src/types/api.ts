@@ -1178,6 +1178,14 @@ export interface AssignLoaderInput {
   reason?: string
 }
 
+/** POST /api/v1/containers — create a new container (status OPEN). */
+export interface CreateContainerInput {
+  container_type: string
+  max_cbm?: number
+  max_payload_kg?: number
+  note?: string
+}
+
 /** GET /api/v1/containers/:id/loader-log */
 export interface ContainerLoaderLog {
   id?: string

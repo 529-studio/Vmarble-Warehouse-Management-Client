@@ -13,9 +13,10 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { Container as ContainerIcon, Search } from 'lucide-react'
+import { Container as ContainerIcon, Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -36,6 +37,7 @@ import {
   planTransition,
   type LifecycleAction,
 } from '@/lib/delivery/transitions'
+import { CreateContainerDialog } from '@/components/containers/create-container-dialog'
 import { LifecycleDialog } from '@/components/containers/lifecycle-dialog'
 import { useUsers } from '@/lib/hooks/use-users'
 import { CONTAINER_STATUSES } from '@/types/api'
@@ -283,6 +285,7 @@ function ContainersKanban() {
   const [overColumn, setOverColumn] = useState<ContainerStatus | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [pending, setPending] = useState<PendingDialog | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const activeContainer = useMemo(
     () => (activeId ? containers.find((c) => c.id === activeId) ?? null : null),
@@ -400,6 +403,12 @@ function ContainersKanban() {
         <span className="ml-auto text-sm text-muted-foreground">
           {isLoading ? 'Đang tải…' : `${containers.length} container`}
         </span>
+        {isAtLeast(persona, 'PLANNER') && (
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-1.5 size-4" />
+            Tạo container
+          </Button>
+        )}
       </div>
 
       {isError ? (
@@ -465,6 +474,7 @@ function ContainersKanban() {
         onCompleted={() => setPending(null)}
         onCancel={() => setPending(null)}
       />
+      <CreateContainerDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
   )
 }
