@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users, Truck, Trash2, QrCode, HardHat, Container as ContainerIcon, AlertTriangle, Recycle, FileWarning, BoxesIcon, Anchor } from 'lucide-react'
+import { LayoutDashboard, Package, DollarSign, Layers, Boxes, ShoppingCart, ClipboardList, ClipboardCheck, Scissors, LogOut, UserCircle, Users, Truck, Trash2, QrCode, HardHat, Container as ContainerIcon, AlertTriangle, Recycle, FileWarning, BoxesIcon, Anchor, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ const MANAGEMENT_NAV = [
   { href: '/loading-exceptions', label: 'Sự cố đóng hàng', icon: AlertTriangle, resource: 'loading_exceptions' },
   { href: '/fg-pool', label: 'Thành phẩm chờ xuất', icon: BoxesIcon, resource: 'fg_pool' },
   { href: '/vessels', label: 'Lịch tàu', icon: Anchor, resource: 'vessels' },
+  { href: '/sales-orders', label: 'Đơn hàng khách', icon: FileText, resource: 'sales_orders' },
   { href: '/pos', label: 'Đơn hàng', icon: ShoppingCart, resource: 'pos' },
   { href: '/plans', label: 'Kế hoạch SX', icon: ClipboardList, resource: 'plans' },
   { href: '/work-orders', label: 'Lệnh sản xuất', icon: ClipboardCheck, resource: 'work_orders' },

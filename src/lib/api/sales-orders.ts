@@ -15,4 +15,12 @@ export const salesOrdersApi = {
   /** GET /api/v1/sales-orders/:id — full record incl. `lines`. */
   getById: (id: string) =>
     apiClient.get<SalesOrder>(`/sales-orders/${id}`),
+
+  /** POST /api/v1/sales-orders/:id/confirm — DRAFT → CONFIRMED (Planner+). */
+  confirm: (id: string) =>
+    apiClient.post<SalesOrder>(`/sales-orders/${id}/confirm`, {}),
+
+  /** POST /api/v1/sales-orders/:id/cancel — any cancellable status → CANCELLED (Planner+). */
+  cancel: (id: string, body: { reason?: string } = {}) =>
+    apiClient.post<SalesOrder>(`/sales-orders/${id}/cancel`, body),
 }
