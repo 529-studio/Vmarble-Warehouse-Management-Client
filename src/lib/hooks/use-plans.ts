@@ -1,9 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { plansApi, type PlanFilter } from '@/lib/api/plans'
+import { useCursorList } from '@/lib/hooks/use-cursor-list'
 import type { CreatePlanInput } from '@/types/api'
 
 export const PLANS_KEY = 'plans'
 
+/**
+ * Cursor-paginated list for the /plans page.
+ * Use this in the list view — exposes `items`, `hasMore`, `fetchNextPage`, etc.
+ */
+export function usePlanList(filter: Omit<PlanFilter, 'cursor'> = {}) {
+  return useCursorList({
+    queryKey: [PLANS_KEY, 'list', filter],
+    fetchPage: (cursor) => plansApi.list({ ...filter, cursor: cursor ?? undefined }),
+    staleTime: 30_000,
+  })
+}
+
+/**
+ * Single-page fetch for dropdown / lookup callers (e.g. limit:20, status filter).
+ * Returns the raw CursorResult — callers access `.items`.
+ */
 export function usePlans(filter: PlanFilter = {}) {
   return useQuery({
     queryKey: [PLANS_KEY, filter],

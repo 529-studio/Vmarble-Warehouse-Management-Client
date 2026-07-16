@@ -851,6 +851,10 @@ export interface paths {
                     status?: string;
                     /** @description 20GP / 40GP / 40HC */
                     container_type?: string;
+                    /** @description filter by assigned loader (uuid) */
+                    loader_id?: string;
+                    /** @description filter by vessel (uuid) */
+                    vessel_id?: string;
                 };
                 header?: never;
                 path?: never;
@@ -924,6 +928,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/containers/at-risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List at-risk containers — OPEN/LOADING with cutoff within N days
+         * @description Returns containers whose cutoff_date is within the next `days`
+         *     calendar days (default 7). Overdue containers (cutoff in the past)
+         *     are included. Sorted by cutoff_date ASC (most urgent first).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description look-ahead window in days (default 7) */
+                    days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.AtRiskRow"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/containers/{id}": {
         parameters: {
             query?: never;
@@ -974,6 +1022,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/containers/{id}/assign-loader": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign or reassign a loader to a container (BR-D21/D22/D23)
+         * @description Sets loader_id on the container and writes an audit row. When the
+         *     container already has a different loader (reassignment), reason is
+         *     mandatory (BR-D22). Send loader_id=null to unassign.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_delivery.AssignLoaderInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/containers/{id}/cancel": {
         parameters: {
             query?: never;
@@ -1006,6 +1125,83 @@ export interface paths {
                     };
                 };
                 /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/change-destination": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change container destination — clears vessel booking if DC changes (BR-D24/D25/D26) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_delivery.ChangeDestinationInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.Container"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description container is SEALED/SHIPPED */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1321,6 +1517,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/containers/{id}/loader-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Loader assignment audit trail for a container */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.ContainerLoaderLog"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/containers/{id}/loading-plan": {
         parameters: {
             query?: never;
@@ -1430,6 +1676,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/containers/{id}/packing-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download packing list as Excel for a SEALED container
+         * @description Returns a .xlsx file with container metadata and all loaded lines.
+         *     Returns 412 when the container is not yet SEALED.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/containers/{id}/reopen": {
         parameters: {
             query?: never;
@@ -1501,6 +1810,56 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/containers/{id}/route-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Destination change audit trail for a container */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description container id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_delivery.ContainerRouteChangeLog"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3148,6 +3507,10 @@ export interface paths {
                     so_line_id?: string;
                     /** @description filter by work order id (uuid) */
                     wo_id?: string;
+                    /** @description filter created_at from (RFC3339 or YYYY-MM-DD) */
+                    from?: string;
+                    /** @description filter created_at to (RFC3339 or YYYY-MM-DD, inclusive day-end) */
+                    to?: string;
                 };
                 header?: never;
                 path?: never;
@@ -4190,6 +4553,10 @@ export interface paths {
                     claim_status?: string;
                     /** @description filter by lot id (uuid) */
                     lot_id?: string;
+                    /** @description filter reported_at from (RFC3339 or YYYY-MM-DD) */
+                    from?: string;
+                    /** @description filter reported_at to (RFC3339 or YYYY-MM-DD, inclusive day-end) */
+                    to?: string;
                     /** @description opaque cursor token; omit for first page */
                     cursor?: string;
                     /** @description page size (default 50, max 200) */
@@ -4439,6 +4806,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/remnants/aging": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get remnant aging report
+         * @description Returns all AVAILABLE remnants with age in days, classified as OK / AT_RISK / EXPIRED.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description days before AT_RISK (default 60) */
+                    warn_days?: number;
+                    /** @description days before EXPIRED candidate (default 90) */
+                    expire_days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_inventory.RemnantAgingSummary"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/remnants/expire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Expire stale AVAILABLE remnants (admin)
+         * @description Flips AVAILABLE remnants older than age_days to EXPIRED. Default 90 days.
+         */
+        post: {
+            parameters: {
+                query?: {
+                    /** @description age threshold in days (default 90) */
+                    age_days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/remnants/suggestions": {
         parameters: {
             query?: never;
@@ -4447,8 +4924,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Suggest best-fit remnants for a required dimension
-         * @description Returns up to `limit` AVAILABLE remnants ranked by Best Fit (smallest area) + FIFO (oldest first). Each suggestion includes the remnant's storage location when available.
+         * Suggest remnants for a required dimension
+         * @description Returns up to `limit` AVAILABLE remnants ranked by the chosen strategy (best_fit or fifo). Each suggestion includes age_days, score, reason, and storage location when available.
          */
         get: {
             parameters: {
@@ -4459,6 +4936,10 @@ export interface paths {
                     width_mm: number;
                     /** @description max results (default 3, max 10) */
                     limit?: number;
+                    /** @description best_fit or fifo (default: material config → best_fit) */
+                    strategy?: "best_fit" | "fifo";
+                    /** @description restrict to remnants from this material */
+                    material_id?: string;
                 };
                 header?: never;
                 path?: never;
@@ -6655,6 +7136,227 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/work-orders/{id}/boost-priority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Boost work order priority */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description reason */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_planning.boostPriorityRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_planning.BoostPriorityResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/work-orders/{id}/check-feasibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check work order material feasibility */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_planning.FeasibilityResult"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/work-orders/{id}/preempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preempt a work order to free materials for another */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description target work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description from_wo_id + reason */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_planning.preemptRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_planning.PreemptResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/work-orders/{id}/preempt-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List preemption candidates for a work order */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_planning.PreemptCandidate"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9054,7 +9756,68 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update SKU export/shipping fields (BR-SKU02) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sku id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_catalog.UpdateSKUInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_catalog.SKU"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/skus/{id}/bom": {
@@ -9188,6 +9951,213 @@ export interface paths {
         };
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skus/{id}/packing-units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List packing units for a SKU */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sku id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_catalog.PackingUnit"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skus/{id}/packing-units/{unit}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Create or replace a packing unit for a SKU (BR-SKU04/05) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sku id (uuid) */
+                    id: string;
+                    /** @description unit: piece|set|carton */
+                    unit: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_catalog.UpsertPackingUnitInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_catalog.PackingUnit"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a packing unit for a SKU */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description sku id (uuid) */
+                    id: string;
+                    /** @description unit: piece|set|carton */
+                    unit: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -9458,6 +10428,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/uploads/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate a presigned upload URL for R2 object storage
+         * @description Returns a short-lived PUT URL (5 min) and a permanent public URL.
+         *     The client PUTs the file bytes directly to upload_url, then stores
+         *     public_url in the relevant entity (loading exception, defect, rejection).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description content_type: image/jpeg | image/png | image/webp */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_platform_storage.presignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_platform_storage.PresignResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me": {
         parameters: {
             query?: never;
@@ -9526,6 +10564,68 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["internal_module_authn.WorkerSummary"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vessels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List vessels */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description page (default 1) */
+                    page?: number;
+                    /** @description limit (default 10, max 100) */
+                    limit?: number;
+                    /** @description ILIKE on vessel name or voyage number */
+                    search?: string;
+                    /** @description cutoff_date >= (YYYY-MM-DD or RFC3339) */
+                    cutoff_from?: string;
+                    /** @description cutoff_date < (YYYY-MM-DD or RFC3339, exclusive) */
+                    cutoff_to?: string;
+                    /** @description etd >= (YYYY-MM-DD or RFC3339) */
+                    etd_from?: string;
+                    /** @description etd < (YYYY-MM-DD or RFC3339, exclusive) */
+                    etd_to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_shipping_Vessel"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
             };
@@ -10072,6 +11172,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** CNC operator self-claims a PLANNED unassigned work order */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_production.WorkOrder"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-orders/{id}/consumptions": {
         parameters: {
             query?: never;
@@ -10514,6 +11697,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders/{id}/qc-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get QC scan history for a work order */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_barcode.QCEvent"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{id}/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin force-reassign a work order to a different CNC operator */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description work order id (uuid) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_module_production.ReassignWorkOrderInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_module_production.WorkOrder"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Precondition Failed */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-orders/{id}/suggest-assignment": {
         parameters: {
             query?: never;
@@ -10725,43 +12068,57 @@ export interface components {
         /** @enum {string} */
         "github_com_vmarble_warehouse-management-service_internal_domain.PlanStatus": "DRAFT" | "APPROVED" | "CANCELED";
         /** @enum {string} */
-        "github_com_vmarble_warehouse-management-service_internal_domain.RemnantStatus": "AVAILABLE" | "ALLOCATED" | "CONSUMED" | "WASTE";
+        "github_com_vmarble_warehouse-management-service_internal_domain.RemnantStatus": "AVAILABLE" | "ALLOCATED" | "CONSUMED" | "WASTE" | "EXPIRED";
         /** @enum {string} */
         "github_com_vmarble_warehouse-management-service_internal_domain.WorkOrderStatus": "PLANNED" | "IN_CUTTING" | "IN_PROCESSING" | "COMPLETED" | "PARTIAL_COMPLETE" | "COSTED" | "CANCELED";
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_barcode_ScanEvent": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_barcode.ScanEvent"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_costing_CostingRecord": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_costing.CostingRecord"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_AuditLogEntry": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_inventory.AuditLogEntry"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_CuttingRecordReport": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_inventory.CuttingRecordReport"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_inventory_MaterialRejection": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_inventory.MaterialRejection"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_loading_exception_LoadingException": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_loading_exception.LoadingException"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.CursorResult-internal_module_scrap_ScrapSale": {
             has_more?: boolean;
             items?: components["schemas"]["internal_module_scrap.ScrapSale"][];
             next_cursor?: string;
+            total?: number;
+            total_is_estimate?: boolean;
         };
         "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_authn_UserDetail": {
             current_page?: number;
@@ -10891,6 +12248,14 @@ export interface components {
             total_items?: number;
             total_pages?: number;
         };
+        "github_com_vmarble_warehouse-management-service_internal_platform_httpkit.PagedResult-internal_module_shipping_Vessel": {
+            current_page?: number;
+            items?: components["schemas"]["internal_module_shipping.Vessel"][];
+            limit?: number;
+            total_is_estimate?: boolean;
+            total_items?: number;
+            total_pages?: number;
+        };
         "internal_module_authn.CreateUserInput": {
             email?: string;
             full_name?: string;
@@ -10960,6 +12325,16 @@ export interface components {
         };
         /** @enum {string} */
         "internal_module_barcode.LabelSize": "50x30" | "100x70";
+        "internal_module_barcode.QCEvent": {
+            barcode_id?: string;
+            created_at?: string;
+            id?: string;
+            note?: string;
+            result?: components["schemas"]["internal_module_barcode.ScanCheckpoint"];
+            scan_event_id?: string;
+            scanned_by?: string;
+            work_order_id?: string;
+        };
         "internal_module_barcode.RecordScanInput": {
             checkpoint?: components["schemas"]["internal_module_barcode.ScanCheckpoint"];
             device_id?: string;
@@ -10969,7 +12344,7 @@ export interface components {
             shift?: string;
         };
         /** @enum {string} */
-        "internal_module_barcode.ScanCheckpoint": "CNC_COMPLETE" | "FINISHED_GOODS" | "SHIPPED";
+        "internal_module_barcode.ScanCheckpoint": "CNC_COMPLETE" | "QC_PASSED" | "QC_FAILED" | "FINISHED_GOODS" | "SHIPPED";
         "internal_module_barcode.ScanEvent": {
             barcode_id?: string;
             checkpoint?: components["schemas"]["internal_module_barcode.ScanCheckpoint"];
@@ -11048,14 +12423,24 @@ export interface components {
         };
         /** @enum {string} */
         "internal_module_catalog.MaterialType": "PLYWOOD" | "GLUE" | "METAL" | "OTHER";
+        "internal_module_catalog.PackingUnit": {
+            is_default?: boolean;
+            pieces_per_unit?: number;
+            sku_id?: string;
+            unit?: string;
+        };
         "internal_module_catalog.SKU": {
+            cbm_per_unit?: number;
             code?: string;
             created_at?: string;
             dimensions?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Dimension"];
+            height_mm?: number;
+            hs_code?: string;
             id?: string;
             is_active?: boolean;
             name?: string;
             requires_metal?: boolean;
+            weight_kg?: number;
         };
         "internal_module_catalog.SetBOMInput": {
             components?: components["schemas"]["internal_module_catalog.BOMComponent"][];
@@ -11064,6 +12449,18 @@ export interface components {
         "internal_module_catalog.UpdateMinRemnantPolicyInput": {
             min_remnant_length_mm?: number;
             min_remnant_width_mm?: number;
+        };
+        "internal_module_catalog.UpdateSKUInput": {
+            heightMM?: number;
+            hscode?: string;
+            skuid?: string;
+            weightKg?: number;
+        };
+        "internal_module_catalog.UpsertPackingUnitInput": {
+            is_default?: boolean;
+            pieces_per_unit?: number;
+            sku_id?: string;
+            unit?: string;
         };
         "internal_module_costing.CostingAdjustment": {
             costing_record_id?: string;
@@ -11083,10 +12480,20 @@ export interface components {
             finalized?: boolean;
             finalized_at?: string;
             finalized_by?: string;
+            /**
+             * @description FXRateToVND is the closest-on-or-before-WO-completion rate for SOCurrency.
+             *     Nil when SOCurrency is nil or "VND".
+             */
+            fx_rate_to_vnd?: number;
             id?: string;
             labor_cost?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
             material_cost?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
             sku_id?: string;
+            /**
+             * @description SOCurrency is the ISO-4217 currency of the linked sales order line.
+             *     Nil for VND orders or when the WO has no SO link.
+             */
+            so_currency?: string;
             total_cost?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.Money"];
             work_order_id?: string;
         };
@@ -11196,17 +12603,45 @@ export interface components {
             status?: string;
         };
         "internal_module_delivery.AddLineInput": {
+            allow_overload?: boolean;
             cbm_total?: number;
             qty?: number;
             sales_order_line_id?: string;
             sku_id?: string;
             weight_kg_total?: number;
         };
+        "internal_module_delivery.AssignLoaderInput": {
+            /** @description nil = unassign */
+            loader_id?: string;
+            reason?: string;
+        };
+        "internal_module_delivery.AtRiskRow": {
+            code?: string;
+            cutoff_date?: string;
+            days_to_cutoff?: number;
+            /** @description 0–100, 0 when max_cbm=0 */
+            fill_pct_cbm?: number;
+            id?: string;
+            line_count?: number;
+            max_cbm?: number;
+            /** @description RED | ORANGE */
+            risk_level?: string;
+            used_cbm?: number;
+            vessel_name?: string;
+        };
+        "internal_module_delivery.ChangeDestinationInput": {
+            destination_code?: string;
+            destination_name?: string;
+            reason?: string;
+        };
         "internal_module_delivery.Container": {
             code?: string;
             container_type?: string;
             created_at?: string;
             created_by?: string;
+            cutoff_date?: string;
+            destination_code?: string;
+            destination_name?: string;
             fill_pct_cbm?: number;
             fill_pct_mass?: number;
             id?: string;
@@ -11215,6 +12650,7 @@ export interface components {
              *     these to keep the page query a single round-trip.
              */
             lines?: components["schemas"]["internal_module_delivery.ContainerLine"][];
+            loader_id?: string;
             max_cbm?: number;
             max_payload_kg?: number;
             note?: string;
@@ -11223,6 +12659,7 @@ export interface components {
             status?: string;
             used_cbm?: number;
             used_weight_kg?: number;
+            vessel_id?: string;
         };
         "internal_module_delivery.ContainerLine": {
             added_at?: string;
@@ -11249,6 +12686,26 @@ export interface components {
             superseded_by_plan?: string;
             superseded_by_user?: string;
         };
+        "internal_module_delivery.ContainerLoaderLog": {
+            assigned_at?: string;
+            assigned_by?: string;
+            container_id?: string;
+            from_loader_id?: string;
+            id?: string;
+            reason?: string;
+            to_loader_id?: string;
+        };
+        "internal_module_delivery.ContainerRouteChangeLog": {
+            actor_id?: string;
+            changed_at?: string;
+            container_id?: string;
+            from_dc?: string;
+            from_dest?: string;
+            id?: string;
+            reason?: string;
+            to_dc?: string;
+            to_dest?: string;
+        };
         "internal_module_delivery.ContainerStatusLogEntry": {
             actor_id?: string;
             container_id?: string;
@@ -11257,6 +12714,19 @@ export interface components {
             id?: string;
             note?: string;
             to_status?: string;
+        };
+        "internal_module_delivery.ContainerTransferAudit": {
+            actor_id?: string;
+            actor_role?: string;
+            created_at?: string;
+            id?: string;
+            is_cross_plan?: boolean;
+            line_id?: string;
+            qty_transferred?: number;
+            reason?: string;
+            sku_id?: string;
+            source_container_id?: string;
+            target_container_id?: string;
         };
         "internal_module_delivery.CreateContainerInput": {
             container_type?: string;
@@ -11322,10 +12792,12 @@ export interface components {
             cbm_total?: number;
             line_id?: string;
             qty?: number;
+            reason?: string;
             target_container_id?: string;
             weight_kg_total?: number;
         };
         "internal_module_delivery.TransferLineResult": {
+            audit?: components["schemas"]["internal_module_delivery.ContainerTransferAudit"];
             /** @description nil when the source line was fully consumed */
             source_line?: components["schemas"]["internal_module_delivery.ContainerLine"];
             target_line?: components["schemas"]["internal_module_delivery.ContainerLine"];
@@ -11533,10 +13005,28 @@ export interface components {
             status?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.RemnantStatus"];
             supplier_code?: string;
         };
+        /** @enum {string} */
+        "internal_module_inventory.RemnantAgingLevel": "OK" | "AT_RISK" | "EXPIRED";
+        "internal_module_inventory.RemnantAgingRow": {
+            age_days?: number;
+            level?: components["schemas"]["internal_module_inventory.RemnantAgingLevel"];
+            remnant?: components["schemas"]["internal_module_inventory.Remnant"];
+        };
+        "internal_module_inventory.RemnantAgingSummary": {
+            expire_days?: number;
+            rows?: components["schemas"]["internal_module_inventory.RemnantAgingRow"][];
+            total_at_risk?: number;
+            total_expired?: number;
+            total_ok?: number;
+            warn_days?: number;
+        };
         "internal_module_inventory.RemnantSuggestion": {
+            age_days?: number;
             location?: components["schemas"]["internal_module_inventory.StorageLocation"];
             rank?: number;
+            reason?: string;
             remnant?: components["schemas"]["internal_module_inventory.Remnant"];
+            score?: number;
         };
         "internal_module_inventory.StorageLocation": {
             barcode?: string;
@@ -11670,7 +13160,9 @@ export interface components {
             resolved_by?: string;
         };
         "internal_module_packing.FGPool": {
+            barcode_code?: string;
             barcode_id?: string;
+            component_type?: string;
             container_line_id?: string;
             created_at?: string;
             id?: string;
@@ -11681,6 +13173,8 @@ export interface components {
             sku_id?: string;
             sku_name?: string;
             status?: string;
+            unit_index?: number;
+            work_order_code?: string;
             work_order_id?: string;
         };
         "internal_module_packing.ReportDefectInput": {
@@ -11701,11 +13195,27 @@ export interface components {
         "internal_module_packing.scanRequest": {
             barcode_id: string;
         };
+        "internal_module_planning.BoostPriorityResult": {
+            audit_id?: string;
+            boosted_at?: string;
+        };
         "internal_module_planning.CreatePlanInput": {
             deadline?: string;
             items?: components["schemas"]["internal_module_planning.PlanItemInput"][];
             po_id?: string;
             sales_order_id?: string;
+        };
+        "internal_module_planning.FeasibilityResult": {
+            feasible?: boolean;
+            reason?: string;
+            suggestions?: components["schemas"]["internal_module_planning.FeasibilitySuggestion"][];
+        };
+        "internal_module_planning.FeasibilitySuggestion": {
+            days_to_due?: number;
+            freed_qty?: number;
+            score?: number;
+            sku_code?: string;
+            wo_id?: string;
         };
         "internal_module_planning.Plan": {
             canceled_at?: string;
@@ -11740,7 +13250,26 @@ export interface components {
             sales_order_code?: string;
             status?: components["schemas"]["github_com_vmarble_warehouse-management-service_internal_domain.PlanStatus"];
         };
+        "internal_module_planning.PreemptCandidate": {
+            current_so_code?: string;
+            freed_qty?: number;
+            slack_days?: number;
+            status?: string;
+            wo_id?: string;
+        };
+        "internal_module_planning.PreemptResult": {
+            audit_id?: string;
+            freed_qty?: number;
+            preempted_at?: string;
+        };
+        "internal_module_planning.boostPriorityRequest": {
+            reason?: string;
+        };
         "internal_module_planning.cancelPlanRequest": {
+            reason?: string;
+        };
+        "internal_module_planning.preemptRequest": {
+            from_wo_id?: string;
             reason?: string;
         };
         "internal_module_production.AdvanceStatusInput": {
@@ -11822,6 +13351,10 @@ export interface components {
             carry_over_wo?: components["schemas"]["internal_module_production.WorkOrder"];
             wo_updated?: components["schemas"]["internal_module_production.WorkOrder"];
         };
+        "internal_module_production.ReassignWorkOrderInput": {
+            new_user_id?: string;
+            reason?: string;
+        };
         "internal_module_production.RecordConsumptionInput": {
             material_id?: string;
             material_type?: string;
@@ -11865,6 +13398,16 @@ export interface components {
              */
             parent_wo_id?: string;
             plan_id?: string;
+            /**
+             * @description PriorityBoost marks that a planner has manually elevated this WO's
+             *     scheduling priority (BR-PL05). Set by BoostPriority; never cleared.
+             */
+            priority_boost?: boolean;
+            /**
+             * @description QCStatus is the denormalized last QC result for this work order.
+             *     Nil means no QC scan has been recorded yet.
+             */
+            qc_status?: string;
             quantity?: number;
             /**
              * @description SalesOrderLineID, when set, links the WO back to a sales_order_lines row
@@ -12070,6 +13613,28 @@ export interface components {
             sale_date?: string;
             total_amount?: number;
             unit_price?: number;
+        };
+        "internal_module_shipping.Vessel": {
+            carrier?: string;
+            created_at?: string;
+            created_by?: string;
+            cutoff_date?: string;
+            eta?: string;
+            etd?: string;
+            id?: string;
+            name?: string;
+            port_of_discharge?: string;
+            port_of_loading?: string;
+            voyage_number?: string;
+        };
+        "internal_platform_storage.PresignResult": {
+            /** @description PublicURL is the permanent URL to store in the database. */
+            public_url?: string;
+            /** @description UploadURL is the short-lived PUT URL the client sends bytes to. */
+            upload_url?: string;
+        };
+        "internal_platform_storage.presignRequest": {
+            content_type: string;
         };
     };
     responses: never;

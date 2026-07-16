@@ -4,15 +4,17 @@ import { use, useMemo, useSyncExternalStore, useState } from 'react'
 import { toast } from 'sonner'
 import QRCode from 'react-qr-code'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardCheck, QrCode, Eye, Copy, Check, CheckCircle2, Circle, ExternalLink, Loader2, Printer } from 'lucide-react'
+import { ArrowLeft, ClipboardCheck, QrCode, Eye, Copy, Check, CheckCircle2, Circle, ExternalLink, Loader2, Printer, AlertCircle, Zap, TrendingUp, UserCog } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -45,6 +47,12 @@ import {
   useWorkOrder,
   useWorkOrderConsumptions,
   useWorkOrderLaborEntries,
+  useCheckFeasibility,
+  useBoostPriority,
+  usePreemptCandidates,
+  usePreempt,
+  useWorkOrderQCHistory,
+  useReassignWorkOrder,
 } from '@/lib/hooks/use-work-orders'
 import { usePlan } from '@/lib/hooks/use-plans'
 import { useMaterials } from '@/lib/hooks/use-materials'
@@ -66,6 +74,9 @@ import type {
   AdvanceStatusInput,
   LaborStage,
   User,
+  FeasibilitySuggestion,
+  PreemptCandidate,
+  QCEvent,
 } from '@/types/api'
 
 // ── Helpers
@@ -131,10 +142,12 @@ function formatDate(iso: string) {
 
 // ── Scan history ─────────────────────────────────────────────────────────────
 
-const CHECKPOINT_ORDER: ScanCheckpoint[] = ['CNC_COMPLETE', 'FINISHED_GOODS', 'SHIPPED']
+const CHECKPOINT_ORDER: ScanCheckpoint[] = ['CNC_COMPLETE', 'QC_PASSED', 'QC_FAILED', 'FINISHED_GOODS', 'SHIPPED']
 
 const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
   CNC_COMPLETE: 'Hoàn thành CNC',
+  QC_PASSED: 'QC Đạt',
+  QC_FAILED: 'QC Lỗi',
   FINISHED_GOODS: 'Hoàn thành gia công',
   SHIPPED: 'Xuất kho',
 }
@@ -678,14 +691,453 @@ function LaborSection({ wo }: { wo: WorkOrder }) {
 
 // ── Detail content ────────────────────────────────────────────────────────────
 
+// ── Feasibility modal ────────────────────────────────────────────────────────
+
+function FeasibilityModal({ woId, open, onClose }: { woId: string; open: boolean; onClose: () => void }) {
+  const { data, isFetching, refetch } = useCheckFeasibility(woId)
+
+  const handleOpen = (o: boolean) => {
+    if (o && !data) refetch()
+    if (!o) onClose()
+  }
+
+  const suggestions: FeasibilitySuggestion[] = data?.suggestions ?? []
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Kiểm tra khả thi</DialogTitle>
+          <DialogDescription>
+            Kết quả phân tích vật tư cho lệnh sản xuất này.
+          </DialogDescription>
+        </DialogHeader>
+
+        {isFetching ? (
+          <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Đang kiểm tra…
+          </div>
+        ) : !data ? (
+          <div className="py-6 text-center">
+            <Button onClick={() => refetch()} variant="outline" size="sm">
+              Kiểm tra ngay
+            </Button>
+          </div>
+        ) : data.feasible ? (
+          <div className="flex items-center gap-3 rounded-md border border-green-200 bg-green-50 p-4">
+            <CheckCircle2 className="size-5 shrink-0 text-green-600" />
+            <p className="text-sm font-medium text-green-800">
+              Lệnh sản xuất khả thi — đủ vật tư để tiến hành.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-4">
+              <AlertCircle className="size-5 shrink-0 text-destructive mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-destructive">Không khả thi</p>
+                {data.reason && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">{data.reason}</p>
+                )}
+              </div>
+            </div>
+
+            {suggestions.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Gợi ý WO có thể nhường vật tư
+                </p>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>WO</TableHead>
+                        <TableHead>SKU</TableHead>
+                        <TableHead className="text-right">Có thể nhường</TableHead>
+                        <TableHead className="text-right">Điểm</TableHead>
+                        <TableHead className="text-right">Còn (ngày)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {suggestions.map((s, i) => (
+                        <TableRow key={s.wo_id ?? i}>
+                          <TableCell className="font-mono text-xs">
+                            {s.wo_id ? (
+                              <Link href={`/work-orders/${s.wo_id}`} className="hover:underline" onClick={onClose}>
+                                #{s.wo_id.slice(0, 8).toUpperCase()}
+                              </Link>
+                            ) : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs">{s.sku_code ?? '—'}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">{s.freed_qty ?? '—'}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">{s.score?.toFixed(2) ?? '—'}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">{s.days_to_due ?? '—'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? 'Đang kiểm tra…' : 'Kiểm tra lại'}
+          </Button>
+          <Button onClick={onClose}>Đóng</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Boost priority dialog ────────────────────────────────────────────────────
+
+function BoostPriorityDialog({ woId, open, onClose }: { woId: string; open: boolean; onClose: () => void }) {
+  const [reason, setReason] = useState('')
+  const boost = useBoostPriority(woId)
+
+  const handleOpenChange = (o: boolean) => {
+    if (!o && !boost.isPending) { setReason(''); onClose() }
+  }
+
+  const submit = () => {
+    if (!reason.trim() || boost.isPending) return
+    boost.mutate(reason.trim(), { onSuccess: () => { setReason(''); onClose() } })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Đôn ưu tiên</DialogTitle>
+          <DialogDescription>
+            Tăng ưu tiên lệnh sản xuất này lên mức cao nhất. Hành động được ghi vào audit log.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1.5">
+          <Label htmlFor="boost-reason">Lý do <span className="text-destructive">*</span></Label>
+          <Textarea
+            id="boost-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="VD: Khách hàng cần giao gấp tuần này…"
+            rows={3}
+            disabled={boost.isPending}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setReason(''); onClose() }} disabled={boost.isPending}>Huỷ</Button>
+          <Button onClick={submit} disabled={!reason.trim() || boost.isPending}>
+            {boost.isPending ? 'Đang lưu…' : 'Đôn ưu tiên'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Preempt tab ──────────────────────────────────────────────────────────────
+
+function PreemptTab({ woId }: { woId: string }) {
+  const { data: candidates, isLoading } = usePreemptCandidates(woId)
+  const preempt = usePreempt(woId)
+  const [selected, setSelected] = useState('')
+  const [reason, setReason] = useState('')
+
+  const items: PreemptCandidate[] = candidates ?? []
+  const canSubmit = !!selected && reason.trim().length > 0 && !preempt.isPending
+
+  const submit = () => {
+    if (!canSubmit) return
+    preempt.mutate({ from_wo_id: selected, reason: reason.trim() }, {
+      onSuccess: () => { setSelected(''); setReason('') },
+    })
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Đôn từ WO khác — chọn một lệnh sản xuất có thể nhường vật tư cho lệnh này.
+      </p>
+
+      {isLoading ? (
+        <Skeleton className="h-32 w-full" />
+      ) : items.length === 0 ? (
+        <div className="rounded-lg border px-4 py-8 text-center text-sm text-muted-foreground">
+          Không có lệnh sản xuất nào phù hợp để đôn.
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8" />
+                <TableHead>WO nguồn</TableHead>
+                <TableHead>SO hiện tại</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="text-right">Có thể nhường</TableHead>
+                <TableHead className="text-right">Còn (ngày)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((c) => (
+                <TableRow
+                  key={c.wo_id}
+                  className="cursor-pointer"
+                  onClick={() => setSelected(c.wo_id ?? '')}
+                >
+                  <TableCell>
+                    <input
+                      type="radio"
+                      checked={selected === c.wo_id}
+                      onChange={() => setSelected(c.wo_id ?? '')}
+                      className="accent-primary"
+                    />
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {c.wo_id ? `#${c.wo_id.slice(0, 8).toUpperCase()}` : '—'}
+                  </TableCell>
+                  <TableCell className="text-xs">{c.current_so_code ?? '—'}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">{c.status ?? '—'}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-xs">{c.freed_qty ?? '—'}</TableCell>
+                  <TableCell className="text-right tabular-nums text-xs">{c.slack_days ?? '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {selected && (
+        <div className="space-y-2 rounded-lg border p-4">
+          <p className="text-sm font-medium">
+            Đôn từ WO <span className="font-mono">#{selected.slice(0, 8).toUpperCase()}</span>
+          </p>
+          <div className="space-y-1.5">
+            <Label htmlFor="preempt-reason">Lý do <span className="text-destructive">*</span></Label>
+            <Textarea
+              id="preempt-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="VD: Đơn hàng ưu tiên cao hơn cần giao trước…"
+              rows={2}
+              disabled={preempt.isPending}
+            />
+          </div>
+          <Button onClick={submit} disabled={!canSubmit} size="sm">
+            {preempt.isPending ? 'Đang xử lý…' : 'Thực hiện đôn'}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── QC History tab ────────────────────────────────────────────────────────────
+
+const QC_RESULT_CLASS: Partial<Record<ScanCheckpoint, string>> = {
+  QC_PASSED: 'bg-green-100 text-green-800 border-green-200',
+  QC_FAILED: 'bg-red-100 text-red-800 border-red-200',
+}
+
+function QCHistoryTab({ woId }: { woId: string }) {
+  const { data: events, isLoading, isError } = useWorkOrderQCHistory(woId)
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex gap-4 px-4 py-3 border rounded-lg">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-5 flex-1" />
+            <Skeleton className="h-5 w-32" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (isError) {
+    return <p className="text-sm text-destructive">Không thể tải lịch sử QC.</p>
+  }
+
+  const list = events ?? []
+
+  if (list.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Chưa có sự kiện QC nào cho lệnh sản xuất này.
+      </p>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Kết quả</TableHead>
+            <TableHead>Barcode</TableHead>
+            <TableHead>Ghi chú lỗi</TableHead>
+            <TableHead>Thời gian</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {list.map((event: QCEvent, i: number) => (
+            <TableRow key={event.id ?? i}>
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  className={event.result ? (QC_RESULT_CLASS[event.result] ?? '') : ''}
+                >
+                  {event.result ? (CHECKPOINT_LABEL[event.result] ?? event.result) : '—'}
+                </Badge>
+              </TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">
+                {event.barcode_id ? event.barcode_id.slice(0, 8).toUpperCase() : '—'}
+              </TableCell>
+              <TableCell className="text-sm">
+                {event.note ?? <span className="text-muted-foreground">—</span>}
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {event.created_at ? formatDate(event.created_at) : '—'}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+// ── Reassign Dialog ───────────────────────────────────────────────────────────
+
+interface ReassignDialogProps {
+  wo: WorkOrder
+  open: boolean
+  onClose: () => void
+}
+
+function ReassignDialog({ wo, open, onClose }: ReassignDialogProps) {
+  const [newUserId, setNewUserId] = useState('')
+  const [reason, setReason] = useState('')
+
+  const { data: usersData, isLoading: loadingUsers } = useUsers({ role: 'cnc', limit: 200 })
+  const workers = useMemo(() => usersData?.items ?? [], [usersData?.items])
+  const currentWorker = workers.find((w) => w.id === wo.assigned_to)
+
+  const { mutate: reassign, isPending } = useReassignWorkOrder(wo.id)
+
+  function handleClose() {
+    setNewUserId('')
+    setReason('')
+    onClose()
+  }
+
+  function handleSubmit() {
+    if (!newUserId || !reason.trim()) return
+    reassign(
+      { new_user_id: newUserId, reason: reason.trim() },
+      {
+        onSuccess: () => {
+          const worker = workers.find((w) => w.id === newUserId)
+          const name = worker?.full_name ?? worker?.username ?? 'công nhân'
+          toast.success(`Đã chuyển lệnh cho ${name}`)
+          handleClose()
+        },
+      },
+    )
+  }
+
+  const canSubmit = !!newUserId && reason.trim().length > 0
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserCog className="size-4" />
+            Phân công lại lệnh sản xuất
+          </DialogTitle>
+          <DialogDescription>
+            Mã lệnh: <span className="font-mono font-medium">{shortId(wo.id)}</span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-1">
+          {wo.assigned_to && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <p>
+                Lệnh này đang được <span className="font-semibold">{currentWorker?.full_name ?? currentWorker?.username ?? shortId(wo.assigned_to)}</span> thực hiện.
+                Phân công lại sẽ chuyển quyền cho người khác.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>Chuyển cho *</Label>
+            <Select value={newUserId} onValueChange={setNewUserId} disabled={loadingUsers}>
+              <SelectTrigger>
+                <SelectValue placeholder={loadingUsers ? 'Đang tải…' : '— Chọn công nhân CNC —'} />
+              </SelectTrigger>
+              <SelectContent>
+                {workers
+                  .filter((w) => w.id !== wo.assigned_to)
+                  .map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.full_name ?? w.username}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="reassign-reason">Lý do *</Label>
+            <Textarea
+              id="reassign-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Nhập lý do phân công lại…"
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={isPending}>
+            Hủy
+          </Button>
+          <Button variant="destructive" onClick={handleSubmit} disabled={isPending || !canSubmit}>
+            {isPending ? 'Đang chuyển…' : 'Xác nhận chuyển'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function WorkOrderDetail({ id }: { id: string }) {
   const role = useCurrentRole()
   const { data: me } = useMe()
   const canGenerateBarcode = can(role, 'generate', 'work_orders')
   const canConsume = can(role, 'consume', 'work_orders')
+  const canBoost = can(role, 'advance', 'work_orders')
+  const canPreempt = can(role, 'create', 'work_orders') || can(role, 'advance', 'work_orders')
+  const canReassign = can(role, 'assign', 'work_orders')
 
   const [showBarcodeDialog, setShowBarcodeDialog] = useState(false)
   const [showViewBarcodeDialog, setShowViewBarcodeDialog] = useState(false)
+  const [showFeasibility, setShowFeasibility] = useState(false)
+  const [showBoost, setShowBoost] = useState(false)
+  const [showReassign, setShowReassign] = useState(false)
   const [materialId, setMaterialId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState('')
@@ -790,6 +1242,11 @@ function WorkOrderDetail({ id }: { id: string }) {
           onClose={() => setShowViewBarcodeDialog(false)}
         />
       )}
+      <FeasibilityModal woId={wo.id} open={showFeasibility} onClose={() => setShowFeasibility(false)} />
+      <BoostPriorityDialog woId={wo.id} open={showBoost} onClose={() => setShowBoost(false)} />
+      {canReassign && (wo.status === 'IN_CUTTING' || wo.status === 'IN_PROCESSING') && (
+        <ReassignDialog wo={wo} open={showReassign} onClose={() => setShowReassign(false)} />
+      )}
 
       {/* Carry-over banner — this WO was spawned from a parent shortfall (#241). */}
       {wo.parent_wo_id && (
@@ -825,6 +1282,30 @@ function WorkOrderDetail({ id }: { id: string }) {
                 </Link>
               </Button>
             )}
+            {canBoost && (
+              <Button size="sm" variant="outline" onClick={() => setShowFeasibility(true)}>
+                <AlertCircle className="size-4" />
+                Kiểm tra khả thi
+              </Button>
+            )}
+            {canBoost && !wo.priority_boost && (
+              <Button size="sm" variant="outline" onClick={() => setShowBoost(true)}>
+                <Zap className="size-4" />
+                Đôn ưu tiên
+              </Button>
+            )}
+            {wo.priority_boost && (
+              <Badge variant="outline" className="border-orange-300 bg-orange-50 text-orange-700">
+                <TrendingUp className="mr-1 size-3" />
+                Ưu tiên cao
+              </Badge>
+            )}
+            {canReassign && (wo.status === 'IN_CUTTING' || wo.status === 'IN_PROCESSING') && (
+              <Button size="sm" variant="outline" onClick={() => setShowReassign(true)}>
+                <UserCog className="size-4" />
+                Phân công lại
+              </Button>
+            )}
             {canGenerateBarcode && (
               hasBarcode ? (
                 <Button
@@ -849,6 +1330,20 @@ function WorkOrderDetail({ id }: { id: string }) {
             <Badge variant="outline" className={STATUS_CLASS[wo.status]}>
               {STATUS_LABEL[wo.status]}
             </Badge>
+            {wo.qc_status && (
+              <Badge
+                variant="outline"
+                className={
+                  wo.qc_status === 'QC_PASSED'
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : wo.qc_status === 'QC_FAILED'
+                      ? 'bg-red-100 text-red-800 border-red-200'
+                      : ''
+                }
+              >
+                {wo.qc_status === 'QC_PASSED' ? 'QC Đạt' : wo.qc_status === 'QC_FAILED' ? 'QC Lỗi' : wo.qc_status}
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -903,6 +1398,13 @@ function WorkOrderDetail({ id }: { id: string }) {
         <TabsList>
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="labor">Nhân công</TabsTrigger>
+          <TabsTrigger value="qc">Lịch sử QC</TabsTrigger>
+          {canPreempt && (
+            <TabsTrigger value="preempt">
+              <TrendingUp className="mr-1.5 size-3.5" />
+              Đôn từ WO khác
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8 pt-4">
@@ -1145,6 +1647,16 @@ function WorkOrderDetail({ id }: { id: string }) {
         <TabsContent value="labor" className="pt-4">
           <LaborSection wo={wo} />
         </TabsContent>
+
+        <TabsContent value="qc" className="pt-4">
+          <QCHistoryTab woId={wo.id} />
+        </TabsContent>
+
+        {canPreempt && (
+          <TabsContent value="preempt" className="pt-4">
+            <PreemptTab woId={wo.id} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

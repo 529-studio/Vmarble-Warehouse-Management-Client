@@ -1,8 +1,13 @@
-import { apiClient } from '@/lib/api/client'
+import { apiClient, ApiClientError } from '@/lib/api/client'
+import { normalizeAuthToken } from '@/lib/auth/token'
 import type {
+  AssignLoaderInput,
+  AtRiskRow,
   Container,
   ContainerLine,
+  ContainerLoaderLog,
   ContainersFilter,
+  CreateContainerInput,
   PagedResult,
 } from '@/types/api'
 
@@ -21,6 +26,8 @@ export interface AddLineInput {
   /** CBM is supplied by the caller — BE does not derive from SKU dims. */
   cbm_total: number
   weight_kg_total: number
+  /** Admin-only override: bypass the 422 capacity guard. */
+  allow_overload?: boolean
 }
 
 /** Body for POST /containers/:id/transfer-line (BE `delivery.TransferLineInput`). */
@@ -38,7 +45,13 @@ export interface TransferLineResult {
   target_line: ContainerLine
 }
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1'
+
 export const containersApi = {
+  /** POST /api/v1/containers — create a new container (defaults to OPEN). */
+  create: (body: CreateContainerInput) =>
+    apiClient.post<Container>('/containers', body),
+
   /** GET /api/v1/containers — paginated list (no `lines` hydrated). */
   list: (filter: ContainersFilter = {}) =>
     apiClient.get<PagedResult<Container>>('/containers', {
@@ -79,4 +92,41 @@ export const containersApi = {
   /** POST /api/v1/containers/:id/transfer-line — full or partial transfer. */
   transferLine: (id: string, body: TransferLineInput) =>
     apiClient.post<TransferLineResult>(`/containers/${id}/transfer-line`, body),
+
+  /** GET /api/v1/containers/at-risk?days=N — OPEN/LOADING containers near cutoff. */
+  getAtRisk: (days = 7) =>
+    apiClient.get<AtRiskRow[]>('/containers/at-risk', { params: { days } }),
+
+  /** POST /api/v1/containers/:id/assign-loader — assign, reassign, or unassign (BR-D21/D22/D23). */
+  assignLoader: (id: string, body: AssignLoaderInput) =>
+    apiClient.post<Container>(`/containers/${id}/assign-loader`, body),
+
+  /** GET /api/v1/containers/:id/loader-log — audit trail. */
+  getLoaderLog: (id: string) =>
+    apiClient.get<ContainerLoaderLog[]>(`/containers/${id}/loader-log`),
+
+  /**
+   * GET /api/v1/containers/:id/packing-list — download .xlsx.
+   * Uses raw fetch (not apiClient) because the response is binary, not JSON.
+   * Throws ApiClientError(412) when container is not SEALED.
+   */
+  downloadPackingList: async (id: string): Promise<Blob> => {
+    const base =
+      typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+    const url = new URL(`${BASE_URL}/containers/${id}/packing-list`, base)
+    const token =
+      typeof window !== 'undefined'
+        ? normalizeAuthToken(localStorage.getItem('auth_token'))
+        : null
+    const response = await fetch(url.toString(), {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    })
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      const code: string = body?.code ?? 'DOWNLOAD_FAILED'
+      const message: string = body?.message ?? body?.error ?? `HTTP ${response.status}`
+      throw new ApiClientError(response.status, code, message)
+    }
+    return response.blob()
+  },
 }

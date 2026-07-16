@@ -4,7 +4,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { AlertTriangle, Calendar, Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, RotateCcw } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ClipboardCheck, Loader2, MapPin, Package, Plus, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -49,7 +49,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  useWorkOrders,
+  useWorkOrderList,
   useCreateWorkOrder,
   useAdvanceStatus,
   useWorkOrderConsumptions,
@@ -57,7 +57,6 @@ import {
 import { usePlans } from '@/lib/hooks/use-plans'
 import { usePOs } from '@/lib/hooks/use-pos'
 import { usePageParams } from '@/lib/hooks/use-page-params'
-import { DataPagination } from '@/components/ui/data-pagination'
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
@@ -65,6 +64,7 @@ import { evaluateStartCutGate, startCutTooltip } from '@/lib/auth/work-order-gat
 import { useMe } from '@/lib/hooks/use-auth'
 import { useRemnantBypassedWorkOrders } from '@/lib/hooks/use-inventory'
 import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
+import { DateRangeFilter } from '@/components/dashboard/date-range-filter'
 import type {
   WorkOrderStatus,
   WorkOrder,
@@ -210,6 +210,7 @@ const REMNANT_STATUS_LABEL: Record<RemnantStatus, string> = {
   ALLOCATED: 'Đã phân bổ',
   CONSUMED: 'Đã dùng',
   WASTE: 'Hao hụt',
+  EXPIRED: 'Hết hạn',
 }
 
 const REMNANT_STATUS_CLASS: Record<RemnantStatus, string> = {
@@ -217,6 +218,7 @@ const REMNANT_STATUS_CLASS: Record<RemnantStatus, string> = {
   ALLOCATED: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   CONSUMED: 'bg-gray-100 text-gray-600 border-gray-200',
   WASTE: 'bg-red-100 text-red-700 border-red-200',
+  EXPIRED: 'bg-red-100 text-red-700 border-red-200',
 }
 
 interface RemnantSuggestionPanelProps {
@@ -754,6 +756,12 @@ function todayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function thirtyDaysAgoISO(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 30)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ── Main list ─────────────────────────────────────────────────────────────────
 
 
@@ -903,9 +911,9 @@ function WorkOrdersContent() {
   const planFilter = getParam('plan_id') ?? 'ALL'
   const debouncedPlanSearch = useDebounce(planSearch, 300)
 
-  // Date filter — URL-driven, default to today (local time, VN-safe)
+  // Date filter — URL-driven, default to last 30 days
   const today = todayISO()
-  const dateFrom = getParam('from') ?? today
+  const dateFrom = getParam('from') ?? thirtyDaysAgoISO()
   const dateTo = getParam('to') ?? today
   const isViewingToday = dateFrom === today && dateTo === today
 
@@ -914,21 +922,27 @@ function WorkOrdersContent() {
     ...(planFilter !== 'ALL' ? { plan_id: planFilter } : {}),
     from: dateFrom,
     to: dateTo,
-    page,
     limit,
   }
 
-  const { data, isLoading, isFetching, isError } = useWorkOrders(filter)
-  const workOrders = data?.items ?? []
-  const totalItems = data?.total_items ?? 0
-  const totalPages = data?.total_pages ?? 1
+  const {
+    items: workOrders,
+    total,
+    totalIsEstimate,
+    hasMore,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isFetching,
+    isError,
+  } = useWorkOrderList(filter)
+
+  const totalLabel = totalIsEstimate ? `~${total}` : `${total}`
 
   const { data: plansData, isFetching: isFetchingPlans } = usePlans({
     status: 'APPROVED',
     search: debouncedPlanSearch.trim() || undefined,
     limit: 20,
-    sort_by: 'deadline',
-    order: 'asc',
   })
   const visiblePlans = useMemo(() => plansData?.items ?? [], [plansData?.items])
   const { data: selectedPlanData } = usePlans({
@@ -1104,43 +1118,11 @@ function WorkOrdersContent() {
           />
 
           {/* Date range filter */}
-          <div className="flex items-center gap-1.5">
-            <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <input
-              type="date"
-              value={dateFrom}
-              max={dateTo}
-              aria-label="Từ ngày"
-              onChange={(e) => {
-                const val = e.target.value
-                setParams({ from: val || undefined, to: dateTo !== today ? dateTo : val || undefined })
-              }}
-              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <span className="text-muted-foreground text-sm" aria-hidden="true">–</span>
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom}
-              aria-label="Đến ngày"
-              onChange={(e) => {
-                const val = e.target.value
-                setParams({ from: dateFrom, to: val || undefined })
-              }}
-              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            {!isViewingToday && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setParams({ from: undefined, to: undefined })}
-                className="gap-1"
-              >
-                <RotateCcw className="size-3" />
-                Hôm nay
-              </Button>
-            )}
-          </div>
+          <DateRangeFilter
+            from={dateFrom}
+            to={dateTo}
+            onChange={({ from, to }) => setParams({ from, to })}
+          />
         </div>
 
         {canCreateWorkOrder ? (
@@ -1171,8 +1153,8 @@ function WorkOrdersContent() {
           {isLoading
             ? 'Đang tải…'
             : isViewingToday
-              ? `Lệnh hôm nay (${totalItems})`
-              : `Kết quả (${totalItems} lệnh)`}
+              ? `Lệnh hôm nay (${totalLabel})`
+              : `Kết quả (${totalLabel} lệnh)`}
         </div>
 
         {isError ? (
@@ -1209,14 +1191,16 @@ function WorkOrdersContent() {
         )}
       </div>
 
-      {!isLoading && !isError && (
-        <DataPagination
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={setPage}
-        />
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={fetchNextPage}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Đang tải…' : 'Tải thêm'}
+          </Button>
+        </div>
       )}
 
       {canCreateWorkOrder && <CreateWODialog open={createOpen} onOpenChange={setCreateOpen} />}

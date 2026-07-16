@@ -35,16 +35,21 @@ import {
 import { useWorkOrders } from '@/lib/hooks/use-work-orders'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { DateRangeFilter, defaultFromIso, isoToday } from '@/components/dashboard/date-range-filter'
 import type { BarcodeRecord, ScanCheckpoint, ScanEvent, WorkOrder } from '@/types/api'
 
 const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
   CNC_COMPLETE: 'Hoàn thành CNC',
+  QC_PASSED: 'QC Đạt',
+  QC_FAILED: 'QC Lỗi',
   FINISHED_GOODS: 'Hoàn thành gia công',
   SHIPPED: 'Xuất kho',
 }
 
 const CHECKPOINT_COLOR: Record<ScanCheckpoint, string> = {
   CNC_COMPLETE: 'bg-orange-100 text-orange-700 border-orange-200',
+  QC_PASSED: 'bg-green-100 text-green-700 border-green-200',
+  QC_FAILED: 'bg-red-100 text-red-700 border-red-200',
   FINISHED_GOODS: 'bg-blue-100 text-blue-700 border-blue-200',
   SHIPPED: 'bg-green-100 text-green-700 border-green-200',
 }
@@ -89,8 +94,7 @@ interface FilterBarProps {
   onCheckpointChange: (v: string) => void
   dateFrom: string
   dateTo: string
-  onDateFromChange: (v: string) => void
-  onDateToChange: (v: string) => void
+  onDateRangeChange: (next: { from: string; to: string }) => void
   hasFilters: boolean
   onReset: () => void
 }
@@ -99,7 +103,7 @@ function FilterBar({
   search, onSearch,
   workOrderId, onWorkOrderChange, workOrders, workOrdersLoading,
   checkpoint, onCheckpointChange,
-  dateFrom, dateTo, onDateFromChange, onDateToChange,
+  dateFrom, dateTo, onDateRangeChange,
   hasFilters, onReset,
 }: FilterBarProps) {
   return (
@@ -145,15 +149,13 @@ function FilterBar({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Từ ngày</label>
-            <Input type="date" value={dateFrom} onChange={(e) => onDateFromChange(e.target.value)} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Đến ngày</label>
-            <Input type="date" value={dateTo} onChange={(e) => onDateToChange(e.target.value)} />
-          </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Khoảng ngày</label>
+          <DateRangeFilter
+            from={dateFrom}
+            to={dateTo}
+            onChange={onDateRangeChange}
+          />
         </div>
       </div>
 
@@ -194,8 +196,8 @@ function BarcodesContent() {
 
   const workOrderId = params.getParam('wo') ?? ''
   const checkpointFilter = params.getParam('cp') ?? ''
-  const dateFrom = params.getParam('from') ?? ''
-  const dateTo = params.getParam('to') ?? ''
+  const dateFrom = params.getParam('from') ?? defaultFromIso(7)
+  const dateTo = params.getParam('to') ?? isoToday()
 
   // Fan in: pull recent WOs (any status) so the user can scan their list.
   // We don't have a "list all barcodes" endpoint, so the user must pick a WO.
@@ -330,8 +332,10 @@ function BarcodesContent() {
         onCheckpointChange={(v) => params.setParam('cp', v || undefined)}
         dateFrom={dateFrom}
         dateTo={dateTo}
-        onDateFromChange={(v) => params.setParam('from', v || undefined)}
-        onDateToChange={(v) => params.setParam('to', v || undefined)}
+        onDateRangeChange={({ from, to }) => {
+          params.setParam('from', from || undefined)
+          params.setParam('to', to || undefined)
+        }}
         hasFilters={hasFilters}
         onReset={resetFilters}
       />

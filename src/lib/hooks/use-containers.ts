@@ -7,7 +7,7 @@ import {
   type TransferLineInput,
 } from '@/lib/api/containers'
 import { ApiClientError, mapApiErrorVi } from '@/lib/api/client'
-import type { ContainersFilter } from '@/types/api'
+import type { AssignLoaderInput, ContainersFilter, CreateContainerInput } from '@/types/api'
 import { SALES_ORDERS_KEY } from '@/lib/hooks/use-sales-orders'
 
 export const CONTAINERS_KEY = 'containers'
@@ -27,6 +27,18 @@ export function useContainer(id: string | null) {
     queryFn: () => containersApi.getById(id!),
     enabled: !!id,
     staleTime: 15_000,
+  })
+}
+
+export function useCreateContainer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateContainerInput) => containersApi.create(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [CONTAINERS_KEY] })
+      toast.success('Đã tạo container')
+    },
+    onError: (err) => toast.error(mapApiErrorVi(err, 'Tạo container thất bại')),
   })
 }
 
@@ -110,6 +122,8 @@ function lineErrorMessage(err: unknown, fallback: string): string {
       return 'Container không ở trạng thái cho phép chỉnh sửa dòng hàng.'
     if (err.status === 400 && err.message?.toLowerCase().includes('exceed'))
       return 'Số lượng vượt quá số lượng còn lại của dòng SO.'
+    if (err.status === 422)
+      return 'Vượt quá sức chứa container. Admin có thể tick "Force add" để bỏ qua giới hạn.'
   }
   return mapApiErrorVi(err, fallback)
 }
@@ -153,5 +167,69 @@ export function useTransferContainerLine() {
       toast.success('Đã chuyển dòng hàng')
     },
     onError: (err) => toast.error(lineErrorMessage(err, 'Chuyển dòng hàng thất bại')),
+  })
+}
+
+export const AT_RISK_KEY = 'containers-at-risk'
+
+export function useAtRisk(days = 7) {
+  return useQuery({
+    queryKey: [AT_RISK_KEY, days],
+    queryFn: () => containersApi.getAtRisk(days),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  })
+}
+
+export const LOADER_LOG_KEY = 'container-loader-log'
+
+export function useContainerLoaderLog(id: string | null) {
+  return useQuery({
+    queryKey: [LOADER_LOG_KEY, id],
+    queryFn: () => containersApi.getLoaderLog(id!),
+    enabled: !!id,
+    staleTime: 30_000,
+  })
+}
+
+export function useAssignLoader(containerId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: AssignLoaderInput) => containersApi.assignLoader(containerId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [CONTAINERS_KEY] })
+      qc.invalidateQueries({ queryKey: [LOADER_LOG_KEY, containerId] })
+      toast.success('Đã cập nhật người xếp hàng')
+    },
+    onError: (err) => {
+      if (err instanceof ApiClientError && err.status === 400) {
+        toast.error('Cần nhập lý do khi thay đổi người xếp hàng.')
+      } else {
+        toast.error(mapApiErrorVi(err, 'Cập nhật người xếp hàng thất bại'))
+      }
+    },
+  })
+}
+
+export function useDownloadPackingList(containerId: string) {
+  return useMutation({
+    mutationFn: () => containersApi.downloadPackingList(containerId),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `packing-list-${containerId}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
+    onError: (err) => {
+      if (err instanceof ApiClientError && err.status === 412) {
+        toast.error('Container chưa được niêm phong. Chỉ tải được packing list khi SEALED.')
+      } else {
+        toast.error(mapApiErrorVi(err, 'Tải packing list thất bại'))
+      }
+    },
   })
 }

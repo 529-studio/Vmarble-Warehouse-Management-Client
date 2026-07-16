@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { PhotoUpload } from '@/components/ui/photo-upload'
 import type { DefectReason, PackingScanResult } from '@/types/api'
 
 const RESET_AFTER_MS = 3000
@@ -89,6 +90,7 @@ function DefectDialog({
   const reportDefect = useReportDefect()
   const [reason, setReason] = useState<DefectReason>('CRACK')
   const [detail, setDetail] = useState('')
+  const [photoUrls, setPhotoUrls] = useState<string[]>([])
   const detailId = useId()
 
   // Reset whenever a fresh dialog opens.
@@ -98,6 +100,7 @@ function DefectDialog({
     setPrevKey(dialogKey)
     setReason('CRACK')
     setDetail('')
+    setPhotoUrls([])
   }
 
   if (!barcodeId) return null
@@ -109,6 +112,7 @@ function DefectDialog({
         barcode_id: barcodeId,
         reason,
         detail: detail.trim() || undefined,
+        photo_urls: photoUrls.length > 0 ? photoUrls : undefined,
       },
       {
         onSuccess: () => onCompleted(),
@@ -155,6 +159,15 @@ function DefectDialog({
               placeholder="VD: Vết nứt dài 5cm ở góc phải dưới."
               rows={3}
               className="text-base"
+              disabled={reportDefect.isPending}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-base">Ảnh đính kèm (tuỳ chọn)</Label>
+            <PhotoUpload
+              photos={photoUrls}
+              onChange={setPhotoUrls}
               disabled={reportDefect.isPending}
             />
           </div>

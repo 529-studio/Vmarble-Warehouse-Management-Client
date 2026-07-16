@@ -1,0 +1,66 @@
+# stages:
+#   - build
+#   - push
+# 
+# build-image:
+#   stage: build
+#   image: docker:27
+#   services:
+#     - name: docker:27-dind
+#       alias: docker
+#   variables:
+#     DOCKER_TLS_CERTDIR: ""
+#     DOCKER_HOST: tcp://docker:2375
+#     DOCKER_BUILDKIT: "1"
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "dev"'
+#     - if: '$CI_PIPELINE_SOURCE == "web"'
+#       when: manual
+#       allow_failure: false
+#   before_script:
+#     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+#     - docker buildx create --use --name vwms-builder --driver docker-container || true
+#     - docker buildx inspect --bootstrap
+#   script:
+#     - IMAGE_NAME="$CI_REGISTRY_IMAGE"
+#     - TEMP_TAG="${IMAGE_NAME}:ci-${CI_PIPELINE_IID}"
+#     - CACHE_TAG="${IMAGE_NAME}:buildcache"
+#     - |
+#       docker buildx build \
+#         --cache-from "type=registry,ref=${CACHE_TAG}" \
+#         --cache-to   "type=registry,ref=${CACHE_TAG},mode=max" \
+#         --tag        "$TEMP_TAG" \
+#         --push \
+#         .
+# 
+# push-image:
+#   stage: push
+#   image: docker:27
+#   services:
+#     - name: docker:27-dind
+#       alias: docker
+#   variables:
+#     DOCKER_TLS_CERTDIR: ""
+#     DOCKER_HOST: tcp://docker:2375
+#   resource_group: staging-fe-deploy
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "dev"'
+#     - if: '$CI_PIPELINE_SOURCE == "web"'
+#       when: manual
+#       allow_failure: false
+#   before_script:
+#     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+#   script:
+#     - SHA_SHORT=$(echo "$CI_COMMIT_SHA" | cut -c1-7)
+#     - IMAGE_NAME="$CI_REGISTRY_IMAGE"
+#     - TEMP_TAG="${IMAGE_NAME}:ci-${CI_PIPELINE_IID}"
+#     - SHA_TAG="${IMAGE_NAME}:sha-${SHA_SHORT}"
+#     - STG_TAG="${IMAGE_NAME}:stg-latest"
+#     - docker pull "$TEMP_TAG"
+#     - docker tag "$TEMP_TAG" "$SHA_TAG"
+#     - docker tag "$TEMP_TAG" "$STG_TAG"
+#     - docker push "$SHA_TAG"
+#     - docker push "$STG_TAG"
+#     - apk add --no-cache curl
+#     - curl -sS -f -X POST "$DOKPLOY_FE_WEBHOOK_URL"
+# 

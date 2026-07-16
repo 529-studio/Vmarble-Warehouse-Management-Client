@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Calendar, ClipboardList, Plus, RotateCcw, X } from 'lucide-react'
+import { ClipboardList, Plus, X } from 'lucide-react'
 import { mapApiErrorVi } from '@/lib/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,6 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SearchInput } from '@/components/ui/search-input'
-import { DataPagination } from '@/components/ui/data-pagination'
 import {
   Select,
   SelectContent,
@@ -36,6 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  usePlanList,
   usePlans,
   useCreatePlan,
   useApprovePlan,
@@ -46,6 +46,7 @@ import { useSKUs } from '@/lib/hooks/use-skus'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePageParams } from '@/lib/hooks/use-page-params'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
+import { DateRangeFilter, isoToday, defaultFromIso } from '@/components/dashboard/date-range-filter'
 import type { PlanStatus, ProductionPlan, CreatePlanInput, LineItem } from '@/types/api'
 
 // ── Helpers
@@ -349,21 +350,6 @@ const ALL_PLAN_STATUSES = '__all__'
 const ALL_SKUS = '__all__'
 const ALL_POS = '__all__'
 
-const DEFAULT_RANGE_DAYS = 30
-
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function isoToday(): string {
-  return isoDate(new Date())
-}
-
-function defaultFromIso(): string {
-  const d = new Date()
-  d.setDate(d.getDate() - DEFAULT_RANGE_DAYS)
-  return isoDate(d)
-}
 
 function PlansContent() {
   const role = useCurrentRole()
@@ -375,7 +361,7 @@ function PlansContent() {
   const [approveTarget, setApproveTarget] = useState<ProductionPlan | null>(null)
   const [cancelTarget, setCancelTarget] = useState<ProductionPlan | null>(null)
 
-  const { page, search, limit, getParam, setPage, setSearch, setParam, setParams } =
+  const { search, limit, getParam, setSearch, setParam, setParams } =
     usePageParams(15)
 
   const [inputValue, setInputValue] = useState(search)
@@ -390,8 +376,6 @@ function PlansContent() {
     setSearch(debouncedSearch)
   }, [debouncedSearch, search, setSearch])
 
-  // URL-driven filters mirror /work-orders + /costing so planners can deep-link
-  // (#183 DoD §3). Date range defaults to last 30 days.
   const statusFilter = (getParam('status') ?? ALL_PLAN_STATUSES) as PlanStatus | typeof ALL_PLAN_STATUSES
   const poFilter = getParam('po_id') ?? ALL_POS
   const skuFilter = getParam('sku_id') ?? ALL_SKUS
@@ -408,7 +392,6 @@ function PlansContent() {
     !isDefaultRange
 
   const filter = {
-    page,
     limit,
     ...(statusFilter !== ALL_PLAN_STATUSES ? { status: statusFilter as PlanStatus } : {}),
     ...(normalizedSearch ? { search: normalizedSearch } : {}),
@@ -418,8 +401,20 @@ function PlansContent() {
     to: dateTo,
   }
 
-  const { data, isLoading, isFetching, isError } = usePlans(filter)
+  const {
+    items,
+    total,
+    totalIsEstimate,
+    hasMore,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isFetching,
+    isError,
+  } = usePlanList(filter)
+
   const isPending = isFetching && inputValue !== debouncedSearch
+  const totalLabel = totalIsEstimate ? `~${total}` : `${total}`
 
   const { data: posData } = usePOs({ limit: 200 })
   const poMap = useMemo(
@@ -431,12 +426,7 @@ function PlansContent() {
   const { data: skusData } = useSKUs({ limit: 200 })
   const skus = useMemo(() => skusData?.items ?? [], [skusData?.items])
 
-  // Defensive client-side filter: BE GET /plans currently supports search +
-  // status + from + to + sort, but NOT po_id / sku_id. Keep filtering those
-  // two on the client so the toolbar still narrows the page. Date is BE-side
-  // now (BE #311), so don't double-filter on `created_at` here.
   const filteredPlans = useMemo(() => {
-    const items = data?.items ?? []
     return items.filter((plan) => {
       if (poFilter !== ALL_POS && plan.po_id !== poFilter) return false
       if (skuFilter !== ALL_SKUS) {
@@ -445,10 +435,7 @@ function PlansContent() {
       }
       return true
     })
-  }, [data?.items, poFilter, skuFilter])
-
-  const totalItems = data?.total_items ?? 0
-  const totalPages = data?.total_pages ?? 1
+  }, [items, poFilter, skuFilter])
 
   const { mutate: approve, isPending: approving } = useApprovePlan()
   const { mutate: cancel, isPending: canceling } = useCancelPlan()
@@ -571,43 +558,12 @@ function PlansContent() {
 
         <div>
           <Label className="text-xs text-muted-foreground">Ngày tạo</Label>
-          <div className="mt-1 flex items-center gap-1.5">
-            <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <input
-              type="date"
-              value={dateFrom}
-              max={dateTo || today}
-              aria-label="Từ ngày"
-              onChange={(e) => {
-                const val = e.target.value
-                setParams({ from: val || undefined, to: dateTo || undefined })
-              }}
-              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <div className="mt-1">
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onChange={({ from, to }) => setParams({ from, to })}
             />
-            <span className="text-muted-foreground text-sm" aria-hidden="true">–</span>
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom || undefined}
-              max={today}
-              aria-label="Đến ngày"
-              onChange={(e) => {
-                const val = e.target.value
-                setParams({ from: dateFrom || undefined, to: val || undefined })
-              }}
-              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resetDateRange}
-              disabled={isDefaultRange}
-              className="gap-1"
-              title={isDefaultRange ? 'Đang ở mặc định 30 ngày gần nhất' : 'Đặt lại 30 ngày gần nhất'}
-            >
-              <RotateCcw className="size-3" />
-              30 ngày
-            </Button>
           </div>
         </div>
 
@@ -636,8 +592,8 @@ function PlansContent() {
           {isLoading
             ? 'Đang tải…'
             : hasAnyFilter
-              ? `Kết quả lọc (${filteredPlans.length}${filteredPlans.length !== totalItems ? ` / ${totalItems}` : ''})`
-              : `Tất cả kế hoạch (${totalItems})`}
+              ? `Kết quả lọc (${filteredPlans.length} / ${totalLabel})`
+              : `Tất cả kế hoạch (${totalLabel})`}
         </div>
 
         {isError ? (
@@ -716,14 +672,16 @@ function PlansContent() {
         )}
       </div>
 
-      {!isLoading && !isError && (
-        <DataPagination
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={setPage}
-        />
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={fetchNextPage}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Đang tải…' : 'Tải thêm'}
+          </Button>
+        </div>
       )}
 
       {canCreatePlan && <CreatePlanDialog open={createOpen} onOpenChange={setCreateOpen} />}

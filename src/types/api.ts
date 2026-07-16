@@ -23,8 +23,25 @@ export interface CreateMaterialInput {
   unit: string
 }
 
-/** Backend: AVAILABLE | ALLOCATED | CONSUMED | WASTE */
-export type RemnantStatus = 'AVAILABLE' | 'ALLOCATED' | 'CONSUMED' | 'WASTE'
+/** Backend: AVAILABLE | ALLOCATED | CONSUMED | WASTE | EXPIRED */
+export type RemnantStatus = 'AVAILABLE' | 'ALLOCATED' | 'CONSUMED' | 'WASTE' | 'EXPIRED'
+
+export type RemnantAgingLevel = 'OK' | 'AT_RISK' | 'EXPIRED'
+
+export interface RemnantAgingRow {
+  age_days?: number
+  level?: RemnantAgingLevel
+  remnant?: Remnant
+}
+
+export interface RemnantAgingSummary {
+  warn_days?: number
+  expire_days?: number
+  total_ok?: number
+  total_at_risk?: number
+  total_expired?: number
+  rows?: RemnantAgingRow[]
+}
 
 export type WorkOrderStatus =
   | 'PLANNED'
@@ -51,6 +68,8 @@ export type GrainPattern = 'WITH_GRAIN' | 'CROSS_GRAIN' | 'NONE'
 
 export type ScanCheckpoint =
   | 'CNC_COMPLETE'
+  | 'QC_PASSED'
+  | 'QC_FAILED'
   | 'FINISHED_GOODS'
   | 'SHIPPED'
 
@@ -79,6 +98,17 @@ export interface BoardSheet {
   lot_batch?: string | null
   /** Supplier code inherited from board sheet material */
   supplier_code?: string | null
+}
+
+/** GET /api/v1/inventory/lots */
+export interface InventoryLot {
+  id: string
+  material_id?: string
+  supplier_ref?: string
+  quantity?: number
+  cost_per_sheet?: Money
+  received_at?: string
+  is_active?: boolean
 }
 
 /** GET /api/v1/inventory/remnants */
@@ -233,6 +263,10 @@ export interface WorkOrder {
    * so legacy/PO-rooted WOs read fine without it.
    */
   sales_order_line_id?: string | null
+  /** Set by BoostPriority (BR-PL05); never cleared. */
+  priority_boost?: boolean
+  /** Denormalized last QC result ('QC_PASSED' | 'QC_FAILED') — set by the barcode module after QC scan. */
+  qc_status?: string | null
 }
 
 /**
@@ -258,6 +292,43 @@ export interface PartialCompleteResult {
   wo_updated?: WorkOrder
   /** The auto-spawned carry-over WO (PLANNED) when `carry_over` was true. */
   carry_over_wo?: WorkOrder
+}
+
+/** GET /api/v1/planning/work-orders/:id/check-feasibility */
+export interface FeasibilitySuggestion {
+  wo_id?: string
+  score?: number
+  freed_qty?: number
+  sku_code?: string
+  days_to_due?: number
+}
+
+export interface FeasibilityResult {
+  feasible?: boolean
+  reason?: string
+  suggestions?: FeasibilitySuggestion[]
+}
+
+/** POST /api/v1/planning/work-orders/:id/boost-priority */
+export interface BoostPriorityResult {
+  audit_id?: string
+  boosted_at?: string
+}
+
+/** GET /api/v1/planning/work-orders/:id/preempt-candidates */
+export interface PreemptCandidate {
+  wo_id?: string
+  freed_qty?: number
+  slack_days?: number
+  status?: string
+  current_so_code?: string
+}
+
+/** POST /api/v1/planning/work-orders/:id/preempt */
+export interface PreemptResult {
+  audit_id?: string
+  freed_qty?: number
+  preempted_at?: string
 }
 
 /** POST /api/v1/work-orders */
@@ -287,6 +358,12 @@ export interface AdvanceStatusInput {
 /** POST /api/v1/work-orders/:id/assign */
 export interface AssignWorkOrderInput {
   user_id: string
+}
+
+/** POST /api/v1/work-orders/:id/reassign — Admin force-reassign (note: BE uses new_user_id, not new_assignee_id) */
+export interface ReassignWorkOrderInput {
+  new_user_id?: string
+  reason?: string
 }
 
 /** POST /api/v1/work-orders/:id/suggest-assignment */
@@ -536,6 +613,9 @@ export interface MaterialRejectionsFilter {
   limit?: number
   claim_status?: ClaimStatus
   lot_id?: string
+  from?: string
+  to?: string
+  supplier_ref?: string
 }
 
 // ── Cutting ──────────────────────────────────────────────────────────────────
@@ -644,6 +724,18 @@ export interface ScanEvent {
 /** Enriched response from POST /api/proxy/barcodes/:id/scans — mirrors backend barcode.ScanResult */
 export interface ScanResult extends ScanEvent {
   scanned_by_name: string
+}
+
+/** GET /api/v1/work-orders/:id/qc-history — mirrors backend barcode.QCEvent */
+export interface QCEvent {
+  id?: string
+  barcode_id?: string
+  scan_event_id?: string
+  work_order_id?: string
+  result?: ScanCheckpoint
+  note?: string
+  scanned_by?: string
+  created_at?: string
 }
 
 /** Mirrors backend barcode.LabelSize. */
@@ -892,11 +984,15 @@ export interface PagedResult<T> {
 /**
  * Matches the Go backend httpkit.CursorResult[T] envelope (keyset pagination).
  * `next_cursor` is opaque — FE round-trips it as `?cursor=...` and never parses.
+ * `total` is a best-effort count; when `total_is_estimate=true` it is an estimate
+ * and should be rendered with a `~` prefix.
  */
 export interface CursorResult<T> {
   items: T[]
   next_cursor: string
   has_more: boolean
+  total: number
+  total_is_estimate: boolean
 }
 
 /** @deprecated use PagedResult instead */
@@ -1027,6 +1123,9 @@ export interface Container {
   note: string | null
   sealed_at: string | null
   sealed_by: string | null
+  vessel_id?: string | null
+  /** UUID of the loader assigned to physically load this container. */
+  loader_id?: string | null
   created_by: string
   created_at: string
   /** Only hydrated by GET /containers/:id, not by list. */
@@ -1052,7 +1151,53 @@ export interface ContainersFilter extends PageParams {
   search?: string
   status?: ContainerStatus
   container_type?: string
+  loader_id?: string
+  vessel_id?: string
 }
+
+/** Mirrors backend `delivery.AtRiskRow`. GET /api/v1/containers/at-risk */
+export interface AtRiskRow {
+  id?: string
+  code?: string
+  vessel_name?: string
+  cutoff_date?: string
+  days_to_cutoff?: number
+  fill_pct_cbm?: number
+  used_cbm?: number
+  max_cbm?: number
+  line_count?: number
+  /** "RED" | "ORANGE" */
+  risk_level?: string
+}
+
+/** POST /api/v1/containers/:id/assign-loader — BR-D21/D22/D23. */
+export interface AssignLoaderInput {
+  /** nil = unassign */
+  loader_id?: string | null
+  /** Required when reassigning a different loader (BR-D22). */
+  reason?: string
+}
+
+/** POST /api/v1/containers — create a new container (status OPEN). */
+export interface CreateContainerInput {
+  container_type: string
+  max_cbm?: number
+  max_payload_kg?: number
+  note?: string
+}
+
+/** GET /api/v1/containers/:id/loader-log */
+export interface ContainerLoaderLog {
+  id?: string
+  container_id?: string
+  from_loader_id?: string | null
+  to_loader_id?: string | null
+  assigned_by?: string
+  assigned_at?: string
+  reason?: string
+}
+
+// ── Sales Orders ────────────────────────────────────────────────────────────
 
 // ── Sales Orders ────────────────────────────────────────────────────────────
 
@@ -1111,10 +1256,12 @@ export type FGPoolStatus = 'AVAILABLE' | 'RESERVED' | 'LOADED' | 'DEFECT' | stri
 export interface FGPool {
   id: string
   barcode_id: string
+  barcode_code?: string
   sku_id: string
   sku_code: string
   sku_name: string
   work_order_id: string
+  work_order_code?: string
   sales_order_line_id?: string
   container_line_id?: string
   status: FGPoolStatus
@@ -1174,6 +1321,31 @@ export interface FGDefect {
   resolved_by?: string
   resolved_at?: string
   note?: string
+}
+
+export interface FGPoolFilter extends PageParams {
+  sku_id?: string
+  status?: FGPoolStatus
+  sales_order_line_id?: string
+  from?: string
+  to?: string
+}
+
+/** Body for POST /fg-pool/:id/reassign. */
+export interface ReassignFGInput {
+  new_sales_order_line_id: string
+  reason: string
+}
+
+/** Mirrors backend `packing.FGReassignHistory`. */
+export interface FGReassignHistory {
+  id: string
+  fg_pool_id: string
+  old_sales_order_line_id: string | null
+  new_sales_order_line_id: string
+  reason: string
+  reassigned_by: string
+  reassigned_at: string
 }
 
 // ── Customers ────────────────────────────────────────────────────────────────
@@ -1342,6 +1514,7 @@ export interface ApproveLoadingExceptionInput {
   resolution_notes?: string
   substitute_sku_id?: string
   parent_so_line_id?: string
+  photo_urls?: string[]
 }
 
 export interface RejectLoadingExceptionInput {
@@ -1357,6 +1530,17 @@ export interface BulkApproveLoadingExceptionsInput {
    */
   resolution: LoadingExceptionResolution | string
   resolution_notes?: string
+}
+
+// ── R2 presigned upload ──────────────────────────────────────────────────────
+
+export interface PresignRequest {
+  content_type: string
+}
+
+export interface PresignResult {
+  upload_url: string
+  public_url: string
 }
 
 export const BULK_APPROVE_FAILURE_CODES = [
@@ -1383,4 +1567,51 @@ export interface BulkApproveResult {
 export interface LoadingExceptionsSummary {
   pending_count: number
   blocked_containers: number
+}
+
+// ── Vessels (shipping schedule) ───────────────────────────────────────────────
+
+/** Mirrors backend `shipping.Vessel`. */
+export interface Vessel {
+  id: string
+  name: string
+  voyage_number: string
+  etd: string
+  eta: string
+  port_of_loading: string
+  port_of_discharge: string
+  cutoff_date: string
+  note?: string | null
+  created_by?: string
+  created_at: string
+}
+
+export interface VesselsFilter extends PageParams {
+  search?: string
+  cutoff_from?: string
+  cutoff_to?: string
+  etd_from?: string
+  etd_to?: string
+}
+
+export interface CreateVesselInput {
+  name: string
+  voyage_number: string
+  etd: string
+  eta: string
+  port_of_loading: string
+  port_of_discharge: string
+  cutoff_date: string
+  note?: string
+}
+
+export interface UpdateVesselInput {
+  name?: string
+  voyage_number?: string
+  etd?: string
+  eta?: string
+  port_of_loading?: string
+  port_of_discharge?: string
+  cutoff_date?: string
+  note?: string
 }

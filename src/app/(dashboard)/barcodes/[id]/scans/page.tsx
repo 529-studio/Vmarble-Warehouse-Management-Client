@@ -11,10 +11,12 @@ import type { ScanCheckpoint, ScanEvent, BarcodeRecord } from '@/types/api'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CHECKPOINT_ORDER: ScanCheckpoint[] = ['CNC_COMPLETE', 'FINISHED_GOODS', 'SHIPPED']
+const CHECKPOINT_ORDER: ScanCheckpoint[] = ['CNC_COMPLETE', 'QC_PASSED', 'QC_FAILED', 'FINISHED_GOODS', 'SHIPPED']
 
 const CHECKPOINT_LABEL: Record<ScanCheckpoint, string> = {
   CNC_COMPLETE: 'Hoàn thành CNC',
+  QC_PASSED: 'QC Đạt',
+  QC_FAILED: 'QC Lỗi',
   FINISHED_GOODS: 'Hoàn thành gia công',
   SHIPPED: 'Xuất kho',
 }

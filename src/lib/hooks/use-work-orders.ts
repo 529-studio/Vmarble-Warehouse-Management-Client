@@ -1,10 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { workOrdersApi, type WorkOrdersFilter } from '@/lib/api/work-orders'
+import { useCursorList } from '@/lib/hooks/use-cursor-list'
 import type {
   CreateWOInput,
   AdvanceStatusInput,
   AssignWorkOrderInput,
+  ReassignWorkOrderInput,
   AddConsumptionInput,
   AddLaborEntryInput,
   PartialCompleteInput,
@@ -15,6 +17,22 @@ export const WORK_ORDERS_KEY = 'work-orders'
 export const CONSUMPTIONS_KEY = 'consumptions'
 export const LABOR_ENTRIES_KEY = 'labor-entries'
 
+/**
+ * Cursor-paginated list for the /work-orders and /cutting-dispatch pages.
+ * Exposes `items`, `hasMore`, `fetchNextPage`, `total`, `totalIsEstimate`.
+ */
+export function useWorkOrderList(filter: Omit<WorkOrdersFilter, 'cursor'> = {}) {
+  return useCursorList({
+    queryKey: [WORK_ORDERS_KEY, 'list', filter],
+    fetchPage: (cursor) => workOrdersApi.list({ ...filter, cursor: cursor ?? undefined }),
+    staleTime: 30_000,
+  })
+}
+
+/**
+ * Single-page fetch for dropdown / lookup callers (e.g. limit:100, status filter).
+ * Returns the raw CursorResult — callers access `.items`.
+ */
 export function useWorkOrders(filter: WorkOrdersFilter = {}) {
   return useQuery({
     queryKey: [WORK_ORDERS_KEY, filter],
@@ -185,6 +203,96 @@ export function usePartialCompleteWorkOrder() {
     },
     onError: (err) => {
       toast.error(partialCompleteErrorMessage(err, 'Báo cáo hoàn thành thất bại'))
+    },
+  })
+}
+
+export function useCheckFeasibility(id: string | null) {
+  return useQuery({
+    queryKey: [WORK_ORDERS_KEY, id, 'feasibility'],
+    queryFn: () => workOrdersApi.checkFeasibility(id!),
+    enabled: false,
+    staleTime: 0,
+    gcTime: 0,
+  })
+}
+
+export function useBoostPriority(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (reason: string) => workOrdersApi.boostPriority(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+      toast.success('Đã đôn ưu tiên lệnh sản xuất.')
+    },
+    onError: (err) => toast.error(mapApiErrorVi(err, 'Đôn ưu tiên thất bại')),
+  })
+}
+
+export function usePreemptCandidates(id: string | null) {
+  return useQuery({
+    queryKey: [WORK_ORDERS_KEY, id, 'preempt-candidates'],
+    queryFn: () => workOrdersApi.listPreemptCandidates(id!),
+    enabled: !!id,
+    staleTime: 30_000,
+  })
+}
+
+export function usePreempt(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ from_wo_id, reason }: { from_wo_id: string; reason: string }) =>
+      workOrdersApi.preempt(id, from_wo_id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+      toast.success('Đã thực hiện đôn từ lệnh khác.')
+    },
+    onError: (err) => toast.error(mapApiErrorVi(err, 'Đôn từ WO thất bại')),
+  })
+}
+
+export const QC_HISTORY_KEY = 'qc-history'
+
+export function useWorkOrderQCHistory(woId: string | null) {
+  return useQuery({
+    queryKey: [WORK_ORDERS_KEY, woId, QC_HISTORY_KEY],
+    queryFn: () => workOrdersApi.getQCHistory(woId!),
+    enabled: !!woId,
+    staleTime: 60_000,
+  })
+}
+
+export function useReassignWorkOrder(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: ReassignWorkOrderInput) => workOrdersApi.reassign(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+    },
+    onError: (err: unknown) => {
+      if (err instanceof ApiClientError && err.status === 409) {
+        toast.error('Lệnh không ở trạng thái cho phép phân công lại')
+      } else {
+        toast.error(mapApiErrorVi(err, 'Phân công lại thất bại'))
+      }
+    },
+  })
+}
+
+export function useClaimWorkOrder(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => workOrdersApi.claim(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+    },
+    onError: (err: unknown) => {
+      if (err instanceof ApiClientError && err.status === 409) {
+        toast.error('Lệnh đã được người khác nhận rồi')
+        queryClient.invalidateQueries({ queryKey: [WORK_ORDERS_KEY] })
+      } else {
+        toast.error(mapApiErrorVi(err, 'Nhận việc thất bại'))
+      }
     },
   })
 }

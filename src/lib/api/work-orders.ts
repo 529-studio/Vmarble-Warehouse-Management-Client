@@ -3,6 +3,7 @@ import type {
   CreateWOInput,
   AdvanceStatusInput,
   AssignWorkOrderInput,
+  ReassignWorkOrderInput,
   SuggestAssignmentResult,
   ConsumptionRecord,
   AddConsumptionInput,
@@ -10,7 +11,12 @@ import type {
   AddLaborEntryInput,
   PartialCompleteInput,
   PartialCompleteResult,
-  PagedResult,
+  FeasibilityResult,
+  BoostPriorityResult,
+  PreemptCandidate,
+  PreemptResult,
+  QCEvent,
+  CursorResult,
 } from '@/types/api'
 import { apiClient } from './client'
 
@@ -27,14 +33,14 @@ export interface WorkOrdersFilter {
    * matters.
    */
   assigned?: 'null' | string
-  page?: number
+  cursor?: string
   limit?: number
 }
 
 export const workOrdersApi = {
   /** GET /api/v1/work-orders */
   list: (filter: WorkOrdersFilter = {}) =>
-    apiClient.get<PagedResult<WorkOrder>>('/work-orders', {
+    apiClient.get<CursorResult<WorkOrder>>('/work-orders', {
       params: filter as Record<string, string | number | boolean | undefined>,
     }),
 
@@ -80,4 +86,32 @@ export const workOrdersApi = {
    */
   partialComplete: (id: string, input: PartialCompleteInput) =>
     apiClient.post<PartialCompleteResult>(`/work-orders/${id}/report`, input),
+
+  /** GET /api/v1/planning/work-orders/:id/check-feasibility */
+  checkFeasibility: (id: string) =>
+    apiClient.get<FeasibilityResult>(`/planning/work-orders/${id}/check-feasibility`),
+
+  /** POST /api/v1/planning/work-orders/:id/boost-priority */
+  boostPriority: (id: string, reason: string) =>
+    apiClient.post<BoostPriorityResult>(`/planning/work-orders/${id}/boost-priority`, { reason }),
+
+  /** GET /api/v1/planning/work-orders/:id/preempt-candidates */
+  listPreemptCandidates: (id: string) =>
+    apiClient.get<PreemptCandidate[]>(`/planning/work-orders/${id}/preempt-candidates`),
+
+  /** POST /api/v1/planning/work-orders/:id/preempt */
+  preempt: (id: string, from_wo_id: string, reason: string) =>
+    apiClient.post<PreemptResult>(`/planning/work-orders/${id}/preempt`, { from_wo_id, reason }),
+
+  /** GET /api/v1/work-orders/:id/qc-history */
+  getQCHistory: (id: string) =>
+    apiClient.get<QCEvent[]>(`/work-orders/${id}/qc-history`),
+
+  /** POST /api/v1/work-orders/:id/reassign — Admin force-reassign to different operator */
+  reassign: (id: string, input: ReassignWorkOrderInput) =>
+    apiClient.post<WorkOrder>(`/work-orders/${id}/reassign`, input),
+
+  /** POST /api/v1/work-orders/:id/claim — CNC operator self-claim PLANNED unassigned WO */
+  claim: (id: string) =>
+    apiClient.post<WorkOrder>(`/work-orders/${id}/claim`, {}),
 }

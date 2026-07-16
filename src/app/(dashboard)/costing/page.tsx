@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useSyncExternalStore, useState } from 'react'
-import { Calendar, RotateCcw, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -38,6 +38,7 @@ import { usePageParams } from '@/lib/hooks/use-page-params'
 import { useSKUs } from '@/lib/hooks/use-skus'
 import { can, getCurrentRoleFromCookie } from '@/lib/auth/authorization'
 import { ExportExcelButton } from '@/components/dashboard/export-excel-button'
+import { DateRangeFilter, isoToday, defaultFromIso } from '@/components/dashboard/date-range-filter'
 import { formatVND } from '@/lib/format'
 import type { CostingAdjustment, CostingRecord, Money } from '@/types/api'
 
@@ -62,21 +63,7 @@ const FINALIZED_LABELS: Record<FinalizedFilter, string> = {
 
 const ALL_SKUS = '__all__'
 
-const DEFAULT_RANGE_DAYS = 30
 
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function isoToday(): string {
-  return isoDate(new Date())
-}
-
-function defaultFromIso(): string {
-  const d = new Date()
-  d.setDate(d.getDate() - DEFAULT_RANGE_DAYS)
-  return isoDate(d)
-}
 
 function computeDisabledReason(
   canCompute: boolean,
@@ -547,43 +534,12 @@ function CostingContent() {
 
         <div>
           <Label className="text-xs text-muted-foreground">Ngày tạo</Label>
-          <div className="mt-1 flex items-center gap-1.5">
-            <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <input
-              type="date"
-              value={dateFrom}
-              max={dateTo || today}
-              aria-label="Từ ngày"
-              onChange={(e) => {
-                const val = e.target.value
-                setParams({ from: val || undefined, to: dateTo || undefined })
-              }}
-              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <div className="mt-1">
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onChange={({ from, to }) => setParams({ from, to })}
             />
-            <span className="text-muted-foreground text-sm" aria-hidden="true">–</span>
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom || undefined}
-              max={today}
-              aria-label="Đến ngày"
-              onChange={(e) => {
-                const val = e.target.value
-                setParams({ from: dateFrom || undefined, to: val || undefined })
-              }}
-              className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resetDateRange}
-              disabled={isDefaultRange}
-              className="gap-1"
-              title={isDefaultRange ? 'Đang ở mặc định 30 ngày gần nhất' : 'Đặt lại 30 ngày gần nhất'}
-            >
-              <RotateCcw className="size-3" />
-              30 ngày
-            </Button>
           </div>
         </div>
 

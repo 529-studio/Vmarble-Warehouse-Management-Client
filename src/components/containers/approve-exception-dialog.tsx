@@ -25,6 +25,7 @@ import {
   useApproveLoadingException,
   useRejectLoadingException,
 } from '@/lib/hooks/use-loading-exceptions'
+import { PhotoUpload } from '@/components/ui/photo-upload'
 import type {
   LoadingException,
   LoadingExceptionResolution,
@@ -100,6 +101,7 @@ export function ApproveExceptionDialog({
   const [substituteSkuId, setSubstituteSkuId] = useState('')
   const [parentSoLineId, setParentSoLineId] = useState('')
   const [rejectReason, setRejectReason] = useState('')
+  const [photoUrls, setPhotoUrls] = useState<string[]>([])
 
   const resetKey = open ? exception.id : ''
   const [prevKey, setPrevKey] = useState(resetKey)
@@ -111,6 +113,7 @@ export function ApproveExceptionDialog({
     setSubstituteSkuId('')
     setParentSoLineId('')
     setRejectReason('')
+    setPhotoUrls([])
   }
 
   const approve = useApproveLoadingException()
@@ -145,6 +148,7 @@ export function ApproveExceptionDialog({
           resolution_notes: notes.trim() || undefined,
           substitute_sku_id: requiresSubstitute ? substituteSkuId.trim() : undefined,
           parent_so_line_id: requiresParentLine ? parentSoLineId.trim() : undefined,
+          photo_urls: photoUrls.length > 0 ? photoUrls : undefined,
         },
       },
       { onSuccess: onCompleted },
@@ -262,6 +266,15 @@ export function ApproveExceptionDialog({
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Liên hệ Zalo: ..."
                 rows={2}
+                disabled={pending}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Ảnh đính kèm (tuỳ chọn)</Label>
+              <PhotoUpload
+                photos={photoUrls}
+                onChange={setPhotoUrls}
                 disabled={pending}
               />
             </div>

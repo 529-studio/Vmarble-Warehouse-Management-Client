@@ -1,15 +1,19 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
+import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
-  Calendar,
+  Check,
+  ChevronDown,
   Container as ContainerIcon,
   Filter,
   Image as ImageIcon,
   Inbox,
   RefreshCw,
+  RotateCcw,
+  Search,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -44,6 +48,8 @@ import {
 import { useCustomers } from '@/lib/hooks/use-customers'
 import { useContainers } from '@/lib/hooks/use-containers'
 import { usePageParams } from '@/lib/hooks/use-page-params'
+import { DateRangeFilter } from '@/components/dashboard/date-range-filter'
+import { cn } from '@/lib/utils'
 import {
   LOADING_EXCEPTION_TYPES,
   type LoadingException,
@@ -54,10 +60,10 @@ import type { ListGlobalExceptionsFilter } from '@/lib/api/loading-exceptions'
 const TYPE_LABEL: Record<string, string> = {
   SHORT_SHIPPED: 'Thiếu hàng',
   OVER_LOADED: 'Dư hàng',
-  WRONG_SKU: 'Sai SKU',
+  WRONG_SKU: 'Sai thành phẩm',
   SUBSTITUTION: 'Thay thế',
   DAMAGED_AT_LOADING: 'Hỏng khi xếp',
-  UNPLANNED_UNIT: 'Ngoài plan',
+  UNPLANNED_UNIT: 'Ngoài kế hoạch SX',
   CUSTOMER_CHANGE: 'Khách đổi',
 }
 
@@ -75,11 +81,11 @@ const TYPE_BADGE_VARIANT: Record<
 }
 
 const RESOLUTION_LABEL: Record<string, string> = {
-  BACKORDER: 'Backorder',
-  CANCEL_FROM_SO: 'Cancel SO',
-  SUBSTITUTE_ACCEPTED: 'Thay thế',
-  WRITE_OFF: 'Write-off',
-  DEFER_TO_NEXT: 'Defer',
+  BACKORDER: 'Đặt hàng bù',
+  CANCEL_FROM_SO: 'Huỷ từ đơn hàng',
+  SUBSTITUTE_ACCEPTED: 'Thay thế chấp nhận',
+  WRITE_OFF: 'Xoá sổ',
+  DEFER_TO_NEXT: 'Hoãn chuyến sau',
 }
 
 type StatusFilter = 'pending' | 'approved' | 'rejected' | 'all'
@@ -88,7 +94,7 @@ function StatusBadge({ ex }: { ex: LoadingException }) {
   if (!ex.approved_by) {
     return (
       <Badge variant="outline" className="border-amber-500 text-amber-700">
-        Pending
+        Chờ duyệt
       </Badge>
     )
   }
@@ -99,7 +105,7 @@ function StatusBadge({ ex }: { ex: LoadingException }) {
       </Badge>
     )
   }
-  return <Badge variant="outline">Rejected</Badge>
+  return <Badge variant="outline" className="border-red-400 text-red-700">Từ chối</Badge>
 }
 
 function formatDate(iso: string) {
@@ -116,6 +122,125 @@ function truncate(s: string, n = 80) {
   return s.slice(0, n - 1) + '…'
 }
 
+function toISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function defaultFrom(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 30)
+  return toISODate(d)
+}
+
+function defaultTo(): string {
+  return toISODate(new Date())
+}
+
+// ── Searchable combobox for container / customer dropdowns ──────────────────
+
+interface SearchableComboboxProps {
+  id?: string
+  value: string
+  placeholder: string
+  allLabel: string
+  options: { id: string; label: string }[]
+  onChange: (id: string | undefined) => void
+}
+
+function SearchableCombobox({
+  id,
+  value,
+  placeholder,
+  allLabel,
+  options,
+  onChange,
+}: SearchableComboboxProps) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handlePointerDown(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [open])
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options
+  }, [options, search])
+
+  const selectedLabel = value ? (options.find((o) => o.id === value)?.label ?? value) : allLabel
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        id={id}
+        type="button"
+        role="combobox"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen((p) => !p)
+          setTimeout(() => inputRef.current?.focus(), 50)
+        }}
+        className="flex h-9 w-full items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        <span className="truncate text-left">{selectedLabel}</span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+4px)] z-30 min-w-full rounded-md border bg-popover p-2 shadow-md">
+          <div className="relative mb-2">
+            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={inputRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={placeholder}
+              className="h-8 pl-8 text-sm"
+            />
+          </div>
+          <div className="max-h-56 overflow-y-auto rounded-md border">
+            <button
+              type="button"
+              onClick={() => { onChange(undefined); setOpen(false); setSearch('') }}
+              className={cn('flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent', !value && 'bg-accent/60')}
+            >
+              <Check className={cn('size-4 shrink-0', !value ? 'opacity-100' : 'opacity-0')} />
+              {allLabel}
+            </button>
+            {filtered.length === 0 ? (
+              <p className="px-3 py-4 text-center text-sm text-muted-foreground">Không tìm thấy.</p>
+            ) : filtered.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => { onChange(o.id); setOpen(false); setSearch('') }}
+                className={cn('flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent', value === o.id && 'bg-accent/60')}
+              >
+                <Check className={cn('size-4 shrink-0', value === o.id ? 'opacity-100' : 'opacity-0')} />
+                <span className="truncate">{o.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function LoadingExceptionsQueuePage() {
   return (
     <Suspense fallback={<Skeleton className="h-96 w-full rounded-xl" />}>
@@ -126,13 +251,14 @@ export default function LoadingExceptionsQueuePage() {
 
 function QueueShell() {
   const { getParam, setParam } = usePageParams()
+  const router = useRouter()
 
   const status = (getParam('status') as StatusFilter | undefined) ?? 'pending'
   const containerId = getParam('container_id') ?? ''
   const customerId = getParam('customer_id') ?? ''
   const exceptionType = getParam('exception_type') ?? ''
-  const fromDate = getParam('from') ?? ''
-  const toDate = getParam('to') ?? ''
+  const fromDate = getParam('from') ?? defaultFrom()
+  const toDate = getParam('to') ?? defaultTo()
 
   const filter = useMemo<ListGlobalExceptionsFilter>(
     () => ({
@@ -201,6 +327,15 @@ function QueueShell() {
     return map
   }, [containersList?.items])
 
+  const containerOptions = useMemo(
+    () => (containersList?.items ?? []).map((c) => ({ id: c.id, label: c.code })),
+    [containersList?.items],
+  )
+  const customerOptions = useMemo(
+    () => (customersList?.items ?? []).map((c) => ({ id: c.id, label: c.name ?? c.code })),
+    [customersList?.items],
+  )
+
   const [openExpansion, setOpenExpansion] = useState<string | null>(null)
   const [actionTarget, setActionTarget] = useState<LoadingException | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -218,12 +353,10 @@ function QueueShell() {
   )
 
   const resetFilters = () => {
-    setParam('status', 'pending')
-    setParam('container_id', undefined)
-    setParam('customer_id', undefined)
-    setParam('exception_type', undefined)
-    setParam('from', undefined)
-    setParam('to', undefined)
+    // Replace the full URL to wipe ALL filter params atomically.
+    // setParam calls are not batched — calling them one-by-one leaves stale
+    // params from the previous iteration visible until the last call resolves.
+    router.replace('/loading-exceptions?status=pending')
   }
 
   return (
@@ -232,9 +365,9 @@ function QueueShell() {
         <div className="flex items-center gap-3">
           <AlertTriangle className="size-6 text-muted-foreground" />
           <div>
-            <h1 className="text-2xl font-bold leading-tight">Exception loading</h1>
+            <h1 className="text-2xl font-bold leading-tight">Sự cố đóng hàng</h1>
             <p className="text-sm text-muted-foreground">
-              Hàng đợi cross-container — duyệt batch hoặc xử lý từng dòng.
+              Quản lý sự cố đóng hàng — duyệt hàng loạt hoặc xử lý từng dòng.
             </p>
           </div>
         </div>
@@ -260,10 +393,10 @@ function QueueShell() {
                 <span className="text-2xl font-bold tabular-nums">
                   {summary?.pending_count ?? 0}
                 </span>{' '}
-                exception đang chờ duyệt
+                sự cố đang chờ duyệt
                 {summary && summary.blocked_containers > 0 && (
                   <span className="text-muted-foreground">
-                    {' '}· block <strong>{summary.blocked_containers}</strong> container chưa seal
+                    {' '}· đang chặn <strong>{summary.blocked_containers}</strong> container chưa niêm phong
                   </span>
                 )}
               </p>
@@ -290,12 +423,13 @@ function QueueShell() {
           <CardTitle className="text-sm">Bộ lọc</CardTitle>
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="ml-auto h-7 text-xs"
+            className="ml-auto gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={resetFilters}
           >
-            Reset
+            <RotateCcw className="size-3.5" />
+            Đặt lại bộ lọc
           </Button>
         </CardHeader>
         <CardContent className="grid gap-3 pt-0 md:grid-cols-3 lg:grid-cols-6">
@@ -303,15 +437,15 @@ function QueueShell() {
             <Label htmlFor="status" className="text-xs">Trạng thái</Label>
             <Select
               value={status}
-              onValueChange={(v) => setParam('status', v === 'all' ? undefined : v)}
+              onValueChange={(v) => setParam('status', v)}
             >
               <SelectTrigger id="status" className="h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="pending">Chờ duyệt</SelectItem>
+                <SelectItem value="approved">Đã duyệt</SelectItem>
+                <SelectItem value="rejected">Từ chối</SelectItem>
                 <SelectItem value="all">Tất cả</SelectItem>
               </SelectContent>
             </Select>
@@ -319,50 +453,30 @@ function QueueShell() {
 
           <div className="space-y-1">
             <Label htmlFor="container" className="text-xs">Container</Label>
-            <Select
-              value={containerId || 'ALL'}
-              onValueChange={(v) =>
-                setParam('container_id', v === 'ALL' ? undefined : v)
-              }
-            >
-              <SelectTrigger id="container" className="h-9">
-                <SelectValue placeholder="Tất cả container" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Tất cả container</SelectItem>
-                {(containersList?.items ?? []).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableCombobox
+              id="container"
+              value={containerId}
+              placeholder="Tìm container..."
+              allLabel="Tất cả container"
+              options={containerOptions}
+              onChange={(v) => setParam('container_id', v)}
+            />
           </div>
 
           <div className="space-y-1">
             <Label htmlFor="customer" className="text-xs">Khách hàng</Label>
-            <Select
-              value={customerId || 'ALL'}
-              onValueChange={(v) =>
-                setParam('customer_id', v === 'ALL' ? undefined : v)
-              }
-            >
-              <SelectTrigger id="customer" className="h-9">
-                <SelectValue placeholder="Tất cả khách" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Tất cả khách</SelectItem>
-                {(customersList?.items ?? []).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name ?? c.code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableCombobox
+              id="customer"
+              value={customerId}
+              placeholder="Tìm khách hàng..."
+              allLabel="Tất cả khách"
+              options={customerOptions}
+              onChange={(v) => setParam('customer_id', v)}
+            />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="type" className="text-xs">Loại exception</Label>
+            <Label htmlFor="type" className="text-xs">Loại sự cố</Label>
             <Select
               value={exceptionType || 'ALL'}
               onValueChange={(v) =>
@@ -383,33 +497,14 @@ function QueueShell() {
             </Select>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="from" className="text-xs">Từ ngày</Label>
-            <div className="relative">
-              <Calendar className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="from"
-                type="date"
-                className="h-9 pl-7"
-                value={fromDate}
-                onChange={(e) => setParam('from', e.target.value || undefined)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="to" className="text-xs">Đến ngày</Label>
-            <div className="relative">
-              <Calendar className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="to"
-                type="date"
-                className="h-9 pl-7"
-                value={toDate}
-                onChange={(e) => setParam('to', e.target.value || undefined)}
-              />
-            </div>
-          </div>
+          <DateRangeFilter
+            from={fromDate}
+            to={toDate}
+            onChange={({ from, to }) => {
+              setParam('from', from)
+              setParam('to', to)
+            }}
+          />
         </CardContent>
       </Card>
 
@@ -434,7 +529,7 @@ function QueueShell() {
                 size="sm"
                 onClick={() => {
                   if (selected.size > 50) {
-                    toast.error('Tối đa 50 exception/lần.')
+                    toast.error('Tối đa 50 sự cố/lần.')
                     return
                   }
                   setBulkOpen(true)
@@ -458,11 +553,11 @@ function QueueShell() {
             </div>
           ) : isError ? (
             <p className="p-6 text-center text-sm text-destructive">
-              Không thể tải hàng đợi exception.
+              Không thể tải hàng đợi sự cố.
             </p>
           ) : exceptions.length === 0 ? (
             <p className="p-10 text-center text-sm text-muted-foreground">
-              Không có exception nào khớp bộ lọc.
+              Không có sự cố nào khớp bộ lọc.
             </p>
           ) : (
             <Table>
@@ -494,9 +589,8 @@ function QueueShell() {
                     `…${ex.container_id.slice(-6)}`
                   const isPending = !ex.approved_by
                   return (
-                    <>
+                    <Fragment key={ex.id}>
                       <TableRow
-                        key={ex.id}
                         className={isPending ? 'bg-amber-50/50' : undefined}
                       >
                         <TableCell>
@@ -504,7 +598,7 @@ function QueueShell() {
                             checked={selected.has(ex.id)}
                             onCheckedChange={(v) => toggleOne(ex.id, v === true)}
                             disabled={!isPending}
-                            aria-label={`Chọn exception ${ex.id}`}
+                            aria-label={`Chọn sự cố ${ex.id}`}
                           />
                         </TableCell>
                         <TableCell>
@@ -614,7 +708,7 @@ function QueueShell() {
                                       size="sm"
                                       onClick={() => setActionTarget(ex)}
                                     >
-                                      Xử lý exception
+                                      Xử lý sự cố
                                     </Button>
                                   </div>
                                 </RoleGate>
@@ -623,7 +717,7 @@ function QueueShell() {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })}
               </TableBody>
