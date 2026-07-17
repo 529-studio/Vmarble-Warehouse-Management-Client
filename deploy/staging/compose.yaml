@@ -1,6 +1,7 @@
 services:
   frontend:
     image: ${APP_IMAGE:-ghcr.io/529-studio/vmarble-warehouse-management-client:stg-latest}
+    pull_policy: always
     container_name: vwms-fe
     restart: unless-stopped
     ports:
