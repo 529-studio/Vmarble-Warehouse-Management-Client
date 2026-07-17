@@ -1,0 +1,22 @@
+services:
+  vwms-frontend:
+    image: ghcr.io/529-studio/vmarble-warehouse-management-client:stg-latest
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    networks:
+      - dokploy-network
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://vwms-backend:8080}
+      PORT: "${PORT:-3000}"
+      NODE_ENV: "${NODE_ENV:-production}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+networks:
+  dokploy-network:
+    external: true
