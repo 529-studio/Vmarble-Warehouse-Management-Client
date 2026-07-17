@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ${APP_IMAGE:-ghcr.io/giangdq202/vmarble-warehouse-management-client:sha-latest}
+    image: ${APP_IMAGE:-ghcr.io/529-studio/vmarble-warehouse-management-client:stg-latest}
     container_name: vwms-fe
     restart: unless-stopped
     ports:
